@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ANCHORS } from 'wallkit/core'
 import { HEX, hexToHsv, hsvToHex } from '../color.js'
+import { t } from '../../../lib/i18n.js'
 
 const clamp01 = (value) => Math.min(1, Math.max(0, value))
 
@@ -19,17 +20,21 @@ const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 // repeated presses cannot drift into 0.30000000000000004.
 const nudge = (value, step, direction) => round2(round2(value / step) * step + direction * step)
 
-const ANCHOR_LABELS = {
-  'top-left': '左上',
-  'top-center': '上中',
-  'top-right': '右上',
-  'center-left': '左中',
-  center: '居中',
-  'center-right': '右中',
-  'bottom-left': '左下',
-  'bottom-center': '下中',
-  'bottom-right': '右下',
+const ANCHOR_KEYS = {
+  'top-left': 'anchor.topLeft',
+  'top-center': 'anchor.topCenter',
+  'top-right': 'anchor.topRight',
+  'center-left': 'anchor.centerLeft',
+  center: 'anchor.center',
+  'center-right': 'anchor.centerRight',
+  'bottom-left': 'anchor.bottomLeft',
+  'bottom-center': 'anchor.bottomCenter',
+  'bottom-right': 'anchor.bottomRight',
 }
+
+const ANCHOR_LABELS = Object.fromEntries(
+  Object.entries(ANCHOR_KEYS).map(([key, msgKey]) => [key, t(msgKey)]),
+)
 
 export function Group({ title, note, onReset, children }) {
   return (
@@ -39,7 +44,7 @@ export function Group({ title, note, onReset, children }) {
           <h3>{title ?? ''}</h3>
           {onReset && (
             <button type="button" className="ws-reset" onClick={onReset}>
-              重置
+              {t('common.reset')}
             </button>
           )}
         </div>
@@ -123,10 +128,10 @@ export function LengthField({ label, value, step = 2, onChange }) {
         <span className="ws-field-label">{label}</span>
         {text ? (
           <button type="button" className="ws-reset" onClick={() => onChange('')}>
-            自动
+            {t('common.auto')}
           </button>
         ) : (
-          <span className="ws-field-readout">由尺寸决定</span>
+          <span className="ws-field-readout">{t('common.decidedBySize')}</span>
         )}
       </div>
       <div className="ws-field-controls">
@@ -140,8 +145,8 @@ export function LengthField({ label, value, step = 2, onChange }) {
         >
           -
         </button>
-        <span className="ws-step-value" title={text || '由尺寸决定'}>
-          {text || '自动'}
+        <span className="ws-step-value" title={text || t('common.decidedBySize')}>
+          {text || t('common.auto')}
         </span>
         <button
           type="button"
@@ -183,7 +188,7 @@ export function ChipField({ label, value, options, onChange }) {
     <div className="ws-field">
       <div className="ws-field-head">
         <span className="ws-field-label">{label}</span>
-        {!known && <span className="ws-field-readout">{value}（不在预设内）</span>}
+        {!known && <span className="ws-field-readout">{value}（{t('common.notInPreset')}）</span>}
       </div>
       <div className="ws-chips" role="group" aria-label={label}>
         {options.map((option) => {
@@ -197,7 +202,7 @@ export function ChipField({ label, value, options, onChange }) {
               title={option.value}
               onClick={() => onChange(option.value)}
             >
-              {option.label}
+              {typeof option.label === 'function' ? option.label() : option.label}
             </button>
           )
         })}
@@ -256,7 +261,7 @@ function ColorPickerPanel({ hsv, onChange }) {
         className="ws-picker-area"
         style={{ backgroundColor: hue }}
         role="group"
-        aria-label="饱和度与亮度（拖动选择）"
+        aria-label={t('picker.satBright')}
         {...drag(readArea)}
       >
         <span
@@ -268,7 +273,7 @@ function ColorPickerPanel({ hsv, onChange }) {
           }}
         />
       </div>
-      <div ref={hueRef} className="ws-picker-hue" role="group" aria-label="色相（拖动选择）" {...drag(readHue)}>
+      <div ref={hueRef} className="ws-picker-hue" role="group" aria-label={t('picker.hue')} {...drag(readHue)}>
         <span className="ws-picker-hue-mark" style={{ left: `${(hsv.h / 360) * 100}%` }} />
       </div>
     </div>
@@ -303,10 +308,10 @@ export function ColorField({ label, value, fallback, onChange, allowInherit = tr
         {allowInherit ? (
           value ? (
             <button type="button" className="ws-reset" onClick={() => onChange('')}>
-              跟随主题色
+              {t('common.followAccent')}
             </button>
           ) : (
-            <span className="ws-field-readout">跟随主题色</span>
+            <span className="ws-field-readout">{t('common.followAccent')}</span>
           )
         ) : (
           <span className="ws-field-readout">{hsvToHex(hsv)}</span>
@@ -317,12 +322,12 @@ export function ColorField({ label, value, fallback, onChange, allowInherit = tr
           type="button"
           className={`ws-swatch-preview${open ? ' is-open' : ''}`}
           style={{ background: resolved }}
-          aria-label={`${label}取色面板`}
+          aria-label={`${label}${t('picker.expand')}`}
           aria-expanded={open}
-          title="展开取色面板"
+          title={t('picker.expand')}
           onClick={() => setOpen((next) => !next)}
         />
-        <span className="ws-hex" title="十六进制值（在配置文件里修改）">
+        <span className="ws-hex" title={t('picker.hexHint')}>
           {value || resolved}
         </span>
       </div>
@@ -337,10 +342,10 @@ export function AnchorPicker({ value, onChange }) {
   return (
     <div className="ws-field">
       <div className="ws-field-head">
-        <span className="ws-field-label">锚点</span>
+        <span className="ws-field-label">{t('widget.anchor')}</span>
         <span className="ws-field-readout">{ANCHOR_LABELS[value] ?? value}</span>
       </div>
-      <div className="ws-anchor-grid" role="group" aria-label="位置锚点">
+      <div className="ws-anchor-grid" role="group" aria-label={t('anchor.grid')}>
         {ANCHORS.map((anchor) => (
           <button
             key={anchor}

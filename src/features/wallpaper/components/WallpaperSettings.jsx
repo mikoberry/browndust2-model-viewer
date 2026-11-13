@@ -29,6 +29,8 @@ import {
 } from '../config.js'
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
 import { ChipField, ColorField, Group, SliderField, ToggleField } from './settings-fields.jsx'
+import LocaleSwitcher from './LocaleSwitcher.jsx'
+import { t, useLocale } from '../../../lib/i18n.js'
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 3
@@ -65,7 +67,7 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
   return (
     <Group title={title} note={note} onReset={onReset}>
       <SliderField
-        label="缩放"
+        label={t('comp.scale')}
         readout={formatScale(spec.scale)}
         min={SCALE_MIN}
         max={SCALE_MAX}
@@ -78,7 +80,7 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
           fit the window height, since Wallpaper Engine has no mouse wheel. */}
       <div className="ws-pair">
         <SliderField
-          label="水平偏移"
+          label={t('comp.offsetX')}
           readout={formatOffset(spec.offsetX, design.width)}
           min={-limitX}
           max={limitX}
@@ -87,7 +89,7 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
           onChange={(offsetX) => onChange({ offsetX })}
         />
         <SliderField
-          label="垂直偏移"
+          label={t('comp.offsetY')}
           readout={formatOffset(spec.offsetY, design.height)}
           min={-limitY}
           max={limitY}
@@ -108,12 +110,12 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
 function ParallaxGroup({ spec, onChange, onReset }) {
   return (
     <Group
-      title="鼠标视差"
+      title={t('comp.parallax')}
       onReset={onReset}
-      note="强度按设计画布百分比：正值随鼠标同向、负值反向、0 不动；指针移出画面会自动回中。"
+      note={t('comp.parallaxNote')}
     >
       <ToggleField
-        label="启用视差"
+        label={t('comp.parallaxEnabled')}
         checked={spec.enabled !== false}
         onChange={(enabled) => onChange({ enabled })}
       />
@@ -121,7 +123,7 @@ function ParallaxGroup({ spec, onChange, onReset }) {
           (no wheel in Wallpaper Engine), and each slider is short enough. */}
       <div className="ws-pair">
         <SliderField
-          label="背景强度"
+          label={t('comp.backdropStrength')}
           readout={formatPercent(spec.backdrop)}
           min={PARALLAX_MIN}
           max={PARALLAX_MAX}
@@ -130,7 +132,7 @@ function ParallaxGroup({ spec, onChange, onReset }) {
           onChange={(backdrop) => onChange({ backdrop })}
         />
         <SliderField
-          label="人物强度"
+          label={t('comp.modelStrength')}
           readout={formatPercent(spec.model)}
           min={PARALLAX_MIN}
           max={PARALLAX_MAX}
@@ -164,13 +166,13 @@ function SequenceGroup({
   const clips = entrance?.clips ?? {}
   const scale = (layer) => `${Number(layer?.scale ?? 1).toFixed(2)}×`
   return (
-    <Group title="入场动画">
+    <Group title={t('comp.entrance')}>
       {/* `autoplay` is not just a start-up flag: while it is on, the bare
           wallpaper also shows a round play button above the settings gear,
           because a cutscene is easy to miss and this drawer is hidden. It also
           gates the sub-details below, so turning it off collapses them. */}
       <ToggleField
-        label="启动时播放"
+        label={t('comp.autoplay')}
         checked={autoplay}
         onChange={onAutoplayChange}
       />
@@ -179,12 +181,12 @@ function SequenceGroup({
           <div className="ws-seq">
             <span
               className="ws-seq-list"
-              title="在 wallpaper.config.json 的 sequence 里修改（也可写 'auto' 自动识别）；留空则只播放单个循环动画"
+              title={t('comp.seqHint')}
             >
-              {list.length ? list.join(' → ') : '未配置（直接播放循环动画）'}
+              {list.length ? list.join(' → ') : t('comp.seqEmpty')}
             </span>
             <button type="button" className="ws-btn" onClick={onReplay} disabled={!list.length}>
-              重新播放
+              {t('comp.replay')}
             </button>
           </div>
           <ul className="ws-clips">
@@ -195,8 +197,8 @@ function SequenceGroup({
                   <span className="ws-clip-name">{name}</span>
                   <span className="ws-clip-value">
                     {clip
-                      ? `背景 ${scale(clip.backdropTransform)} · 人物 ${scale(clip.modelTransform)}`
-                      : '原始画布（未单独配置）'}
+                      ? `${t('comp.backdrop')} ${scale(clip.backdropTransform)} · ${t('comp.model')} ${scale(clip.modelTransform)}`
+                      : t('comp.clipRaw')}
                   </span>
                 </li>
               )
@@ -205,9 +207,7 @@ function SequenceGroup({
         </>
       )}
       <p className="ws-note">
-        {autoplay
-          ? '勾选「启动时播放」：加载完成后自动放一遍，右下角设置按钮上方会出现播放按钮，随时可重放。'
-          : '不自动播放：打开就是上面的「构图」，设置按钮上方不显示播放按钮（这里的「重新播放」仍可用）。'}
+        {autoplay ? t('comp.autoplayOnNote') : t('comp.autoplayOffNote')}
       </p>
     </Group>
   )
@@ -229,14 +229,14 @@ function ClickAnimationGroup({ clickAnimation, animations, onChange, onReset }) 
     .map((item) => ({ value: item, label: item }))
   return (
     <Group
-      title="点击触发动画"
+      title={t('comp.clickTitle')}
       onReset={onReset}
-      note="开启后，点击人物会播放一次所选动画（如 cut_B），播完自动回到循环动画。需要宿主能投递鼠标事件（WE 里要开「鼠标交互」）。"
+      note={t('comp.clickNote')}
     >
-      <ToggleField label="点击人物时播放动画" checked={enabled} onChange={(value) => onChange({ enabled: value })} />
+      <ToggleField label={t('comp.clickEnabled')} checked={enabled} onChange={(value) => onChange({ enabled: value })} />
       {enabled && (
         <ChipField
-          label="点击后播放的动画"
+          label={t('comp.clickWhich')}
           value={name}
           options={options}
           onChange={(value) => onChange({ name: value })}
@@ -256,7 +256,7 @@ function ClickAnimationGroup({ clickAnimation, animations, onChange, onReset }) 
 function AccentField({ value, onChange }) {
   return (
     <div className="ws-accent-block">
-      <ColorField label="主题色" value={value ?? ''} fallback="#a8c4ff" onChange={onChange} allowInherit={false} />
+      <ColorField label={t('drawer.accent')} value={value ?? ''} fallback="#a8c4ff" onChange={onChange} allowInherit={false} />
     </div>
   )
 }
@@ -295,21 +295,21 @@ function OtherPanel() {
   }
 
   return (
-    <Group title="清除存储" note="用于测试：清空后刷新页面，回到壁纸自带的默认配置。">
+    <Group title={t('comp.clearStorage')} note={t('comp.clearStorageNote')}>
       <div className="ws-actions">
         <button
           type="button"
           className={`ws-btn${confirmKey === 'local' ? ' is-danger' : ''}`}
           onClick={() => (confirmKey === 'local' ? clearAndReload('local') : arm('local'))}
         >
-          {confirmKey === 'local' ? '确认清除？' : '清除 localStorage'}
+          {confirmKey === 'local' ? t('common.confirmClear') : t('comp.clearLocal')}
         </button>
         <button
           type="button"
           className={`ws-btn${confirmKey === 'session' ? ' is-danger' : ''}`}
           onClick={() => (confirmKey === 'session' ? clearAndReload('session') : arm('session'))}
         >
-          {confirmKey === 'session' ? '确认清除？' : '清除 sessionStorage'}
+          {confirmKey === 'session' ? t('common.confirmClear') : t('comp.clearSession')}
         </button>
       </div>
     </Group>
@@ -353,7 +353,11 @@ function configPayload(config, spec, overlay, autoplay, clickAnimation) {
   }
 }
 
-const TABS = [{ key: 'composition', label: '构图' }, ...OVERLAY_TABS, { key: 'other', label: '其他' }]
+const TABS = [
+  { key: 'composition', label: () => t('comp.title') },
+  ...OVERLAY_TABS,
+  { key: 'other', label: () => t('widget.other') },
+]
 
 const pad = (value) => String(value).padStart(2, '0')
 const clockLabel = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
@@ -389,6 +393,9 @@ export default function WallpaperSettings({
   const [tab, setTab] = useState('composition')
   const timerRef = useRef(0)
   const restoreTimerRef = useRef(0)
+
+  // Subscribe to the locale so every label re-renders on switch.
+  useLocale()
 
   useEffect(
     () => () => {
@@ -438,11 +445,11 @@ export default function WallpaperSettings({
       setRecordedNow(true)
       setConfirmRestore(false)
     }
-    const parts = [stored ? '已记录' : '记录失败（浏览器存储不可用）', copied ? '已复制' : '复制失败']
+    const parts = [stored ? t('record.recorded') : t('record.recordFail'), copied ? t('record.copied') : t('record.copyFail')]
     setFlash(
       stored
-        ? `${parts.join(' · ')}（${clockLabel(at)}）· 以后打开壁纸都按这份配置`
-        : `${parts.join(' · ')}（${clockLabel(at)}）· 只有剪贴板里这一份，无法自动生效`,
+        ? `${parts.join(' · ')}（${clockLabel(at)}）· ${t('record.storedNote')}`
+        : `${parts.join(' · ')}（${clockLabel(at)}）· ${t('record.copyOnlyNote')}`,
     )
     window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => setFlash(''), 4000)
@@ -468,10 +475,10 @@ export default function WallpaperSettings({
   const activeSource = recordedNow || source === 'user' ? 'user' : source
   const sourceLabel =
     activeSource === 'user'
-      ? `正在使用你记录的配置${lastAt ? `（${lastAt}）` : ''}`
+      ? `${t('drawer.sourceUser')}${lastAt ? `（${lastAt}）` : ''}`
       : activeSource === 'file'
-        ? `默认值：${CONFIG_FILE}（还会被记录覆盖）`
-        : '默认值：内置（未读到配置文件）'
+        ? `${t('drawer.sourceFile')}：${CONFIG_FILE}${t('drawer.sourceFileNote')}`
+        : t('drawer.sourceBuiltin')
 
   const enabledWidgets = TABS.filter((item) => item.key !== 'composition' && overlay?.[item.key]?.enabled)
 
@@ -479,20 +486,23 @@ export default function WallpaperSettings({
     <aside className={`wallpaper-settings${open ? ' is-open' : ''}`} aria-hidden={!open}>
       <div className="ws-head">
         <div>
-          <h2>壁纸设置</h2>
+          <h2>{t('drawer.title')}</h2>
           <p>
-            设计画布 {Math.round(design.width)} × {Math.round(design.height)}
+            {t('drawer.designCanvas')} {Math.round(design.width)} × {Math.round(design.height)}
           </p>
           <p className={`ws-source${activeSource === 'user' ? ' is-user' : ''}`}>{sourceLabel}</p>
         </div>
-        <button type="button" className="ws-close" onClick={onClose} aria-label="关闭设置">
-          ×
-        </button>
+        <div className="ws-head-side">
+          <LocaleSwitcher />
+          <button type="button" className="ws-close" onClick={onClose} aria-label={t('drawer.close')}>
+            ×
+          </button>
+        </div>
       </div>
 
       <AccentField value={overlay?.accent} onChange={onAccentChange} />
 
-      <div className="ws-tabs" role="tablist" aria-label="设置分组">
+      <div className="ws-tabs" role="tablist" aria-label={t('drawer.title')}>
         {TABS.map((item) => {
           const active = tab === item.key
           const dot = item.key !== 'composition' && overlay?.[item.key]?.enabled
@@ -506,7 +516,7 @@ export default function WallpaperSettings({
               onClick={() => setTab(item.key)}
             >
               {dot && <i className="ws-tab-dot" aria-hidden="true" />}
-              {item.label}
+              {typeof item.label === 'function' ? item.label() : item.label}
             </button>
           )
         })}
@@ -516,14 +526,14 @@ export default function WallpaperSettings({
         {tab === 'composition' ? (
           <>
             <LayerGroup
-              title="背景"
+              title={t('comp.backdrop')}
               spec={spec.backdrop}
               design={design}
               onChange={(patch) => onChange('backdrop', patch)}
               onReset={() => onReset('backdrop')}
             />
             <LayerGroup
-              title="模型"
+              title={t('comp.model')}
               spec={spec.model}
               design={design}
               onChange={(patch) => onChange('model', patch)}
@@ -549,7 +559,7 @@ export default function WallpaperSettings({
               onReset={() => onReset('clickAnimation')}
             />
             {enabledWidgets.length === 0 && (
-              <p className="ws-note">当前没有任何控件浮层开启；需要的话在对应 tab 里打开。</p>
+              <p className="ws-note">{t('drawer.noWidgets')}</p>
             )}
           </>
         ) : tab === 'other' ? (
@@ -562,27 +572,27 @@ export default function WallpaperSettings({
       <div className="ws-foot">
         <div className="ws-actions">
           <button type="button" className="ws-btn" onClick={() => onReset('all')}>
-            全部重置
+            {t('drawer.resetAll')}
           </button>
           {activeSource === 'user' && (
             <button
               type="button"
               className={`ws-btn${confirmRestore ? ' is-danger' : ''}`}
               onClick={handleRestore}
-              title="丢弃本机记录的配置，回到壁纸自带的默认值（会重新加载页面）"
+              title={t('drawer.restoreHint')}
             >
-              {confirmRestore ? '确认恢复？' : '恢复首次默认'}
+              {confirmRestore ? t('common.confirmRestore') : t('drawer.restoreDefault')}
             </button>
           )}
           <button type="button" className="ws-btn is-primary" onClick={handleRecord}>
-            记录配置
+            {t('drawer.record')}
           </button>
         </div>
         <p className={`ws-status${flash ? ' is-flash' : ''}`} aria-live="polite">
           {flash ||
             (lastAt
-              ? `已记录 ${lastAt} · 之后打开 / 切换壁纸再切回都按这份配置`
-              : '记录 = 保存到本机，此后打开壁纸按这份配置（文件只作为首次默认）')}
+              ? `${t('record.recorded')} ${lastAt} · ${t('record.statusHas')}`
+              : t('record.statusEmpty'))}
         </p>
       </div>
     </aside>

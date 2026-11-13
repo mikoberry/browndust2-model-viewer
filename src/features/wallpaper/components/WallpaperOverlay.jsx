@@ -32,6 +32,7 @@ import {
   useWallpaperPaused,
 } from 'wallkit/we'
 import { WALLPAPER } from '../config.js'
+import { useLocale, localeTag, weekdayName } from '../../../lib/i18n.js'
 
 // `Clock` deliberately owns no timer: the caller drives `now`. Ticking once a
 // second is enough for a minute-resolution display, and stopping while the
@@ -59,6 +60,9 @@ function BeatClock({ base, labels }) {
 }
 
 function ClockWidget({ spec, accent, paused }) {
+  // Subscribe so the clock re-localizes (weekday / date format) when the user
+  // switches language in the drawer.
+  useLocale()
   const now = useNow(paused)
   const base = {
     now,
@@ -71,7 +75,15 @@ function ClockWidget({ spec, accent, paused }) {
     offsetY: spec.offsetY,
     tilt: spec.tilt,
   }
-  const labels = spec.labels ?? {}
+  // Localize the clock's date/weekday text. `locale` drives Intl formatting
+  // (month name, AM/PM), while `weekday` supplies the weekday word WallKit
+  // does not translate itself. Caller-supplied `spec.labels` still wins for
+  // the `aria` name.
+  const labels = {
+    ...(spec.labels ?? {}),
+    locale: localeTag(),
+    weekday: weekdayName(now),
+  }
   return spec.beat ? <BeatClock base={base} labels={labels} /> : <Clock {...base} labels={labels} />
 }
 

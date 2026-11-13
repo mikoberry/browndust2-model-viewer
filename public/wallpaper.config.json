@@ -20,7 +20,7 @@
   },
   "modelTransform": {
     "scale": 2,
-    "offsetX": 0,
+    "offsetX": 204,
     "offsetY": 0
   },
   "parallax": {
@@ -65,7 +65,7 @@
         },
         "modelTransform": {
           "scale": 2.5,
-          "offsetX": 0,
+          "offsetX": 204,
           "offsetY": 0
         }
       },
@@ -78,7 +78,7 @@
         },
         "modelTransform": {
           "scale": 2.5,
-          "offsetX": 0,
+          "offsetX": 204,
           "offsetY": 0
         }
       }

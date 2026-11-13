@@ -7,33 +7,36 @@
 // variant in the library shows up here without a second source of truth.
 
 import { Group, AnchorPicker, ChipField, ColorField, SliderField, ToggleField } from './settings-fields.jsx'
+import { t } from '../../../lib/i18n.js'
 
 // Option lists are rendered as button chips (never a <select>), so labels are
 // kept short; the library's own identifier is in the button's `title`/tooltip.
 // Not exported by wallkit (only documented in the component's JSDoc).
+// Labels are resolved through t() at render time, so switching the locale
+// retranslates the chips; the values stay the library's identifiers.
 const CLOCK_PLACEMENTS = [
-  { value: 'card', label: '卡片' },
-  { value: 'bar', label: '条形' },
-  { value: 'minimal', label: '极简' },
-  { value: 'cyberpunk', label: '赛博' },
-  { value: 'infobar', label: '信息条' },
-  { value: 'split', label: '分栏' },
-  { value: 'poster', label: '海报' },
-  { value: 'ring', label: '环形' },
-  { value: 'segments', label: '三段' },
-  { value: 'stamp', label: '记录卡' },
+  { value: 'card', label: () => t('clock.card') },
+  { value: 'bar', label: () => t('clock.bar') },
+  { value: 'minimal', label: () => t('clock.minimal') },
+  { value: 'cyberpunk', label: () => t('clock.cyberpunk') },
+  { value: 'infobar', label: () => t('clock.infobar') },
+  { value: 'split', label: () => t('clock.split') },
+  { value: 'poster', label: () => t('clock.poster') },
+  { value: 'ring', label: () => t('clock.ring') },
+  { value: 'segments', label: () => t('clock.segments') },
+  { value: 'stamp', label: () => t('clock.stamp') },
 ]
 
 const SPECTRUM_VARIANTS = [
-  { value: 'bars', label: '柱状' },
-  { value: 'mirror', label: '镜像' },
-  { value: 'curve', label: '曲线' },
-  { value: 'pill', label: '胶囊' },
-  { value: 'ring', label: '环形' },
-  { value: 'ringwave', label: '环形波' },
-  { value: 'dots', label: '点阵' },
-  { value: 'ripples', label: '涟漪' },
-  { value: 'aurora', label: '极光' },
+  { value: 'bars', label: () => t('spectrum.bars') },
+  { value: 'mirror', label: () => t('spectrum.mirror') },
+  { value: 'curve', label: () => t('spectrum.curve') },
+  { value: 'pill', label: () => t('spectrum.pill') },
+  { value: 'ring', label: () => t('spectrum.ring') },
+  { value: 'ringwave', label: () => t('spectrum.ringwave') },
+  { value: 'dots', label: () => t('spectrum.dots') },
+  { value: 'ripples', label: () => t('spectrum.ripples') },
+  { value: 'aurora', label: () => t('spectrum.aurora') },
 ]
 
 // Radial styles take their diameter from the SHORTER side of the box (they
@@ -69,32 +72,32 @@ const lenOf = (value, unit) => {
 }
 
 const ALBUM_VARIANTS = [
-  { value: 'classic', label: '经典' },
-  { value: 'glass', label: '毛玻璃' },
-  { value: 'vinyl', label: '唱片' },
-  { value: 'minimal', label: '极简' },
-  { value: 'bar', label: '条形' },
-  { value: 'wall', label: '墙面' },
+  { value: 'classic', label: () => t('album.classic') },
+  { value: 'glass', label: () => t('album.glass') },
+  { value: 'vinyl', label: () => t('album.vinyl') },
+  { value: 'minimal', label: () => t('album.minimal') },
+  { value: 'bar', label: () => t('album.bar') },
+  { value: 'wall', label: () => t('album.wall') },
 ]
 
 const AMBIENT_VARIANTS = [
-  { value: 'snow', label: '飘雪' },
-  { value: 'sakura', label: '樱花' },
-  { value: 'bubble', label: '气泡' },
+  { value: 'snow', label: () => t('ambient.snow') },
+  { value: 'sakura', label: () => t('ambient.sakura') },
+  { value: 'bubble', label: () => t('ambient.bubble') },
 ]
 
 const POINTER_TRAIL_VARIANTS = [
-  { value: 'glow', label: '柔光' },
-  { value: 'ribbon', label: '丝带' },
-  { value: 'bubble', label: '气泡' },
-  { value: 'firework', label: '烟花' },
+  { value: 'glow', label: () => t('pointer.glow') },
+  { value: 'ribbon', label: () => t('pointer.ribbon') },
+  { value: 'bubble', label: () => t('pointer.bubble') },
+  { value: 'firework', label: () => t('pointer.firework') },
 ]
 
 const POINTER_CLICK_VARIANTS = [
-  { value: 'ripple', label: '涟漪' },
-  { value: 'sparks', label: '星尘' },
-  { value: 'bubble', label: '气泡' },
-  { value: 'firework', label: '烟花' },
+  { value: 'ripple', label: () => t('pointer.ripple') },
+  { value: 'sparks', label: () => t('pointer.sparks') },
+  { value: 'bubble', label: () => t('pointer.bubble') },
+  { value: 'firework', label: () => t('pointer.firework') },
 ]
 
 // Offsets are viewport percentages in this drawer. A config file may hold a CSS
@@ -125,7 +128,7 @@ function PlacementFields({ spec, onChange }) {
       <div className="ws-pair is-position">
         <AnchorPicker value={spec.anchor} onChange={(anchor) => onChange({ anchor })} />
         <SliderField
-          label="水平偏移"
+          label={t('comp.offsetX')}
           value={offsetX}
           min={xMin}
           max={xMax}
@@ -134,7 +137,7 @@ function PlacementFields({ spec, onChange }) {
           onChange={(value) => onChange({ offsetX: value })}
         />
         <SliderField
-          label="垂直偏移"
+          label={t('comp.offsetY')}
           value={offsetY}
           min={yMin}
           max={yMax}
@@ -145,7 +148,7 @@ function PlacementFields({ spec, onChange }) {
       </div>
       {irregular && (
         <p className="ws-note">
-          当前偏移不是纯数字（配置文件里写了 CSS 长度），面板按百分比显示为 0；改动后会写回数字。
+          {t('pointer.offsetNote')}
         </p>
       )}
     </>
@@ -155,18 +158,18 @@ function PlacementFields({ spec, onChange }) {
 function ClockPanel({ spec, accent, onChange, onReset }) {
   return (
     <>
-      <Group title="显示" onReset={onReset}>
-        <ToggleField label="在壁纸上显示时钟" checked={spec.enabled} onChange={(enabled) => onChange({ enabled })} />
+      <Group title={t('widget.show')} onReset={onReset}>
+        <ToggleField label={t('clock.enable')} checked={spec.enabled} onChange={(enabled) => onChange({ enabled })} />
       </Group>
-      <Group title="外观">
+      <Group title={t('widget.appearance')}>
         <ChipField
-          label="布局"
+          label={t('widget.layout')}
           value={spec.placement}
           options={CLOCK_PLACEMENTS}
           onChange={(placement) => onChange({ placement })}
         />
         <SliderField
-          label="尺寸"
+          label={t('widget.size')}
           value={spec.size}
           min={40}
           max={200}
@@ -175,32 +178,32 @@ function ClockPanel({ spec, accent, onChange, onReset }) {
           onChange={(size) => onChange({ size })}
         />
         <ColorField
-          label="文字颜色"
+          label={t('widget.textColor')}
           value={spec.color ?? ''}
           fallback={accent}
           onChange={(color) => onChange({ color })}
         />
       </Group>
-      <Group title="位置" note="锚点描述「视口上的一点」与「控件上同名的一点」重合；偏移从锚点向内计。">
+      <Group title={t('widget.position')} note={t('clock.anchorNote')}>
         <PlacementFields spec={spec} onChange={onChange} />
       </Group>
-      <Group title="交互">
+      <Group title={t('widget.interaction')}>
         <ToggleField
-          label="指针倾斜"
-          note="跟随鼠标做 3D 倾斜，WE 桌面壁纸里通常收不到鼠标事件"
+          label={t('clock.tilt')}
+          note={t('clock.tiltNote')}
           checked={Boolean(spec.tilt)}
           onChange={(tilt) => onChange({ tilt })}
         />
         <ToggleField
-          label="音频响应"
-          note="随低频鼓点缩放，需要 WE 音频数据"
+          label={t('clock.beat')}
+          note={t('clock.beatNote')}
           checked={Boolean(spec.beat)}
           onChange={(beat) => onChange({ beat })}
         />
         {spec.beat && (
           <div className="ws-pair">
             <SliderField
-              label="响应强度"
+              label={t('clock.beatStrength')}
               value={spec.beatIntensity ?? 100}
               min={0}
               max={1000}
@@ -208,7 +211,7 @@ function ClockPanel({ spec, accent, onChange, onReset }) {
               onChange={(beatIntensity) => onChange({ beatIntensity })}
             />
             <SliderField
-              label="响应曲线"
+              label={t('clock.beatCurve')}
               value={spec.beatCurve ?? 0.62}
               min={0.2}
               max={2}
@@ -226,17 +229,17 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
   const radial = SPECTRUM_RADIAL.includes(spec.variant)
   return (
     <>
-      <Group title="显示" onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset}>
         <ToggleField
-          label="在壁纸上显示频谱"
-          note="条形数据来自 WE 音频帧；普通浏览器里是平的"
+          label={t('spectrum.enable')}
+          note={t('spectrum.enableNote')}
           checked={spec.enabled}
           onChange={(enabled) => onChange({ enabled })}
         />
       </Group>
-      <Group title="外观">
+      <Group title={t('widget.appearance')}>
         <ChipField
-          label="样式"
+          label={t('widget.style')}
           value={spec.variant}
           options={SPECTRUM_VARIANTS}
           onChange={(variant) => {
@@ -250,13 +253,13 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
         />
         <div className="ws-pair">
           <ColorField
-            label="颜色"
+            label={t('widget.color')}
             value={spec.color ?? ''}
             fallback={accent}
             onChange={(color) => onChange({ color })}
           />
           <SliderField
-            label="尺寸"
+            label={t('widget.size')}
             value={spec.size}
             min={20}
             max={500}
@@ -267,7 +270,7 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
         </div>
         <div className="ws-pair">
           <SliderField
-            label="宽度"
+            label={t('widget.width')}
             value={lenOf(spec.width, 'vw')}
             min={0}
             max={100}
@@ -275,7 +278,7 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
             onChange={(width) => onChange({ width: `${width}vw` })}
           />
           <SliderField
-            label="高度"
+            label={t('widget.height')}
             value={lenOf(spec.height, 'vh')}
             min={0}
             max={100}
@@ -284,18 +287,18 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
           />
         </div>
         {radial ? (
-          <p className="ws-note">环形类样式按「宽高中较小的一边」取直径，想要正圆就把宽、高设成相等（如都是 46）。</p>
+          <p className="ws-note">{t('spectrum.radialNote')}</p>
         ) : (
-          <p className="ws-note">宽度、高度填了会覆盖上面的「尺寸」；例如 100 / 14 铺满底边。</p>
+          <p className="ws-note">{t('spectrum.linearNote')}</p>
         )}
       </Group>
-      <Group title="位置">
+      <Group title={t('widget.position')}>
         <PlacementFields spec={spec} onChange={onChange} />
       </Group>
-      <Group title="响应">
+      <Group title={t('widget.response')}>
         <div className="ws-pair">
           <SliderField
-            label="强度"
+            label={t('widget.intensity')}
             value={spec.intensity}
             min={0}
             max={1000}
@@ -303,7 +306,7 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
             onChange={(intensity) => onChange({ intensity })}
           />
           <SliderField
-            label="曲线"
+            label={t('widget.curve')}
             value={spec.curve}
             min={0.2}
             max={2}
@@ -319,23 +322,23 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
 function AlbumPanel({ spec, accent, onChange, onReset }) {
   return (
     <>
-      <Group title="显示" onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset}>
         <ToggleField
-          label="在壁纸上显示专辑卡"
-          note="没有正在播放的媒体信息时不渲染，不会显示空占位"
+          label={t('album.enable')}
+          note={t('album.enableNote')}
           checked={spec.enabled}
           onChange={(enabled) => onChange({ enabled })}
         />
       </Group>
-      <Group title="外观">
+      <Group title={t('widget.appearance')}>
         <ChipField
-          label="布局"
+          label={t('widget.layout')}
           value={spec.variant}
           options={ALBUM_VARIANTS}
           onChange={(variant) => onChange({ variant })}
         />
         <SliderField
-          label="尺寸"
+          label={t('widget.size')}
           value={spec.size}
           min={20}
           max={300}
@@ -344,19 +347,19 @@ function AlbumPanel({ spec, accent, onChange, onReset }) {
           onChange={(size) => onChange({ size })}
         />
         <ColorField
-          label="文字颜色"
+          label={t('widget.textColor')}
           value={spec.textColor ?? ''}
           fallback={accent}
           onChange={(textColor) => onChange({ textColor })}
         />
         <ColorField
-          label="频谱颜色"
+          label={t('widget.spectrumColor')}
           value={spec.color ?? ''}
           fallback={accent}
           onChange={(color) => onChange({ color })}
         />
       </Group>
-      <Group title="位置">
+      <Group title={t('widget.position')}>
         <PlacementFields spec={spec} onChange={onChange} />
       </Group>
     </>
@@ -366,32 +369,32 @@ function AlbumPanel({ spec, accent, onChange, onReset }) {
 function AmbientPanel({ spec, accent, onChange, onReset }) {
   return (
     <>
-      <Group title="显示" onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset}>
         <ToggleField
-          label="在壁纸上显示氛围粒子"
-          note="铺满视口，没有位置设置；背景里已有粒子时不要叠这一层"
+          label={t('ambient.enable')}
+          note={t('ambient.enableNote')}
           checked={spec.enabled}
           onChange={(enabled) => onChange({ enabled })}
         />
       </Group>
-      <Group title="外观">
+      <Group title={t('widget.appearance')}>
         <ChipField
-          label="形态"
+          label={t('widget.form')}
           value={spec.variant}
           options={AMBIENT_VARIANTS}
           onChange={(variant) => onChange({ variant })}
         />
         <ColorField
-          label="颜色"
+          label={t('widget.color')}
           value={spec.color ?? ''}
           fallback={spec.variant === 'sakura' ? '#f5b8cd' : spec.variant === 'snow' ? '#dbe9ff' : accent}
           onChange={(color) => onChange({ color })}
         />
       </Group>
-      <Group title="密度与强度">
+      <Group title={t('widget.density')}>
         <div className="ws-pair">
           <SliderField
-            label="密度"
+            label={t('widget.density2')}
             value={spec.density}
             min={10}
             max={300}
@@ -400,7 +403,7 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
             onChange={(density) => onChange({ density })}
           />
           <SliderField
-            label="尺寸"
+            label={t('widget.size')}
             value={spec.size}
             min={20}
             max={300}
@@ -410,7 +413,7 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
           />
         </div>
         <SliderField
-          label="不透明度"
+          label={t('widget.opacity')}
           value={spec.intensity}
           min={0}
           max={300}
@@ -426,44 +429,44 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
 function PointerPanel({ spec, accent, onChange, onReset }) {
   return (
     <>
-      <Group title="显示" onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset}>
         <ToggleField
-          label="在壁纸上显示指针特效"
-          note="覆盖层铺满视口；WE 桌面壁纸默认不投递鼠标事件，需在 WE 里开启鼠标交互"
+          label={t('pointer.enable')}
+          note={t('pointer.enableNote')}
           checked={spec.enabled}
           onChange={(enabled) => onChange({ enabled })}
         />
       </Group>
-      <Group title="通道">
+      <Group title={t('widget.channels')}>
         <div className="ws-pair">
-          <ToggleField label="鼠标拖尾" checked={Boolean(spec.trail)} onChange={(trail) => onChange({ trail })} />
-          <ToggleField label="点击特效" checked={Boolean(spec.click)} onChange={(click) => onChange({ click })} />
+          <ToggleField label={t('widget.trail')} checked={Boolean(spec.trail)} onChange={(trail) => onChange({ trail })} />
+          <ToggleField label={t('widget.click')} checked={Boolean(spec.click)} onChange={(click) => onChange({ click })} />
         </div>
         <div className="ws-pair">
           <ChipField
-            label="拖尾形态"
+            label={t('widget.trailForm')}
             value={spec.trailVariant}
             options={POINTER_TRAIL_VARIANTS}
             onChange={(trailVariant) => onChange({ trailVariant })}
           />
           <ChipField
-            label="点击形态"
+            label={t('widget.clickForm')}
             value={spec.clickVariant}
             options={POINTER_CLICK_VARIANTS}
             onChange={(clickVariant) => onChange({ clickVariant })}
           />
         </div>
       </Group>
-      <Group title="外观">
+      <Group title={t('widget.appearance')}>
         <ColorField
-          label="颜色"
+          label={t('widget.color')}
           value={spec.color ?? ''}
           fallback={accent}
           onChange={(color) => onChange({ color })}
         />
         <div className="ws-pair">
           <SliderField
-            label="尺寸"
+            label={t('widget.size')}
             value={spec.size}
             min={20}
             max={300}
@@ -472,7 +475,7 @@ function PointerPanel({ spec, accent, onChange, onReset }) {
             onChange={(size) => onChange({ size })}
           />
           <SliderField
-            label="强度"
+            label={t('widget.intensity')}
             value={spec.intensity}
             min={0}
             max={300}
@@ -495,11 +498,11 @@ const PANELS = {
 }
 
 export const OVERLAY_TABS = [
-  { key: 'clock', label: '时钟' },
-  { key: 'spectrum', label: '频谱' },
-  { key: 'albumArt', label: '专辑卡' },
-  { key: 'ambient', label: '氛围' },
-  { key: 'pointer', label: '指针' },
+  { key: 'clock', label: () => t('widget.clock') },
+  { key: 'spectrum', label: () => t('widget.spectrum') },
+  { key: 'albumArt', label: () => t('widget.album') },
+  { key: 'ambient', label: () => t('widget.ambient') },
+  { key: 'pointer', label: () => t('widget.pointer') },
 ]
 
 export default function OverlaySettings({ tab, overlay, onChange, onReset }) {

@@ -30,6 +30,7 @@ import SettingsBoundary from './components/SettingsBoundary.jsx'
 import WallpaperOverlay from './components/WallpaperOverlay.jsx'
 import useParallax from './useParallax.js'
 import useCompositionBlend from './useCompositionBlend.js'
+import { t, useLocale } from '../../lib/i18n.js'
 import {
   WALLPAPER,
   loadWallpaperConfig,
@@ -58,6 +59,9 @@ function toTweak(spec, design) {
 }
 
 export default function WallpaperPage() {
+  // Re-render page-level chrome (play / settings hints, error line) on locale
+  // switch; the drawer subscribes on its own.
+  useLocale()
   // `null` until the external config settles; `config` is then the merged
   // result. Falling back here keeps the component usable on the very first
   // render (hooks must stay unconditional).
@@ -419,7 +423,7 @@ export default function WallpaperPage() {
       </div>
 
       {message && <p className="wallpaper-message">{message}</p>}
-      {!model && <p className="wallpaper-message">model-library/ 里没有可识别的模型</p>}
+      {!model && <p className="wallpaper-message">{t('page.noModels')}</p>}
 
       {/* Viewport-anchored, so the composition scale never moves the widgets.
           Renders nothing when every `overlay.*.enabled` is false. */}
@@ -436,8 +440,8 @@ export default function WallpaperPage() {
               type="button"
               className="wallpaper-play-toggle"
               onClick={replaySequence}
-              aria-label="播放开场动画"
-              title="播放开场动画"
+              aria-label={t('page.playEntrance')}
+              title={t('page.playEntrance')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
                 <path d="M9 6.5v11l9.5-5.5z" />
@@ -448,8 +452,8 @@ export default function WallpaperPage() {
             type="button"
             className="wallpaper-settings-toggle"
             onClick={() => setSettingsOpen(true)}
-            aria-label="打开构图设置"
-            title="构图设置（S）"
+            aria-label={t('page.openSettings')}
+            title={t('page.settingsHint')}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
               <path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h9M17 17h3" />
