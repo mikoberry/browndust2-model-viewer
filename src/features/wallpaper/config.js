@@ -220,7 +220,8 @@ export const WALLPAPER = {
     clock: {
       enabled: true,
       placement: 'minimal',
-      theme: 'light',
+      // `#rrggbb` override for the text colour; empty = follow `overlay.accent`.
+      color: '',
       anchor: 'bottom-left',
       offsetX: 4,
       offsetY: 4,
@@ -251,8 +252,11 @@ export const WALLPAPER = {
     albumArt: {
       enabled: false,
       variant: 'classic',
-      theme: 'light',
       color: '',
+      // `#rrggbb` override for the card text colour; empty = follow
+      // `overlay.accent`. (`color` above recolours the card's inline spectrum,
+      // not the text.)
+      textColor: '',
       anchor: 'top-left',
       offsetX: 4,
       offsetY: 4,

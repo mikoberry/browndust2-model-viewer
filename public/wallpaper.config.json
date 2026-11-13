@@ -88,11 +88,11 @@
   "speed": 1,
   "zoom": 1,
   "overlay": {
-    "accent": "#a8c4ff",
+    "accent": "#699cd8",
     "clock": {
       "enabled": true,
       "placement": "minimal",
-      "theme": "light",
+      "color": "#04356e",
       "anchor": "top-left",
       "offsetX": 4,
       "offsetY": 4,
@@ -104,7 +104,8 @@
         "locale": "zh-CN",
         "aria": "当前时间与日期"
       },
-      "beatCurve": 1
+      "beatCurve": 1,
+      "beatIntensity": 200
     },
     "spectrum": {
       "enabled": true,
@@ -112,7 +113,7 @@
       "color": "",
       "anchor": "bottom-center",
       "width": "100vw",
-      "height": "20vh",
+      "height": "25vh",
       "offsetX": 0,
       "offsetY": 0,
       "size": 100,
@@ -122,12 +123,12 @@
     "albumArt": {
       "enabled": true,
       "variant": "classic",
-      "theme": "light",
       "color": "",
+      "textColor": "#eff6fd",
       "anchor": "top-right",
       "offsetX": 4,
       "offsetY": 4,
-      "size": 55,
+      "size": 70,
       "labels": {
         "aria": "正在播放"
       }
@@ -147,8 +148,8 @@
       "trailVariant": "glow",
       "clickVariant": "ripple",
       "color": "",
-      "size": 150,
-      "intensity": 100
+      "size": 200,
+      "intensity": 160
     }
   }
 }

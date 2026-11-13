@@ -24,12 +24,6 @@ const CLOCK_PLACEMENTS = [
   { value: 'stamp', label: '记录卡' },
 ]
 
-// WallKit convention: the name is the TEXT colour.
-const THEMES = [
-  { value: 'light', label: '浅色文字' },
-  { value: 'dark', label: '深色文字' },
-]
-
 const SPECTRUM_VARIANTS = [
   { value: 'bars', label: '柱状' },
   { value: 'mirror', label: '镜像' },
@@ -158,7 +152,7 @@ function PlacementFields({ spec, onChange }) {
   )
 }
 
-function ClockPanel({ spec, onChange, onReset }) {
+function ClockPanel({ spec, accent, onChange, onReset }) {
   return (
     <>
       <Group title="显示" onReset={onReset}>
@@ -171,18 +165,21 @@ function ClockPanel({ spec, onChange, onReset }) {
           options={CLOCK_PLACEMENTS}
           onChange={(placement) => onChange({ placement })}
         />
-        <div className="ws-pair">
-          <ChipField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
-          <SliderField
-            label="尺寸"
-            value={spec.size}
-            min={40}
-            max={200}
-            step={1}
-            suffix="%"
-            onChange={(size) => onChange({ size })}
-          />
-        </div>
+        <SliderField
+          label="尺寸"
+          value={spec.size}
+          min={40}
+          max={200}
+          step={1}
+          suffix="%"
+          onChange={(size) => onChange({ size })}
+        />
+        <ColorField
+          label="文字颜色"
+          value={spec.color ?? ''}
+          fallback={accent}
+          onChange={(color) => onChange({ color })}
+        />
       </Group>
       <Group title="位置" note="锚点描述「视口上的一点」与「控件上同名的一点」重合；偏移从锚点向内计。">
         <PlacementFields spec={spec} onChange={onChange} />
@@ -337,18 +334,21 @@ function AlbumPanel({ spec, accent, onChange, onReset }) {
           options={ALBUM_VARIANTS}
           onChange={(variant) => onChange({ variant })}
         />
-        <div className="ws-pair">
-          <ChipField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
-          <SliderField
-            label="尺寸"
-            value={spec.size}
-            min={20}
-            max={300}
-            step={1}
-            suffix="%"
-            onChange={(size) => onChange({ size })}
-          />
-        </div>
+        <SliderField
+          label="尺寸"
+          value={spec.size}
+          min={20}
+          max={300}
+          step={1}
+          suffix="%"
+          onChange={(size) => onChange({ size })}
+        />
+        <ColorField
+          label="文字颜色"
+          value={spec.textColor ?? ''}
+          fallback={accent}
+          onChange={(textColor) => onChange({ textColor })}
+        />
         <ColorField
           label="频谱颜色"
           value={spec.color ?? ''}

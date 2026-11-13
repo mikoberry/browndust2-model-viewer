@@ -58,12 +58,12 @@ function BeatClock({ base, labels }) {
   return <Clock {...base} beat={beat} labels={labels} />
 }
 
-function ClockWidget({ spec, paused }) {
+function ClockWidget({ spec, accent, paused }) {
   const now = useNow(paused)
   const base = {
     now,
     placement: spec.placement,
-    theme: spec.theme,
+    color: spec.color || accent || undefined,
     size: spec.size,
     use24Hour: spec.use24Hour,
     anchor: spec.anchor,
@@ -118,7 +118,7 @@ function AlbumWidget({ spec, accent, paused }) {
       track={track}
       bars={bars}
       variant={spec.variant}
-      theme={spec.theme}
+      color={spec.textColor || accent || undefined}
       colorHex={spec.color || accent || undefined}
       size={spec.size}
       anchor={spec.anchor}
@@ -169,7 +169,7 @@ export default function WallpaperOverlay({ config }) {
       )}
       {spectrum?.enabled && <SpectrumWidget spec={spectrum} accent={accent} paused={paused} />}
       {albumArt?.enabled && <AlbumWidget spec={albumArt} accent={accent} paused={paused} />}
-      {clock?.enabled && <ClockWidget spec={clock} paused={paused} />}
+      {clock?.enabled && <ClockWidget spec={clock} accent={accent} paused={paused} />}
     </div>
   )
 }
