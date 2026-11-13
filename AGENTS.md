@@ -42,7 +42,7 @@ wallkit                               ← git 引用，锁 commit，不 vendored
 ├── project.json               # WE 工程描述，用户属性（combo / slider）在这里
 ├── public/models/wilhelmina/  # 生成物，不进 git（见 §6）
 ├── scripts/
-│   ├── prepare-model.mjs      # 源资源 → public/models（WebP + 改 atlas + 放大背景）
+│   ├── prepare-model.mjs      # 源资源 → public/models（PNG 直拷，见 §6）
 │   └── deploy-wallpaper.mjs   # dist → WE 项目目录
 └── src/
     ├── main.jsx
@@ -99,7 +99,7 @@ wallkit                               ← git 引用，锁 commit，不 vendored
 
    另外 `cut_B` 与 `loop_2` 动作差异极小，**点击演出几乎看不出来**，必须配镜头推近才有反馈（见设计文档 §6）。
 
-5. **多页图集是 `_2.png` … `_N.png` 独立文件**，不是打成一张大图。转换 WebP 时页名必须同步改，否则 atlas 找不到贴图。
+5. **多页图集是 `_2.png` … `_N.png` 独立文件**，不是打成一张大图。图片格式保持 PNG 直拷：`.atlas` 里的页名与磁盘文件天然一致，不需要改任何页名。
 
 6. **角色立绘另有一条坑**（本期不用，但换素材时会遇到）：只播 `idle` 会得到一张白脸，五官靠独立的 `AttachmentTimeline`，必须叠第二条轨道 `state.setAnimation(1, '_faceN', true)`。
 
@@ -108,8 +108,8 @@ wallkit                               ← git 引用，锁 commit，不 vendored
 - **spine 素材主源在仓库内**：`model-library/<皮肤名>/`（用户手动放入，当前 `Iron_Monarch/` 一套，skel+atlas 与游戏源逐字节一致）。`prepare-model.mjs` 从这里读，**不要**直接依赖 F 盘路径——那是兜底来源，仅当 `model-library/` 缺某文件（比如背景图）时才回退。
 - **源资源只读。** `F:\live2d\BrownDust2\model-output` 是用户自己维护的解包产物，`model-library/` 里用户放入的文件同样只读不改。
 - **生成物不进 git。** `public/models/` 已写进 `.gitignore`。仓库里只放 `scripts/prepare-model.mjs`，任何人 clone 后跑一次就能重建。
-- **量化规则**：图集 PNG → WebP 质量 90（Iron_Monarch 实测 4.71+2.88MB → 0.75+0.47MB，-84%；背景 4.30MB → 0.42MB）；改完图名后同步改 `.atlas` 里**每一页**的页名行，`bounds` / `offsets` 不动。
-- **背景文件不在 cutscene 目录里**：Iron_Monarch 的背景取自 `chibis/Wilhelmina/Iron_Monarch/char067601_back1.png`（2048²，原样转 WebP，不放大）。换素材时按 §5.3 的两条路径去找。
+- **图片格式：PNG 直拷。**（2026-11-13 用户决定）不做 WebP 重编码、不需要 ffmpeg。源 PNG → 生成目录逐字节复制，`.atlas` 原样复制，页名与文件自动对齐。体积代价：Iron_Monarch 全套约 11.2MB（WebP 方案是 2.8MB）。若日后要压缩，参考 docs/asset-research.md 的 WebP 实测数据，并记得同步改 `.atlas` 每一页的页名行。
+- **背景文件不在 cutscene 目录里**：Iron_Monarch 的背景取自 `chibis/Wilhelmina/Iron_Monarch/char067601_back1.png`（2048²，原样直拷，不放大）。换素材时按 §5.3 的两条路径去找。
 - 每套素材的规格、体积、bounds 记录在 [docs/asset-research.md](docs/asset-research.md)，加新素材前先读它，不要重新全量扫描。
 
 ## 7. Wallpaper Engine 约束

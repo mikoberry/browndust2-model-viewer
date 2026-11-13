@@ -1,7 +1,185 @@
 # browndust2-model-viewer
 
-《棕色尘埃2》（BrownDust 2）的 **Spine 网页壁纸**，跑在 Wallpaper Engine 里。React + Vite + Spine WebGL 4.1。
+《棕色尘埃2》（BrownDust 2）的 **Spine 壁纸 / 模型查看器**：React 18 + Vite 5 + `@esotericsoftware/spine-webgl@4.1.56`。
+直接读取仓库里的 `model-library/`，不依赖 Wallpaper Engine。
 
-仓库当前处于脚手架建立前的设计阶段：设计方案见 [docs/design-cutscene-wilhelmina.md](docs/design-cutscene-wilhelmina.md)，资源实测数据见 [docs/asset-research.md](docs/asset-research.md)。
+两个路由，用途完全分开：
 
-给开发者和 coding agent 的约定、命令与硬约束都在 [AGENTS.md](AGENTS.md)。
+| 路径 | 用途 | 页面内容 |
+| --- | --- | --- |
+| `/`（以及其它所有路径） | **壁纸**：正式页面 | 全屏只有一个固定模型，没有任何 UI、控件、文字或交互 |
+| `/spine-viewer` | **开发调试辅助页** | 完整查看器：模型库、工具栏、动画 / 信息面板、时间轴、状态栏 |
+
+根路由显示的模型与播放参数集中在 `src/config/wallpaper.js`，改动不会影响调试页。
+
+## 运行
+
+```bash
+npm install
+npm run dev          # 根地址 = 壁纸；地址后加 /spine-viewer 进调试页
+npm run build        # 产出 dist/
+npm run preview      # 预览构建产物
+npm run model:list   # 命令行查看 model-library 扫描结果
+```
+
+开发时直接访问 `http://localhost:5173/spine-viewer`。调试页标题右侧有「← 壁纸首页」可跳回；
+壁纸页刻意不放任何跳转入口，需要手动改地址栏。
+
+## 壁纸（根路由）：对应背景 + 固定构图
+
+首页会自动给当前模型配**它自己的背景**：扫描器按文件名里的 6 位角色 ID 关联背景库，
+从中挑分辨率最高的「完整场景」（`-N` 分片、`*move` 低清、特效层会被排除）。改 `modelId` 就会自动换成
+那个角色的背景。例如默认 `Iron Monarch` 用 `char067601_back1.png`（王座厅，**2048×2048**），
+而不是 1024² 的 `back2`。
+
+### 基准怎么定
+
+`skel.width/height` 只是 setup pose 的包围盒尺寸，**不是**设计分辨率；背景图又都是 1:1 场景插画。
+因此把**对应背景图的原生像素尺寸**当作固定设计画布（design canvas）：
+
+```
+固定设计画布（例如 2048×2048）
+├─ 背景 <img>     铺满画布，等于原生 1:1，不拉伸
+└─ WebGL <canvas> 同一尺寸，按冻结的 setupBounds + 构图比例放置模型
+        ↓ 整块画布只用一个 scale 等比缩放并居中
+真实屏幕（任意分辨率 / 任意宽高比）
+```
+
+- 背景和模型是**同一个容器的子元素，共用同一个 CSS transform**：屏幕尺寸或比例变化只改变这一个
+  `scale`，容器内部的相对尺寸与相对位置恒定不变。
+- 模型取景用**加载时冻结的 setup pose 包围盒**，不会随动画播放或 `fit` 重算而漂移。
+- 相机用 `k = 画布位图宽 / 设计画布宽` 这唯一因子把设计坐标映射到屏幕，背景 `<img>` 与它同源，因此始终对齐。
+- `canvas` 位图分辨率按 CSS transform 之后的**实际显示尺寸**渲染，高分屏 / 放大时不会糊。
+- `fit: 'contain'` 保证完整构图（其它比例留边）、`'cover'` 铺满并对称裁切；**两者都不改变相对构图**。
+  留边默认用同一张背景的模糊放大版填充（纯装饰层，不参与构图）。
+
+`src/config/wallpaper.js` 是唯一配置文件：
+
+| 字段 | 说明 |
+| --- | --- |
+| `modelId` | 固定模型 id（`npm run model:list` 可查）；精确 → 部分 → 第一个模型兜底 |
+| `backdrop` | `'auto'` 自动选对应最高分辨率完整场景；`'none'` 关闭；也可写 `'back2'` / 完整文件名指定 |
+| `design` | `null` = 用该背景的原生像素尺寸作基准（推荐）；也可写死 `{ width: 2048, height: 2048 }` 让所有模型共用一个基准 |
+| `fit` | `'contain'` 完整构图 / `'cover'` 铺满裁切 |
+| `letterbox` / `bleed` | 留边颜色；是否用同图模糊延展填充留边 |
+| `model.heightRatio` / `widthRatio` | 模型 setup 包围盒相对设计画布的高度 / 宽度上限（默认 `1`） |
+| `model.alignX` / `alignY` | 模型中心在设计画布内的位置 0..1（默认 `0.5` 居中；`alignY: 0.7` 可让立绘偏下） |
+| `backdropTransform` | 背景层独立 `{ scale, offsetX, offsetY }`，单位见下一节 |
+| `modelTransform` | 模型层独立 `{ scale, offsetX, offsetY }`，与背景层语义完全相同 |
+| `animation` / `expression` | `null` 自动挑（`loop_2` / 首个 `_faceN`）；字符串指定；`''` 关闭该轨道 |
+| `skin` / `speed` / `zoom` | 皮肤、倍速、固定构图之上的额外缩放 |
+
+### 两层独立调整：单位决定结果是否固定
+
+背景和模型可以各自缩放、各自平移，两者互不影响；`resolveLayerTransform()` 把配置统一解析成
+**设计画布坐标**下的 `{ scale, dx, dy }`，背景用 CSS `translate(dx,dy) scale(s)`（中心为原点），
+模型则把同一个元组送进相机数学（`worldZoom / s`、相机目标加 `dx/dy * k`）。平移不会被该层的缩放放大。
+
+| 写法 | 单位 | 跨设备是否固定 |
+| --- | --- | --- |
+| `scale: 2` | 相对该层自身基准的倍率 | ✅ 固定 |
+| `offsetX: 100` / `offsetY: -60` | **设计画布像素**（当前 2048² 基准下的 100px） | ✅ 固定 |
+| `offsetX: '10%'` | 相对**设计画布宽**（Y 相对设计画布高） | ✅ 固定 |
+| 屏幕 CSS 像素 / `vw` / `vh` / 相对视口的百分比 | 随 `scale` 或宽高比变化 | ❌ 不固定 |
+
+只要用前三种单位，两层都被关在同一个设计画布里，最终只乘一个 `designScale`：
+**任意分辨率、任意宽高比、DPR、contain/cover 下，背景与模型的相对矩形完全恒定**。
+例如两层都 `scale: 2, offsetX/Y: 100`，在 1920×1080 与 3840×2160 上得到的归一化构图都是
+`背景 [0.54883, 0.54883, 2, 2]` / `模型 [0.54883, 0.54883, 1.58490, 2]`。
+
+反例：如果 `100` 被当成屏幕像素，1920×1080 上它等于 189.6 设计 px（归一化 0.09259），
+3840×2160 上只等于 94.8 设计 px（归一化 0.04630）—— 分辨率翻倍，相对偏移就减半。
+**所以配置里不要写屏幕像素或 `vw/vh`。**
+
+离线复算（`npm run build` 之外可选的纯 Node 校验）覆盖 7 种视口 × DPR 1/2 × contain/cover
+共 28 组 × 4 种配置，相机实际结果与配置预测的最大偏差为浮点误差量级（~2e-16）。
+`compositionRects()` / `normalizeRect()` 是这套计算的唯一来源，可用于写测试。
+留边模糊层 `bleed` 是纯装饰，不参与构图；两层放大超出设计画布的部分由容器裁切。
+
+- 壁纸页**没有任何 UI**：没有侧栏、工具栏、检查器、时间轴、状态栏、加载动画，也不响应滚轮 / 拖拽 / 双击；固定循环播放。
+- 只有加载失败或素材库为空时，左下角才出现一行纯文本错误（同时打到 console）。
+- 调试页「信息 → 文件列表」会显示每张背景的原生尺寸，方便核对基准。
+- 开发时可用 `/?model=<id 片段>` 临时换模型及其对应背景对比，不传参数就是配置里的固定组合。
+- 路由刻意不引入 react-router：只有两个页面，且 `base: './'` 让 `dist/` 可以直接通过 `file://`
+  或任意子路径被壁纸引擎加载。判断规则是「路径最后一段是 `spine-viewer`（或 `#spine-viewer` / `?viewer`）」，
+  其余一律落到壁纸；`index.html` 会把 `/spine-viewer/` 的尾斜杠规范化掉，避免相对资源路径错位。
+
+## 添加模型
+
+目录是**递归扫描**的，层级不限；当前按 `角色 / 皮肤` 两级组织：
+
+```
+model-library/
+  Wilhelmina/
+    Iron_Monarch/
+      cutscene_char067601.skel     # 或 .json
+      cutscene_char067601.atlas
+      cutscene_char067601.png      # atlas 里声明的每一页都要在
+      cutscene_char067601_2.png
+  Olivier/
+    Faithful_Wings/
+      cutscene_char003601.skel
+      ...
+  skill_cutscene_background/       # 可选：共享背景图库
+      char067601_back1.png
+      char003601_back2.png
+      ...
+```
+
+- **背景自动关联**：背景库的文件名里含 6 位角色 ID（如 `067601`），扫描器用它和模型 stem 里的 ID 对应，
+  自动挂到该模型的背景下拉里。皮肤目录里自己放的图片也会作为背景候选。
+- **背景分类**：`backN` 干净编号 = 完整场景；`-N` / `_N` 分片层、`*move` 低清版、特效层归到「不推荐」。
+  命名混用 `char067601_back1` / `003401 back2` / `000303_back1` / `back 1` 都能识别。
+- `model-library/` 是唯一素材源、只读，不需要复制进 `public/`：
+  - **dev**：Vite 插件按 `/models/<磁盘相对路径>` 直接读源文件；
+  - **build**：只输出 manifest 引用到的文件（图集页 + 关联背景），366MB 的共享背景库**不会**整包进 `dist/`；
+  - 新增/删除文件会自动刷新清单；`npm run model:list` 可检查图集页是否齐全。
+
+## 调试查看器功能（/spine-viewer）
+
+以下功能只存在于调试页，壁纸页一概不加载、不显示：
+
+- 左侧模型库、右侧「动画 / 信息」面板；动画列表带时长，可直接切换
+- 播放 / 暂停、循环、倍速、进度条拖拽定位；`_faceN` 表情叠加轨道、皮肤切换
+- 滚轮以光标为中心缩放、拖拽平移、适应画布 / 重置视图、双击适应
+- 骨骼线、包围盒调试显示；背景可切棋盘格 / 浅灰 / 深灰 / 素材自带背景图
+- 状态栏显示 FPS、缩放比例、当前动画；支持空格、F、R、`+`、`-` 快捷键
+
+## 实现要点
+
+- runtime 锁在 **4.1.x**：本游戏 skel 由 Spine 4.1.11 导出，3.8 的 runtime 解析不了。
+- `drawSkeleton(skeleton, false)`：BD2 图集**没有**预乘 alpha，第二位传 `true` 会让大面积半透明叠加被白板盖住。
+- 角色立绘只播 `idle` 会得到白脸，五官由 `_faceN` 附件动画在轨道 1 提供；查看器会自动挑一条。
+- 多页图集是 `_2.png` … `_N.png` 独立文件，atlas 页名必须与磁盘文件名一致。
+- 背景候选里带 `-N` / `_N` 后缀的是局部遮罩、`*move` 是低清版，界面会归到「不推荐」。
+- 当前 7 套 cutscene 模型全部是 Spine 4.1.11，动画命名有 `cut_A`/`cut_B` 与 `A_cut`/`B_cut` 两种混用；
+  每套都有 `loop_2`，查看器默认选它（与 `loop` 是两条互斥姿势线，不要混着播）。
+- 两个页面共用同一个 `SpineStage`；`fitRatio` / `interactive` / `showLoading` / `design` 是壁纸页专用的
+  可选 props，默认值保持调试页行为不变，不会出现两套 WebGL / 资源加载逻辑。`design` 模式下取景改用
+  `useSpineAsset` 冻结的 `setupBounds`（调试页仍用动画姿态包围盒）。
+- 扫描器会读 PNG 的 IHDR，把背景图原生 `width`/`height` 写进 manifest；壁纸基准在构建期就确定，
+  不依赖浏览器里 `Image.onload` 的异步时机。
+
+## 目录
+
+```
+index.html
+vite.config.js
+scripts/
+  scan-model-library.mjs     # 纯 Node 扫描器，产出 manifest
+  model-library-plugin.mjs   # 虚拟模块 + dev 中间件 + build 产物输出
+src/
+  App.jsx                    # 路由分发：/ → 壁纸，/spine-viewer → 调试页
+  config/wallpaper.js        # 根路由固定模型与播放 / 背景配置
+  pages/WallpaperPage.jsx    # 全屏壁纸（只有 canvas）
+  pages/ViewerPage.jsx       # 调试查看器（状态 + 布局）
+  spine/                     # useSpineAsset / SpineStage（WebGL 与相机）
+  components/                # 侧栏、工具栏、检查器、时间轴
+  lib/router.js              # 零依赖两路由判断 + pushState 导航
+  lib/animation.js           # 默认动画 / 表情挑选
+  lib/assets.js              # BASE_URL 相关的资源 URL
+  styles/global.css
+```
+
+> 注：`AGENTS.md` 里的大部分章节描述的是早期 Wallpaper Engine 壁纸方案（wallkit / project.json / 部署脚本），
+> 与当前查看器实现不一致；本仓库现状以本 README 为准。

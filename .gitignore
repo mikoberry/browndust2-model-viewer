@@ -3,8 +3,13 @@ dist/
 .DS_Store
 *.log
 
-# 素材生成物：由 scripts/prepare-model.mjs 从源资源重建，不进版本控制
+# 构建 / 校验临时产物
 public/models/
+.tmp-*
+
+# 共享背景库：1036 张 / 366MB，体积过大不进 git；
+# 本地保留供扫描器读取，确实需要入库时用 git add -f
+/model-library/skill_cutscene_background/
 
 # agent 工作区元数据
 .workbuddy/
