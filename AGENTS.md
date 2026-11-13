@@ -73,6 +73,7 @@ src/
     wallpaper/                   # Feature：根路由正式壁纸，默认无 chrome
       WallpaperPage.jsx          # 背景 img + canvas，页面入口 / 组合根；设置抽屉开关与 tweak 状态
       config.js                  # 内置默认值 + mergeConfig/loadWallpaperConfig + 构图纯函数
+      color.js                   # hex ↔ HSV 换算（取色面板用，无 React/DOM，可在 Node 里测）
       components/
         WallpaperSettings.jsx    # 壁纸设置抽屉：主题色 + 「构图 / 时钟 / 频谱 / 专辑卡 / 氛围 / 指针」tab
         SettingsBoundary.jsx     # 抽屉的错误边界（面板崩了只隐藏面板，壁纸继续跑）
@@ -151,7 +152,8 @@ src/features/<feature>/
 - **壁纸页禁止任何依赖 OS 弹窗的控件**：WE 的 CEF 宿主里 `<select>` 的下拉、`input type="color"` 的系统配色框、
   `alert` / `confirm` / `prompt`、`<dialog>` / `window.open` 都会让壁纸窗口崩掉（不是渲染错，是进程没了）。
   枚举一律用 `ChipField`（一排 `.ws-chip` 按钮，`title` 里带库的原始值），颜色用 `ColorField`
-  （色块 `<span>` 预览 + 十六进制输入 + `COLOR_PRESETS` 预设按钮）。加新字段时别退回原生 select / color input。
+  （色块按钮 + 十六进制输入，点开是页面内自绘的 HSV 面板：`color.js` 的换算 + CSS 渐变 + pointer capture，
+  没有 canvas、没有系统对话框）。加新字段时别退回原生 select / color input。
   `src/features/viewer/` 是浏览器里的调试页，不受此限制。
 - `SettingsBoundary` 包在抽屉外面：面板渲染抛错只隐藏面板并 `console.error`，壁纸继续运行，
   关闭抽屉后再开会重试。**不要**为了「方便调试」把它去掉——WE 里一次未捕获异常就是黑屏。
@@ -326,7 +328,9 @@ src/features/<feature>/
    抽屉的「复制配置」也要断言：未调整面板时，生成内容与 `public/wallpaper.config.json` **逐字节相同**。
 3. **构建**：`npm run build`（仅用户明确要求时），核对 `dist/` 只含 manifest 引用的素材，
    且 `dist/wallpaper.config.json` 存在、文件名无 hash。
-4. 实际画面由用户自己在浏览器 / 壁纸宿主里确认。
+4. **取色面板**：`src/features/wallpaper/color.js` 可在 Node 里直接 import，断言 `hsvToHex(hexToHsv(x)) === x`
+   （含 `#000000` / 饱和色）与 `s`/`v` 越界裁剪；组件本身不做渲染验证。
+5. 实际画面由用户自己在浏览器 / 壁纸宿主里确认。
 
 **不要**跑无头浏览器、截图、Playwright 或任何浏览器自动化；不要在报告里把「构建通过」说成「验证通过」。
 

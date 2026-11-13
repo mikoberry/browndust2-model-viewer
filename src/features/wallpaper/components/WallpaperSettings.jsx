@@ -17,7 +17,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CONFIG_FILE, CONFIG_README } from '../config.js'
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
-import { COLOR_PRESETS, Group, SliderField } from './settings-fields.jsx'
+import { ColorField, Group, SliderField } from './settings-fields.jsx'
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 3
@@ -79,40 +79,13 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
 // bubbles, pointer trails); the clock and album card colour themselves from
 // their own `theme`, so it is presented once, above the tabs.
 //
-// Deliberately no `input type="color"`: that opens the OS colour dialog, which
-// Wallpaper Engine's CEF host cannot host (same popup trap as <select>). The
-// preview is a plain span and colours are picked from the preset row.
+// No `input type="color"` anywhere: it opens the OS colour dialog, which
+// Wallpaper Engine's CEF host cannot host (the same popup trap as `<select>`).
+// `ColorField` expands an in-page picker instead.
 function AccentField({ value, onChange }) {
-  const current = (value || '').toLowerCase()
-  const preview = /^#[0-9a-f]{6}$/i.test(value || '') ? value : '#a8c4ff'
   return (
     <div className="ws-accent-block">
-      <div className="ws-accent">
-        <span className="ws-accent-label">主题色</span>
-        <span className="ws-swatch-preview" style={{ background: preview }} aria-hidden="true" />
-        <input
-          className="ws-text"
-          type="text"
-          value={value ?? ''}
-          placeholder="#a8c4ff"
-          spellCheck={false}
-          onChange={(event) => onChange(event.target.value.trim())}
-        />
-      </div>
-      <div className="ws-presets is-wide" role="group" aria-label="主题色预设">
-        {COLOR_PRESETS.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className={`ws-preset${current === color ? ' is-active' : ''}`}
-            style={{ background: color }}
-            title={color}
-            aria-label={color}
-            aria-pressed={current === color}
-            onClick={() => onChange(color)}
-          />
-        ))}
-      </div>
+      <ColorField label="主题色" value={value ?? ''} fallback="#a8c4ff" onChange={onChange} allowInherit={false} />
     </div>
   )
 }

@@ -1136,16 +1136,84 @@ code {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.wallpaper-settings .ws-accent {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Colour preview / picker toggle. A button, but the OS colour dialog must never
+   be involved: `input type="color"` and `<select>` both crash the Wallpaper
+   Engine CEF host. Clicking expands the in-page picker below. */
+.wallpaper-settings .ws-swatch-preview {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 6px;
 }
 
-.wallpaper-settings .ws-accent-label {
-  flex: 0 0 auto;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 11px;
+.wallpaper-settings .ws-swatch-preview:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.wallpaper-settings .ws-swatch-preview.is-open {
+  border-color: #8b88ff;
+  box-shadow: 0 0 0 2px rgba(139, 136, 255, 0.4);
+}
+
+/* Saturation / value square with a hue strip underneath. Every layer is a CSS
+   gradient on the same element, so the picker needs no canvas. */
+.wallpaper-settings .ws-picker {
+  margin-top: 8px;
+  touch-action: none;
+}
+
+.wallpaper-settings .ws-picker-area {
+  position: relative;
+  height: 104px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background-image:
+    linear-gradient(to top, #000, rgba(0, 0, 0, 0)),
+    linear-gradient(to right, #fff, rgba(255, 255, 255, 0));
+  cursor: crosshair;
+}
+
+.wallpaper-settings .ws-picker-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.wallpaper-settings .ws-picker-hue {
+  position: relative;
+  height: 12px;
+  margin-top: 8px;
+  border-radius: 6px;
+  background-image: linear-gradient(
+    to right,
+    #f00 0%,
+    #ff0 16.66%,
+    #0f0 33.33%,
+    #0ff 50%,
+    #00f 66.66%,
+    #f0f 83.33%,
+    #f00 100%
+  );
+  cursor: ew-resize;
+}
+
+.wallpaper-settings .ws-picker-hue-mark {
+  position: absolute;
+  top: -3px;
+  width: 4px;
+  height: 18px;
+  border: 1px solid #fff;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.35);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 /* Tab bar: composition + one tab per WallKit widget. Six short labels fit one
@@ -1310,48 +1378,6 @@ code {
   border-color: #8b88ff;
   background: rgba(255, 255, 255, 0.1);
   outline: none;
-}
-
-/* Colour preview. A plain span on purpose: `input type="color"` opens the OS
-   colour dialog, which crashes the Wallpaper Engine CEF host along with
-   `<select>`. Colours are picked from the preset row below the field. */
-.wallpaper-settings .ws-swatch-preview {
-  flex: 0 0 auto;
-  width: 30px;
-  height: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 6px;
-}
-
-/* Preset colour row: 8 chips, one row, active one outlined. */
-.wallpaper-settings .ws-presets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-
-.wallpaper-settings .ws-presets.is-wide {
-  padding: 0 14px 10px;
-  margin-top: 0;
-}
-
-.wallpaper-settings .ws-preset {
-  width: 22px;
-  height: 18px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 5px;
-  transition: transform 0.12s ease, border-color 0.12s ease;
-}
-
-.wallpaper-settings .ws-preset:hover {
-  transform: scale(1.08);
-}
-
-.wallpaper-settings .ws-preset.is-active {
-  border-color: #fff;
-  box-shadow: 0 0 0 2px rgba(139, 136, 255, 0.55);
 }
 
 /* Option chips replace <select> everywhere in this drawer. */

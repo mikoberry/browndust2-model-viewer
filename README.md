@@ -32,10 +32,10 @@ tab 上带小圆点表示该控件当前已开启。
 面板只在壁纸页存在；抽屉关闭时 `visibility: hidden`，不参与 Tab 焦点；所有改动只活在当前页面。
 
 面板里**没有原生下拉框和原生取色器**：风格 / 布局之类的枚举是**一排按钮**（选中项高亮，悬停显示库里的
-原名，如 `cyberpunk`），颜色是「色块预览 + 十六进制输入 + 8 个预设色按钮」。这不是审美选择——WE 的
-CEF 宿主里 `<select>` 的下拉列表和 `input type="color"` 的系统配色框都是 OS 级弹窗，
-一旦弹出会把整个壁纸窗口带崩。同理也不要用 `alert` / `confirm` / `prompt`。
-调试页（`/spine-viewer`）不在此列，它只在浏览器里用，仍保留原生下拉。
+原名，如 `cyberpunk`）；颜色是「色块按钮 + 十六进制输入」，点色块在字段下方展开一个**页面内取色面板**
+（饱和度/亮度方块 + 色相条，拖动即时生效，再点一次收起）。这不是审美选择——WE 的 CEF 宿主里
+`<select>` 的下拉列表和 `input type="color"` 的系统配色框都是 OS 级弹窗，一旦弹出会把整个壁纸窗口带崩。
+同理也不要用 `alert` / `confirm` / `prompt`。调试页（`/spine-viewer`）不在此列，它只在浏览器里用，仍保留原生下拉。
 
 抽屉外面还包了一层 `SettingsBoundary`：面板渲染抛错时只是隐藏面板并把错误打到 console，
 壁纸本身继续跑；关掉再按 `S` 会重新尝试渲染。
@@ -367,6 +367,7 @@ src/
     wallpaper/                   # 根路由正式壁纸（默认零 UI）
       WallpaperPage.jsx          # 全屏壁纸（背景 img + canvas）+ 设置抽屉状态
       config.js                  # 壁纸唯一配置 + 构图纯函数
+      color.js                   # hex ↔ HSV 换算（取色面板的数学）
       components/
         WallpaperSettings.jsx    # 壁纸设置抽屉：主题色 + 构图 / 5 个控件 tab
         SettingsBoundary.jsx     # 抽屉错误边界（面板出错不牵连壁纸）

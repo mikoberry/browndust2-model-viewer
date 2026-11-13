@@ -5,7 +5,11 @@
 // Keep these dumb — the drawer is the only consumer, and the "copy config" exit
 // relies on values passing through untouched when the user does not edit them.
 
+import { useEffect, useRef, useState } from 'react'
 import { ANCHORS } from 'wallkit/core'
+import { HEX, hexToHsv, hsvToHex } from '../color.js'
+
+const clamp01 = (value) => Math.min(1, Math.max(0, value))
 
 const round2 = (value) => Math.round(value * 100) / 100
 
@@ -168,43 +172,120 @@ export function ChipField({ label, value, options, onChange }) {
   )
 }
 
-const HEX = /^#[0-9a-f]{6}$/i
+// Inline colour picker: saturation / value square plus a hue strip, all drawn
+// with CSS gradients and pointer events.
+//
+// Deliberately hand-rolled. `input type="color"` would be one line, but it opens
+// the OS colour dialog, which takes the Wallpaper Engine window down — the same
+// popup trap as `<select>`. This panel lives inside the drawer, so nothing is
+// ever layered outside the page.
+function ColorPickerPanel({ hsv, onChange }) {
+  const areaRef = useRef(null)
+  const hueRef = useRef(null)
+  const hue = hsvToHex({ h: hsv.h, s: 1, v: 1 })
 
-// Palette offered next to every colour field, so a colour can be picked with two
-// clicks instead of typing hex.
-export const COLOR_PRESETS = [
-  '#a8c4ff',
-  '#8b88ff',
-  '#7bd1ff',
-  '#7ef2c7',
-  '#ffd166',
-  '#ff9ec7',
-  '#ff6b6b',
-  '#ffffff',
-]
+  // Pointer capture keeps the drag alive when the cursor leaves the handle or
+  // the drawer scrolls under it.
+  const drag = (read) => ({
+    onPointerDown: (event) => {
+      event.preventDefault()
+      event.currentTarget.setPointerCapture?.(event.pointerId)
+      onChange(read(event))
+    },
+    onPointerMove: (event) => {
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) onChange(read(event))
+    },
+    onPointerUp: (event) => event.currentTarget.releasePointerCapture?.(event.pointerId),
+    onPointerCancel: (event) => event.currentTarget.releasePointerCapture?.(event.pointerId),
+  })
+
+  const readArea = (event) => {
+    const rect = areaRef.current?.getBoundingClientRect()
+    if (!rect?.width || !rect?.height) return hsv
+    return {
+      ...hsv,
+      s: clamp01((event.clientX - rect.left) / rect.width),
+      v: 1 - clamp01((event.clientY - rect.top) / rect.height),
+    }
+  }
+
+  const readHue = (event) => {
+    const rect = hueRef.current?.getBoundingClientRect()
+    if (!rect?.width) return hsv
+    return { ...hsv, h: clamp01((event.clientX - rect.left) / rect.width) * 360 }
+  }
+
+  return (
+    <div className="ws-picker">
+      <div
+        ref={areaRef}
+        className="ws-picker-area"
+        style={{ backgroundColor: hue }}
+        role="group"
+        aria-label="饱和度与亮度（拖动选择）"
+        {...drag(readArea)}
+      >
+        <span
+          className="ws-picker-dot"
+          style={{
+            left: `${hsv.s * 100}%`,
+            top: `${(1 - hsv.v) * 100}%`,
+            background: hsvToHex(hsv),
+          }}
+        />
+      </div>
+      <div ref={hueRef} className="ws-picker-hue" role="group" aria-label="色相（拖动选择）" {...drag(readHue)}>
+        <span className="ws-picker-hue-mark" style={{ left: `${(hsv.h / 360) * 100}%` }} />
+      </div>
+    </div>
+  )
+}
 
 // `#rrggbb` field. An empty value means "inherit": the swatch then previews
 // `fallback` and the text shows it as a placeholder.
-//
-// The swatch is a plain <span>: `input type="color"` opens the OS colour
-// dialog, which is the same popup trap as <select> under Wallpaper Engine.
-export function ColorField({ label, value, fallback, onChange, presets = COLOR_PRESETS }) {
-  const swatch = HEX.test(value || '') ? value : HEX.test(fallback || '') ? fallback : '#a8c4ff'
-  const current = (value || '').toLowerCase()
+export function ColorField({ label, value, fallback, onChange, allowInherit = true }) {
+  const [open, setOpen] = useState(false)
+  const resolved = HEX.test(value || '') ? value : HEX.test(fallback || '') ? fallback : '#a8c4ff'
+  // HSV is kept locally so dragging through black / grey does not lose the hue
+  // (at v = 0 every hue maps to #000000 and back).
+  const [hsv, setHsv] = useState(() => hexToHsv(resolved))
+
+  useEffect(() => {
+    const next = hexToHsv(resolved)
+    setHsv((prev) => (hsvToHex(prev) === hsvToHex(next) ? prev : next))
+  }, [resolved])
+
+  const commit = (next) => {
+    setHsv(next)
+    onChange(hsvToHex(next))
+  }
+
   return (
     <div className="ws-field">
       <div className="ws-field-head">
         <span className="ws-field-label">{label}</span>
-        {value ? (
-          <button type="button" className="ws-reset" onClick={() => onChange('')}>
-            跟随主题色
-          </button>
+        {allowInherit ? (
+          value ? (
+            <button type="button" className="ws-reset" onClick={() => onChange('')}>
+              跟随主题色
+            </button>
+          ) : (
+            <span className="ws-field-readout">跟随主题色</span>
+          )
         ) : (
-          <span className="ws-field-readout">跟随主题色</span>
+          <span className="ws-field-readout">{hsvToHex(hsv)}</span>
         )}
       </div>
       <div className="ws-field-controls">
-        <span className="ws-swatch-preview" style={{ background: swatch }} aria-hidden="true" />
+        <button
+          type="button"
+          className={`ws-swatch-preview${open ? ' is-open' : ''}`}
+          style={{ background: resolved }}
+          aria-label={`${label}取色面板`}
+          aria-expanded={open}
+          title="展开取色面板"
+          onClick={() => setOpen((next) => !next)}
+        />
         <input
           className="ws-text"
           type="text"
@@ -214,20 +295,7 @@ export function ColorField({ label, value, fallback, onChange, presets = COLOR_P
           onChange={(event) => onChange(event.target.value.trim())}
         />
       </div>
-      <div className="ws-presets" role="group" aria-label={`${label}预设`}>
-        {presets.map((color) => (
-          <button
-            key={color}
-            type="button"
-            className={`ws-preset${current === color ? ' is-active' : ''}`}
-            style={{ background: color }}
-            title={color}
-            aria-label={color}
-            aria-pressed={current === color}
-            onClick={() => onChange(color)}
-          />
-        ))}
-      </div>
+      {open && <ColorPickerPanel hsv={hsv} onChange={commit} />}
     </div>
   )
 }
