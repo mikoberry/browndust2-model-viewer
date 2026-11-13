@@ -20,15 +20,23 @@
 import { useEffect, useRef, useState } from 'react'
 import { CONFIG_FILE, CONFIG_README } from '../config.js'
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
-import { ColorField, Group, SliderField } from './settings-fields.jsx'
+import { ColorField, Group, SliderField, ToggleField } from './settings-fields.jsx'
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 3
 const SCALE_STEP = 0.01
 
+// Parallax strength is a percentage of the design canvas; ±20% is already a
+// huge drift on a 2048px artwork, so the slider stops there.
+const PARALLAX_MIN = -20
+const PARALLAX_MAX = 20
+const PARALLAX_STEP = 0.5
+
 const round2 = (value) => Math.round(value * 100) / 100
 
 const formatScale = (value) => `${Number(value).toFixed(2)}×`
+
+const formatPercent = (value) => `${round2(value ?? 0)}%`
 
 // Offsets are shown as raw design pixels plus the equivalent percentage, so the
 // number maps 1:1 onto the config value the user will copy.
@@ -78,6 +86,49 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
   )
 }
 
+// Mouse parallax: one master switch plus one strength per layer, so the
+// character can drift while the background stays put (or vice versa). Strength
+// is a percentage of the design canvas — positive follows the pointer, negative
+// goes the other way, 0 keeps that layer still. Nothing here is screen-relative,
+// so the drift is identical on every resolution.
+function ParallaxGroup({ spec, onChange, onReset }) {
+  return (
+    <Group
+      title="鼠标视差"
+      onReset={onReset}
+      note="强度按设计画布百分比：正值随鼠标同向、负值反向、0 不动；指针移出画面会自动回中。"
+    >
+      <ToggleField
+        label="启用视差"
+        checked={spec.enabled !== false}
+        onChange={(enabled) => onChange({ enabled })}
+      />
+      {/* Two strengths share one row: the drawer has to fit the window height
+          (no wheel in Wallpaper Engine), and each slider is short enough. */}
+      <div className="ws-pair">
+        <SliderField
+          label="背景强度"
+          readout={formatPercent(spec.backdrop)}
+          min={PARALLAX_MIN}
+          max={PARALLAX_MAX}
+          step={PARALLAX_STEP}
+          value={Number.isFinite(spec.backdrop) ? spec.backdrop : 0}
+          onChange={(backdrop) => onChange({ backdrop })}
+        />
+        <SliderField
+          label="人物强度"
+          readout={formatPercent(spec.model)}
+          min={PARALLAX_MIN}
+          max={PARALLAX_MAX}
+          step={PARALLAX_STEP}
+          value={Number.isFinite(spec.model) ? spec.model : 0}
+          onChange={(model) => onChange({ model })}
+        />
+      </div>
+    </Group>
+  )
+}
+
 // The accent is shared by every audio-reactive effect (spectrum bars, ambient
 // bubbles, pointer trails); the clock and album card colour themselves from
 // their own `theme`, so it is presented once, above the tabs.
@@ -104,11 +155,17 @@ function configJson(config, spec, overlay) {
     offsetX: Math.round(item.offsetX),
     offsetY: Math.round(item.offsetY),
   })
+  const parallax = spec.parallax ?? {}
   const payload = {
     _readme: CONFIG_README,
     ...config,
     backdropTransform: layer(spec.backdrop),
     modelTransform: layer(spec.model),
+    parallax: {
+      enabled: parallax.enabled !== false,
+      backdrop: round2(parallax.backdrop ?? 0),
+      model: round2(parallax.model ?? 0),
+    },
     overlay,
   }
   return `${JSON.stringify(payload, null, 2)}\n`
@@ -252,6 +309,11 @@ export default function WallpaperSettings({
               design={design}
               onChange={(patch) => onChange('model', patch)}
               onReset={() => onReset('model')}
+            />
+            <ParallaxGroup
+              spec={spec.parallax ?? {}}
+              onChange={(patch) => onChange('parallax', patch)}
+              onReset={() => onReset('parallax')}
             />
             <p className="ws-note">
               偏移单位为设计画布像素（与 {CONFIG_FILE} 一致），平移不会被缩放放大。

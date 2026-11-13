@@ -304,14 +304,20 @@ export default function SpineStage(props) {
         const layerScale = t.scale > 0 ? t.scale : 1
         const offsetX = Number.isFinite(t.dx) ? t.dx : 0
         const offsetY = Number.isFinite(t.dy) ? t.dy : 0
+        // Extra per-frame offset supplied by the parent (wallpaper mouse
+        // parallax), also in design pixels. Read from a ref so the drift never
+        // re-renders: the loop just picks up whatever is in there right now.
+        const extra = d.offsetRef?.current
+        const extraX = Number.isFinite(extra?.x) ? extra.x : 0
+        const extraY = Number.isFinite(extra?.y) ? extra.y : 0
         worldZoom =
           Math.max(b.h / (d.height * hRatio * k), b.w / (d.width * wRatio * k)) /
           (Math.max(live.zoom, MIN_ZOOM) * layerScale)
         // Target of the model centre in design space (device px from centre).
         // World -> screen is px = (wx - camX) / worldZoom (Y is flipped), so
         // solving for the camera centre gives the two lines below.
-        const targetX = ((alignX - 0.5) * d.width + offsetX) * k
-        const targetY = ((alignY - 0.5) * d.height + offsetY) * k
+        const targetX = ((alignX - 0.5) * d.width + offsetX + extraX) * k
+        const targetY = ((alignY - 0.5) * d.height + offsetY + extraY) * k
         camX = centerX - targetX * worldZoom + panRef.current.x
         camY = centerY + targetY * worldZoom + panRef.current.y
       } else {

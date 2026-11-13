@@ -88,6 +88,25 @@ export const WALLPAPER = {
     offsetY: 0,
   },
 
+  // Mouse parallax: while the pointer moves, the chosen layers drift with it.
+  // Same direction as the pointer (pointer at the top-left -> content moves up
+  // and left), so a POSITIVE strength feels "the artwork is following the
+  // cursor"; a NEGATIVE strength moves it the opposite way.
+  //
+  //   enabled  — master switch; false freezes both layers at their composition
+  //   backdrop — strength for the background, in % of the design canvas
+  //   model    — strength for the Spine model, in % of the design canvas
+  //
+  // 0 = that layer stays still. Values are relative to the design canvas, not
+  // to the screen, so the drift is identical on every resolution / DPR. The
+  // pointer is normalised to the viewport (-1..1 both axes) and eased, so the
+  // layers return to the composed position when the cursor is centred.
+  parallax: {
+    enabled: true,
+    backdrop: 0,
+    model: 2,
+  },
+
   // null = auto-pick (loop_2 / first _faceN). A string pins an animation,
   // an empty string disables that track entirely.
   animation: null,
@@ -305,6 +324,32 @@ export function resolveLayerTransform(spec = {}, design = FALLBACK_DESIGN) {
     scale,
     dx: designLength(s.offsetX ?? 0, design.width),
     dy: designLength(s.offsetY ?? 0, design.height),
+  }
+}
+
+// Normalise the parallax block. Unknown / missing numbers fall back to 0 so a
+// half-written config file cannot make a layer jump.
+export function resolveParallax(spec = WALLPAPER.parallax) {
+  const s = spec ?? {}
+  return {
+    enabled: s.enabled !== false,
+    backdrop: Number.isFinite(s.backdrop) ? s.backdrop : 0,
+    model: Number.isFinite(s.model) ? s.model : 0,
+  }
+}
+
+const clampUnit = (value) => Math.min(1, Math.max(-1, Number.isFinite(value) ? value : 0))
+
+// Parallax offset for ONE layer, in design pixels. `strength` is a percentage
+// of the design canvas, `pointer` is the normalised cursor position in -1..1
+// on both axes (x: left..right, y: top..bottom). Positive strength = the layer
+// moves in the same direction as the pointer, negative = the opposite way.
+// Pure, so the direction / magnitude can be checked in plain Node.
+export function parallaxOffset(strength, design = FALLBACK_DESIGN, pointer = {}) {
+  const pct = (Number.isFinite(strength) ? strength : 0) / 100
+  return {
+    x: pct * design.width * clampUnit(pointer.x),
+    y: pct * design.height * clampUnit(pointer.y),
   }
 }
 

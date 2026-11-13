@@ -28,6 +28,7 @@ import { assetUrl } from '../../lib/assets.js'
 import WallpaperSettings from './components/WallpaperSettings.jsx'
 import SettingsBoundary from './components/SettingsBoundary.jsx'
 import WallpaperOverlay from './components/WallpaperOverlay.jsx'
+import useParallax from './useParallax.js'
 import {
   WALLPAPER,
   loadWallpaperConfig,
@@ -36,6 +37,7 @@ import {
   resolveDesign,
   designScale,
   resolveLayerTransform,
+  resolveParallax,
 } from './config.js'
 
 const readViewport = () => ({ width: window.innerWidth, height: window.innerHeight })
@@ -80,6 +82,10 @@ export default function WallpaperPage() {
     () => ({
       backdrop: toTweak(config.backdropTransform, design),
       model: toTweak(config.modelTransform, design),
+      // Parallax is unit-free (percent of the design canvas), so it does not
+      // depend on `design` — it is only carried in the same object so the
+      // drawer and "记录配置" have one snapshot to work from.
+      parallax: resolveParallax(config.parallax),
     }),
     [config, design],
   )
@@ -104,10 +110,16 @@ export default function WallpaperPage() {
   // the canvas bounds (the viewport does the clipping instead).
   const overscan = config.overscan > 1 ? config.overscan : 1
   const overscanInset = `${-((overscan - 1) / 2) * 100}%`
+  // Parallax is written imperatively (CSS vars on the design canvas + a ref the
+  // WebGL camera reads), never through React state: a 60fps drift must not
+  // re-render the page. See useParallax.js.
+  const designRef = useRef(null)
+  const modelOffsetRef = useRef({ x: 0, y: 0 })
   const stageDesign = useMemo(
-    () => ({ ...design, model: config.model, transform: modelT, overscan }),
+    () => ({ ...design, model: config.model, transform: modelT, overscan, offsetRef: modelOffsetRef }),
     [design, config, modelT, overscan],
   )
+  useParallax({ design, parallax: tweaks.parallax, designRef, modelOffsetRef })
 
   const updateTweaks = useCallback((layer, patch) => {
     setTweaks((prev) => ({ ...prev, [layer]: { ...prev[layer], ...patch } }))
@@ -138,7 +150,7 @@ export default function WallpaperPage() {
       setOverlayTweaks({ ...overlayBase })
       return
     }
-    if (target === 'backdrop' || target === 'model') {
+    if (target === 'backdrop' || target === 'model' || target === 'parallax') {
       setTweaks((prev) => ({ ...prev, [target]: { ...base[target] } }))
       return
     }
@@ -214,6 +226,7 @@ export default function WallpaperPage() {
 
       <div
         className="wallpaper-design"
+        ref={designRef}
         style={{
           width: design.width,
           height: design.height,
@@ -228,8 +241,13 @@ export default function WallpaperPage() {
             src={backdropUrl}
             alt=""
             draggable="false"
+            // Layer transform lives in CSS custom properties so the parallax
+            // loop can append `--parallax-x/y` on the parent without fighting
+            // React for the inline `transform` (see .wallpaper-backdrop).
             style={{
-              transform: `translate(${backdropT.dx}px, ${backdropT.dy}px) scale(${backdropT.scale})`,
+              '--backdrop-x': `${backdropT.dx}px`,
+              '--backdrop-y': `${backdropT.dy}px`,
+              '--backdrop-scale': String(backdropT.scale),
             }}
           />
         )}

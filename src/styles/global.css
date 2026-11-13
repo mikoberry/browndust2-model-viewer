@@ -950,8 +950,14 @@ code {
   height: 100%;
   object-fit: cover;
   /* Same origin/semantics as the model layer: scale about the centre, then a
-     design-pixel translation that is NOT multiplied by the scale. */
+     design-pixel translation that is NOT multiplied by the scale.
+     The two translate() calls are commutative; keeping them separate lets the
+     parallax loop own `--parallax-x/y` (set on .wallpaper-design, so both
+     custom properties inherit down) while React owns the layer transform. */
   transform-origin: 50% 50%;
+  transform: translate(var(--backdrop-x, 0px), var(--backdrop-y, 0px))
+    translate(var(--parallax-x, 0px), var(--parallax-y, 0px)) scale(var(--backdrop-scale, 1));
+  will-change: transform;
   pointer-events: none;
   user-select: none;
 }

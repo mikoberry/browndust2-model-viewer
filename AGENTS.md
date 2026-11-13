@@ -74,6 +74,7 @@ src/
       WallpaperPage.jsx          # 背景 img + canvas，页面入口 / 组合根；设置抽屉开关与 tweak 状态
       config.js                  # 内置默认值 + mergeConfig/loadWallpaperConfig + 构图纯函数
       color.js                   # hex ↔ HSV 换算（取色面板用，无 React/DOM，可在 Node 里测）
+      useParallax.js             # 鼠标视差：归一化指针 + 缓动，写 CSS 变量（背景）与 offsetRef（模型）
       components/
         WallpaperSettings.jsx    # 壁纸设置抽屉：主题色 + 「构图 / 时钟 / 频谱 / 专辑卡 / 氛围 / 指针」tab
         SettingsBoundary.jsx     # 抽屉的错误边界（面板崩了只隐藏面板，壁纸继续跑）
@@ -179,6 +180,8 @@ src/features/<feature>/
 - **画面本身永不响应指针**：壁纸页没有拖拽 / 滚轮 / 双击，构图只能通过抽屉里的滑块 / 步进按钮改。
   不要重新引入「在画面上拖动图层」这类交互，它和「背景原生像素 = 设计画布」的构图模型冲突，容易只拖得动背景。
   WallKit 的 `PointerFx` 是**纯装饰覆盖层**（不改构图、默认关闭），不属于这条限制。
+  **鼠标视差是唯一被允许的「画面跟随指针」**：它只读指针位置、产生一个可回零的设计像素偏移
+  （见 §9），不改变构图基准、不写配置、不涉及拖拽 / 缩放，因此不违反这条。
 - **WallKit 控件浮层（`WallpaperOverlay.jsx`）的边界**：
   1. 只放在 `.wallpaper-overlay` 里（`position: absolute; inset: 0; z-index: 5`，
      在 `.wallpaper-page` 下、`.wallpaper-design` 外）——它们锚定**视口**，绝不进设计画布，
@@ -281,6 +284,13 @@ src/features/<feature>/
   模型用 `design.transform` 在相机里 `worldZoom / s` + `target += (dx,dy)*k`。**平移不被该层缩放放大**。
 - 改相机数学时必须保持「模型 / 画布归一化矩形与 scale、dpr、屏幕比例无关」。用纯 Node 复算验证：
   `compositionRects()` / `normalizeRect()` 是这套计算的唯一来源，7 视口 × DPR 1/2 × contain/cover 下偏差应为浮点误差量级。
+- **鼠标视差（`parallax: { enabled, backdrop, model }`）** 是叠加在构图之上的**设计坐标平移**，不是新的构图基准：
+  指针归一化到视口 `-1..1`，乘**设计画布百分比**后得到设计像素偏移（`parallaxOffset()` 是唯一换算点，正负号 = 同向 / 反向）。
+  背景走 CSS 自定义属性 `--parallax-x/y`（设在 `.wallpaper-design` 上，`.wallpaper-backdrop` 的 `transform` 里
+  `translate(var(--parallax-x,0px), …)` 消费，与 React 拥有的 `--backdrop-x/y/scale` 分开，避免抢写 inline style）；
+  模型走 `design.offsetRef.current`，由 `SpineStage` 每帧读 ref 加进相机 target（同样乘 `k`）。
+  **两侧都不要走 React state**：60fps 的漂移会整页重渲染。缓动与 rAF 只存在于 `features/wallpaper/useParallax.js`，
+  指针静止后循环自己停下。改这里时保证「指针居中 = 偏移 0」「同一归一化指针在不同设计尺寸下比例相同」。
 - 构图设置抽屉（`features/wallpaper/components/WallpaperSettings.jsx`）里的数值一律是**设计像素**，
   进入渲染前同样走 `resolveLayerTransform()`，所以「面板调到 X」与「`wallpaper.config.json` 写 X」等价。
 - 改默认构图时**优先改 `public/wallpaper.config.json`**（打包后仍可改、无需重建），`config.js` 里的 `WALLPAPER`
@@ -350,7 +360,9 @@ src/features/<feature>/
    且 `dist/wallpaper.config.json` 存在、文件名无 hash。
 4. **取色面板**：`src/features/wallpaper/color.js` 可在 Node 里直接 import，断言 `hsvToHex(hexToHsv(x)) === x`
    （含 `#000000` / 饱和色）与 `s`/`v` 越界裁剪；组件本身不做渲染验证。
-5. 实际画面由用户自己在浏览器 / 壁纸宿主里确认。
+5. **视差方向 / 比例**：`parallaxOffset(strength, design, { x, y })` 也是纯函数，断言
+   「指针在左上 → 偏移为负（左上）」「负强度反向」「指针居中 → 0」「同一归一化指针在 1024 与 2048 画布上比例相同」。
+6. 实际画面由用户自己在浏览器 / 壁纸宿主里确认。
 
 **不要**跑无头浏览器、截图、Playwright 或任何浏览器自动化；不要在报告里把「构建通过」说成「验证通过」。
 

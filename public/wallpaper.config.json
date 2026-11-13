@@ -23,6 +23,11 @@
     "offsetX": 0,
     "offsetY": 0
   },
+  "parallax": {
+    "enabled": true,
+    "backdrop": 0,
+    "model": 2
+  },
   "animation": null,
   "expression": null,
   "skin": "",
