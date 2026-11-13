@@ -86,8 +86,8 @@ function SpectrumWidget({ spec, paused }) {
       variant={spec.variant}
       colorHex={spec.color || undefined}
       size={spec.size}
-      width={spec.width}
-      height={spec.height}
+      width={spec.width || undefined}
+      height={spec.height || undefined}
       anchor={spec.anchor}
       offsetX={spec.offsetX}
       offsetY={spec.offsetY}

@@ -71,7 +71,9 @@ src/
       WallpaperPage.jsx          # 背景 img + canvas，页面入口 / 组合根；设置抽屉开关与 tweak 状态
       config.js                  # 内置默认值 + mergeConfig/loadWallpaperConfig + 构图纯函数
       components/
-        WallpaperSettings.jsx    # 构图设置抽屉（背景 / 模型的缩放与偏移），仅 wallpaper 使用
+        WallpaperSettings.jsx    # 壁纸设置抽屉：主题色 + 「构图 / 时钟 / 频谱 / 专辑卡 / 氛围 / 指针」tab
+        OverlaySettings.jsx      # 每个控件 tab 的字段面板（启用 / 尺寸 / 位置 / 颜色 / 专有属性）
+        settings-fields.jsx      # 抽屉共用表单控件（滑块 / 数字 / 文本 / 颜色 / 开关 / 下拉 / 3×3 锚点）
         WallpaperOverlay.jsx     # WallKit 控件浮层（视口锚定），按 overlay 配置逐项显示
     viewer/                      # Feature：/spine-viewer 开发调试辅助页
       ViewerPage.jsx             # 状态 + 布局
@@ -131,10 +133,17 @@ src/features/<feature>/
   可选 props，**默认值必须保持调试页行为**，不要写第二套 WebGL / 资源加载逻辑。
 - 组件靠 props + 回调通信，不因为「参数有点多」就引入全局 store；确实要共享时按 §3 提升到 `lib/`。
 - **壁纸页的 chrome 只能是「按需呼出」**：`WallpaperSettings` 默认收起（`visibility: hidden`，不占 Tab 焦点），
-  由右下角手柄或 `S` 键打开、`Esc` / × 关闭。它的编辑只改页面内存状态，**绝不写回 `config.js`，也不持久化**；
-  唯一出口是「复制配置」：输出**完整配置文件内容**（`_readme` + 全部字段，两层 transform 用面板当前值），
+  由右下角手柄或 `S` 键打开、`Esc` / × 关闭。抽屉用 tab 分组：`构图`（背景 / 模型两层）+ 五个控件各一个 tab，
+  顶部是共用主题色（`overlay.accent`）。它的编辑只改页面内存状态，**绝不写回 `config.js`，也不持久化**；
+  唯一出口是「复制配置」：输出**完整配置文件内容**（`_readme` + 全部字段，两层 transform 与 `overlay` 都用面板当前值），
   未调整时与 `public/wallpaper.config.json` **逐字节相同**（键顺序沿用 `WALLPAPER`，`JSON.stringify(..., 2)` + 换行）。
-  改字段或顺序时要保持这个等价性。不要给它加常驻按钮、toast 或自动保存。
+  改字段或顺序时要保持这个等价性；面板控件只能**原值透传**，不要在 UI 层做单位换算或格式化后写回
+  （唯一例外是两层 transform 的 `round2` / `Math.round`，它们对未调整的值是恒等变换）。
+  不要给它加常驻按钮、toast 或自动保存。
+- **控件面板不许出现第二份默认值**：`OverlaySettings` 只读 `overlay` 里的当前值，缺字段时用 `?? 常量` 只用于
+  渲染（如 `beatIntensity ?? 100`），写回时不要顺手补键，否则「复制配置」就不再与文件等价。
+  枚举列表（频谱 / 专辑 / 氛围 / 指针的 variant）优先从 wallkit 的导出取；只有 Clock 的 10 个 `placement`
+  需要在本仓库硬编码（库未导出）。
 - **画面本身永不响应指针**：壁纸页没有拖拽 / 滚轮 / 双击，构图只能通过抽屉里的滑块或数字框改。
   不要重新引入「在画面上拖动图层」这类交互，它和「背景原生像素 = 设计画布」的构图模型冲突，容易只拖得动背景。
   WallKit 的 `PointerFx` 是**纯装饰覆盖层**（不改构图、默认关闭），不属于这条限制。
@@ -143,6 +152,8 @@ src/features/<feature>/
      在 `.wallpaper-page` 下、`.wallpaper-design` 外）——它们锚定**视口**，绝不进设计画布，
      否则 `fit` 缩放会把控件一起放大 / 移动。层级必须在构图手柄（6）与抽屉（7）之下。
   2. **全部由 `overlay` 配置驱动**，每个控件 `enabled` 独立；全关时组件返回 `null`，页面恢复成纯壁纸。
+     页面里真正传给 `WallpaperOverlay` 的是**抽屉可编辑的那份** `overlayTweaks`（初始值 = `config.overlay`），
+     不要绕过它直接读 `config.overlay`，否则面板调不出效果。
      不要为控件加常驻 UI、不要在这里读写 localStorage。
   3. 数据只从 `wallkit/we` 的 hooks 来（`useWallpaperAudio` / `useWallpaperBeat` / `useWallpaperMedia` /
      `useWallpaperPaused`）。**禁止造假数据兜底**：没有 WE 宿主时频谱平、专辑卡不渲染，这是库的规定行为。
@@ -164,6 +175,9 @@ src/features/<feature>/
   不要引入 react-query / SWR 之类的数据层。
 - 壁纸页的 `useState(configTweaks)` + `useEffect(() => setTweaks(configTweaks), [configTweaks])` 是**故意**的：
   配置是异步到的，默认值必须以它为准；别把它改成 `useState` 懒初始化，否则文件里的值永远不生效。
+- `overlayTweaks` 用**同一套模式**（`useState(config.overlay)` + 同步 effect）。重置按 target 分流：
+  `'all'` → 两层 + 整个 overlay；`'backdrop'` / `'model'` → 单层；其余 target 视为控件 key（`clock` / `spectrum` /
+  `albumArt` / `ambient` / `pointer`）。重置必须用 `{ ...base[target] }` 复制，**保留键顺序**（复制等价性依赖它）。
 - `SpineStage` 把所有 props 镜像进 `liveRef.current`，让渲染循环按 asset 创建一次、不随每次 UI 重渲染重建。
   改这里时保持「循环闭包读 ref，不读旧 props」。
 - **不要开 `StrictMode`**：dev 下双挂载会在同一个 canvas 上创建 / 销毁 / 重建 WebGL 上下文，

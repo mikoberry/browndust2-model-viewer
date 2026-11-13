@@ -1032,7 +1032,7 @@ code {
   z-index: 7;
   display: flex;
   flex-direction: column;
-  width: 300px;
+  width: 336px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 14px;
   background: rgba(15, 19, 27, 0.84);
@@ -1129,6 +1129,70 @@ code {
   border-radius: 8px;
 }
 
+/* Shared accent for the audio-reactive overlays. Presented once, above the
+   tabs: the clock and album card colour themselves from their own `theme`. */
+.wallpaper-settings .ws-accent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 14px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wallpaper-settings .ws-accent-label {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+}
+
+/* Tab bar: composition + one tab per WallKit widget. Six short labels fit one
+   row at this width; the row still scrolls if a longer name is added. */
+.wallpaper-settings .ws-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+  padding: 0 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.wallpaper-settings .ws-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.wallpaper-settings .ws-tab {
+  flex: 0 0 auto;
+  padding: 8px 8px 7px;
+  border: 0;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  white-space: nowrap;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+
+.wallpaper-settings .ws-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.wallpaper-settings .ws-tab.is-active {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.wallpaper-settings .ws-tab-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: #8b88ff;
+  vertical-align: middle;
+}
+
 .wallpaper-settings .ws-group {
   margin-top: 14px;
 }
@@ -1215,6 +1279,124 @@ code {
   border-color: #8b88ff;
   background: rgba(255, 255, 255, 0.1);
   outline: none;
+}
+
+.wallpaper-settings .ws-number.is-wide {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
+.wallpaper-settings .ws-text {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 11px;
+}
+
+.wallpaper-settings .ws-text::placeholder {
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.wallpaper-settings .ws-text:focus {
+  border-color: #8b88ff;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+/* Native colour input, stripped to a small rounded chip. */
+.wallpaper-settings .ws-swatch {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.wallpaper-settings .ws-swatch::-webkit-color-swatch-wrapper {
+  padding: 3px;
+}
+
+.wallpaper-settings .ws-swatch::-webkit-color-swatch {
+  border: 0;
+  border-radius: 4px;
+}
+
+.wallpaper-settings .ws-select {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(18, 22, 30, 0.92);
+  color: #fff;
+  font-size: 11px;
+}
+
+.wallpaper-settings .ws-select:focus {
+  border-color: #8b88ff;
+  outline: none;
+}
+
+.wallpaper-settings .ws-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11.5px;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.wallpaper-settings .ws-toggle input {
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: #8b88ff;
+}
+
+.wallpaper-settings .ws-toggle-text em {
+  display: block;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+  font-style: normal;
+}
+
+/* 3x3 anchor picker: the grid mirrors the viewport, so the picked cell is the
+   corner / edge the widget is pinned to. */
+.wallpaper-settings .ws-anchor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  max-width: 132px;
+}
+
+.wallpaper-settings .ws-anchor-cell {
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.wallpaper-settings .ws-anchor-cell:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.wallpaper-settings .ws-anchor-cell.is-active {
+  border-color: #8b88ff;
+  background: rgba(139, 136, 255, 0.3);
 }
 
 .wallpaper-settings .ws-note {

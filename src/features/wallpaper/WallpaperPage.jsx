@@ -86,6 +86,14 @@ export default function WallpaperPage() {
   // Adopt the configured defaults as soon as they arrive (or change, e.g. when
   // the chosen backdrop changes the design canvas).
   useEffect(() => setTweaks(configTweaks), [configTweaks])
+
+  // The WallKit overlay settings are edited live too (size / position / colour /
+  // per-widget options), with the same rule: config file wins until the drawer
+  // is touched, and nothing is persisted.
+  const configOverlay = config.overlay
+  const [overlayTweaks, setOverlayTweaks] = useState(configOverlay)
+  useEffect(() => setOverlayTweaks(configOverlay), [configOverlay])
+
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const backdropT = useMemo(() => resolveLayerTransform(tweaks.backdrop, design), [tweaks.backdrop, design])
@@ -104,14 +112,39 @@ export default function WallpaperPage() {
     setTweaks((prev) => ({ ...prev, [layer]: { ...prev[layer], ...patch } }))
   }, [])
 
+  // `key` is an overlay widget key ('clock' / 'spectrum' / …); the accent is a
+  // scalar and gets its own setter.
+  const updateOverlay = useCallback((key, patch) => {
+    setOverlayTweaks((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+  }, [])
+
+  const updateAccent = useCallback((accent) => {
+    setOverlayTweaks((prev) => ({ ...prev, accent }))
+  }, [])
+
   // Lets `resetTweaks` stay referentially stable while still seeing the latest
   // config-derived values (they change when the model / backdrop does).
   const configTweaksRef = useRef(configTweaks)
   configTweaksRef.current = configTweaks
+  const configOverlayRef = useRef(configOverlay)
+  configOverlayRef.current = configOverlay
 
-  const resetTweaks = useCallback((layer) => {
+  const resetTweaks = useCallback((target) => {
     const base = configTweaksRef.current
-    setTweaks(layer === 'all' ? { ...base } : (prev) => ({ ...prev, [layer]: { ...base[layer] } }))
+    const overlayBase = configOverlayRef.current
+    if (target === 'all') {
+      setTweaks({ ...base })
+      setOverlayTweaks({ ...overlayBase })
+      return
+    }
+    if (target === 'backdrop' || target === 'model') {
+      setTweaks((prev) => ({ ...prev, [target]: { ...base[target] } }))
+      return
+    }
+    // Any other target is an overlay widget key.
+    if (overlayBase?.[target]) {
+      setOverlayTweaks((prev) => ({ ...prev, [target]: { ...overlayBase[target] } }))
+    }
   }, [])
 
   // `S` toggles the drawer, `Esc` closes it. Typing in a field must not steal
@@ -232,7 +265,7 @@ export default function WallpaperPage() {
 
       {/* Viewport-anchored, so the composition scale never moves the widgets.
           Renders nothing when every `overlay.*.enabled` is false. */}
-      {ready && <WallpaperOverlay config={config.overlay} />}
+      {ready && <WallpaperOverlay config={overlayTweaks} />}
 
       {!settingsOpen && (
         <button
@@ -256,8 +289,11 @@ export default function WallpaperPage() {
         design={design}
         config={config}
         spec={tweaks}
+        overlay={overlayTweaks}
         source={loaded?.source ?? 'builtin'}
         onChange={updateTweaks}
+        onOverlayChange={updateOverlay}
+        onAccentChange={updateAccent}
         onReset={resetTweaks}
         onClose={() => setSettingsOpen(false)}
       />

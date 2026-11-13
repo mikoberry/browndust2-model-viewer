@@ -1,13 +1,23 @@
-// Settings drawer for the wallpaper route. It only nudges the two composition
-// layers (scale + offset) LIVE, and deliberately exposes them in design-canvas
-// units so anything tuned here can be pasted into config.js verbatim and stays
-// resolution independent. Purely presentational: the parent owns the state.
+// Settings drawer for the wallpaper route. Two kinds of editing, both live and
+// both purely in-memory:
+//
+//   1. the composition tab nudges the two picture layers (scale + offset) in
+//      design-canvas units, so anything tuned here can be pasted into the
+//      config verbatim and stays resolution independent;
+//   2. one tab per WallKit control overlay (clock / spectrum / album card /
+//      particles / pointer effects) edits that widget's size, position, colour
+//      and its own options.
 //
 // The wallpaper itself must stay a chrome-free image, so this drawer is closed
-// by default and opened by the bottom-right button or the `S` key.
+// by default and opened by the bottom-right button or the `S` key. Edits never
+// write back to config.js and are never persisted: the only exit is "复制配置",
+// which emits the COMPLETE config file — byte-identical to
+// public/wallpaper.config.json when nothing was touched.
 
 import { useEffect, useRef, useState } from 'react'
 import { CONFIG_FILE, CONFIG_README } from '../config.js'
+import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
+import { Group, SliderField } from './settings-fields.jsx'
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 3
@@ -24,40 +34,6 @@ function formatOffset(value, basis) {
   return `${Math.round(value)} px · ${percent.toFixed(1)}%`
 }
 
-function SliderField({ label, readout, min, max, step, value, onChange }) {
-  return (
-    <div className="ws-field">
-      <div className="ws-field-head">
-        <span className="ws-field-label">{label}</span>
-        <span className="ws-field-readout">{readout}</span>
-      </div>
-      <div className="ws-field-controls">
-        <input
-          className="ws-range"
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(event) => onChange(Number(event.target.value))}
-        />
-        <input
-          className="ws-number"
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={round2(value)}
-          onChange={(event) => {
-            const next = Number(event.target.value)
-            if (Number.isFinite(next)) onChange(next)
-          }}
-        />
-      </div>
-    </div>
-  )
-}
-
 function LayerGroup({ title, note, spec, design, onChange, onReset }) {
   // A full canvas each way: on a 21:9 screen the backdrop has to travel well
   // past half its own width to reach the letterbox, so half a canvas is not
@@ -67,13 +43,7 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
   const limitY = Math.max(1, Math.round(design.height))
 
   return (
-    <section className="ws-group">
-      <div className="ws-group-head">
-        <h3>{title}</h3>
-        <button type="button" className="ws-reset" onClick={onReset}>
-          重置
-        </button>
-      </div>
+    <Group title={title} note={note} onReset={onReset}>
       <SliderField
         label="缩放"
         readout={formatScale(spec.scale)}
@@ -101,16 +71,43 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
         value={spec.offsetY}
         onChange={(offsetY) => onChange({ offsetY })}
       />
-      {note && <p className="ws-note">{note}</p>}
-    </section>
+    </Group>
+  )
+}
+
+// The accent is shared by every audio-reactive effect (spectrum bars, ambient
+// bubbles, pointer trails); the clock and album card colour themselves from
+// their own `theme`, so it is presented once, above the tabs.
+function AccentField({ value, onChange }) {
+  const hex = /^#[0-9a-f]{6}$/i.test(value || '') ? value : '#a8c4ff'
+  return (
+    <div className="ws-accent">
+      <span className="ws-accent-label">主题色</span>
+      <input
+        className="ws-swatch"
+        type="color"
+        value={hex}
+        aria-label="主题色"
+        onChange={(event) => onChange(event.target.value)}
+      />
+      <input
+        className="ws-text"
+        type="text"
+        value={value ?? ''}
+        placeholder="#a8c4ff"
+        spellCheck={false}
+        onChange={(event) => onChange(event.target.value.trim())}
+      />
+    </div>
   )
 }
 
 // Full config document, ready to replace wallpaper.config.json: every key of
-// the live config, with the two layer transforms overwritten by what the drawer
-// is showing right now. Key order follows the built-in object, so the clipboard
-// content is diff-stable against the shipped file.
-function configJson(config, spec) {
+// the live config, with the two layer transforms and the overlay block
+// overwritten by what the drawer is showing right now. Key order follows the
+// built-in object, so the clipboard content is diff-stable against the shipped
+// file.
+function configJson(config, spec, overlay) {
   const layer = (item) => ({
     scale: round2(item.scale),
     offsetX: Math.round(item.offsetX),
@@ -121,19 +118,35 @@ function configJson(config, spec) {
     ...config,
     backdropTransform: layer(spec.backdrop),
     modelTransform: layer(spec.model),
+    overlay,
   }
   return `${JSON.stringify(payload, null, 2)}\n`
 }
 
-export default function WallpaperSettings({ open, design, config, spec, source, onChange, onReset, onClose }) {
+const TABS = [{ key: 'composition', label: '构图' }, ...OVERLAY_TABS]
+
+export default function WallpaperSettings({
+  open,
+  design,
+  config,
+  spec,
+  overlay,
+  source,
+  onChange,
+  onOverlayChange,
+  onAccentChange,
+  onReset,
+  onClose,
+}) {
   const [copied, setCopied] = useState(false)
+  const [tab, setTab] = useState('composition')
   const timerRef = useRef(0)
 
   useEffect(() => () => window.clearTimeout(timerRef.current), [])
 
   // Copying is the whole point of the drawer: tune by eye, replace the file.
   const handleCopy = async () => {
-    const text = configJson(config, spec)
+    const text = configJson(config, spec, overlay)
     let ok = false
     try {
       await navigator.clipboard.writeText(text)
@@ -157,11 +170,13 @@ export default function WallpaperSettings({ open, design, config, spec, source, 
     timerRef.current = window.setTimeout(() => setCopied(false), 1600)
   }
 
+  const enabledWidgets = TABS.filter((item) => item.key !== 'composition' && overlay?.[item.key]?.enabled)
+
   return (
     <aside className={`wallpaper-settings${open ? ' is-open' : ''}`} aria-hidden={!open}>
       <div className="ws-head">
         <div>
-          <h2>构图设置</h2>
+          <h2>壁纸设置</h2>
           <p>
             设计画布 {Math.round(design.width)} × {Math.round(design.height)}
           </p>
@@ -174,26 +189,57 @@ export default function WallpaperSettings({ open, design, config, spec, source, 
         </button>
       </div>
 
-      <div className="ws-body">
-        <LayerGroup
-          title="背景"
-          spec={spec.backdrop}
-          design={design}
-          onChange={(patch) => onChange('backdrop', patch)}
-          onReset={() => onReset('backdrop')}
-        />
-        <LayerGroup
-          title="模型"
-          spec={spec.model}
-          design={design}
-          onChange={(patch) => onChange('model', patch)}
-          onReset={() => onReset('model')}
-        />
-        <p className="ws-note">
-          偏移单位为设计画布像素（与 {CONFIG_FILE} 一致），平移不会被缩放放大。
-          1× 时背景正好等于画布，拖出去的部分会露出模糊补边；想铺满整屏就先放大再拖。
-          「复制配置」得到完整的配置文件内容，可直接替换 {CONFIG_FILE} 后刷新。
-        </p>
+      <AccentField value={overlay?.accent} onChange={onAccentChange} />
+
+      <div className="ws-tabs" role="tablist" aria-label="设置分组">
+        {TABS.map((item) => {
+          const active = tab === item.key
+          const dot = item.key !== 'composition' && overlay?.[item.key]?.enabled
+          return (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`ws-tab${active ? ' is-active' : ''}`}
+              onClick={() => setTab(item.key)}
+            >
+              {dot && <i className="ws-tab-dot" aria-hidden="true" />}
+              {item.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="ws-body" role="tabpanel">
+        {tab === 'composition' ? (
+          <>
+            <LayerGroup
+              title="背景"
+              spec={spec.backdrop}
+              design={design}
+              onChange={(patch) => onChange('backdrop', patch)}
+              onReset={() => onReset('backdrop')}
+            />
+            <LayerGroup
+              title="模型"
+              spec={spec.model}
+              design={design}
+              onChange={(patch) => onChange('model', patch)}
+              onReset={() => onReset('model')}
+            />
+            <p className="ws-note">
+              偏移单位为设计画布像素（与 {CONFIG_FILE} 一致），平移不会被缩放放大。
+              1× 时背景正好等于画布，拖出去的部分会露出模糊补边；想铺满整屏就先放大再拖。
+              控件的位置在各自的 tab 里调，用的是视口百分比，与这里的画布坐标无关。
+            </p>
+            {enabledWidgets.length === 0 && (
+              <p className="ws-note">当前没有任何控件浮层开启；需要的话在对应 tab 里打开。</p>
+            )}
+          </>
+        ) : (
+          <OverlaySettings tab={tab} overlay={overlay} onChange={onOverlayChange} onReset={onReset} />
+        )}
       </div>
 
       <div className="ws-foot">
