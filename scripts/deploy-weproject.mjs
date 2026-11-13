@@ -74,8 +74,17 @@ async function main() {
 
   await mkdir(target, { recursive: true })
 
+  // Pruning is best-effort. Some environments refuse to delete a ~90 MB tree
+  // (sandboxed shells, an antivirus lock, or Wallpaper Engine holding a handle on
+  // the running wallpaper). A failed prune only leaves stale hashed chunks behind:
+  // the copy below still overwrites every live file and index.html points at the
+  // new hashes, so the wallpaper keeps working.
   for (const name of MANAGED) {
-    await rm(path.join(target, name), { recursive: true, force: true })
+    try {
+      await rm(path.join(target, name), { recursive: true, force: true })
+    } catch (error) {
+      console.warn(`! 没能清理 ${name}（${error.code || error.message}），旧文件留在原地`)
+    }
   }
 
   const configPath = path.join(target, RUNTIME_ONLY)

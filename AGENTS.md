@@ -93,6 +93,7 @@ src/
       useSpineAsset.js           # 资源加载 + 运行时对象构建
     animation.js                 # 默认动画 / 表情挑选（两个 feature 共用）
     assets.js                    # BASE_URL 资源 URL + 格式化
+    uiScale.js                   # 视口 → --ui-scale（1080p = 1），壁纸 chrome 长度都乘它
   styles/
     global.css                   # 全局样式
 model-library/                   # 唯一素材源，只读
@@ -157,6 +158,13 @@ src/features/<feature>/
   `src/features/viewer/` 是浏览器里的调试页，不受此限制。
 - `SettingsBoundary` 包在抽屉外面：面板渲染抛错只隐藏面板并 `console.error`，壁纸继续运行，
   关闭抽屉后再开会重试。**不要**为了「方便调试」把它去掉——WE 里一次未捕获异常就是黑屏。
+- **壁纸 chrome 的长度必须分辨率无关**：抽屉 / 手柄 / 失败提示里的每一个字号、内边距、控件高度、圆角、
+  抽屉宽度都写成 `calc(<n>px * var(--ui-scale))`，`--ui-scale` 由 `src/lib/uiScale.js` 在 `main.jsx` 启动时
+  按 `min(视口宽/1920, 视口高/1080)`（夹在 `0.85–2.4`）写到 `<html>` 的内联自定义属性上，
+  1080p = 1、2K = 1.33、4K = 2。**不要**在这里写裸 `px`：那正是「2K 屏上字只有一半大」的来源。
+  例外：`1px` 描边保持裸值（保持一像素细），壁纸构图用的**设计像素**（`backdropTransform` / `modelTransform`、
+  `.wallpaper-design` 里的尺寸）绝对不要乘 `--ui-scale`，那是画面坐标系。改 `resolveUiScale` 时保持
+  `min(宽比, 高比)` 而不是面积比：3440×1440 这类带鱼屏应与 2560×1440 同尺寸，而不是被宽度撑大。
 - **画面本身永不响应指针**：壁纸页没有拖拽 / 滚轮 / 双击，构图只能通过抽屉里的滑块或数字框改。
   不要重新引入「在画面上拖动图层」这类交互，它和「背景原生像素 = 设计画布」的构图模型冲突，容易只拖得动背景。
   WallKit 的 `PointerFx` 是**纯装饰覆盖层**（不改构图、默认关闭），不属于这条限制。

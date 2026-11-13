@@ -40,6 +40,12 @@ tab 上带小圆点表示该控件当前已开启。
 抽屉外面还包了一层 `SettingsBoundary`：面板渲染抛错时只是隐藏面板并把错误打到 console，
 壁纸本身继续跑；关掉再按 `S` 会重新尝试渲染。
 
+**界面缩放**：抽屉与手柄的每个尺寸（字号、内边距、控件高度、抽屉宽度）都写成
+`calc(<n>px * var(--ui-scale))`，`--ui-scale` 由 `src/lib/uiScale.js` 按视口算出
+（`min(宽/1920, 高/1080)`，夹在 `0.85–2.4`）：1080p = 1，2K = 1.33，4K = 2。
+所以同一份 CSS 在 2K 屏上不会显得「字只有一半大」，换显示器也不用手改字号。
+1px 描边故意不参与缩放（保持一像素细），壁纸画面本身（模型 / 背景）完全不受影响。
+
 根路由显示的模型、背景、构图与播放参数由两个地方决定：**内置默认值**在
 `src/features/wallpaper/config.js`，**运行时实际值**来自随页面发布的 `wallpaper.config.json`
 （见下文「配置文件」）。改动都不会影响调试页。
@@ -381,6 +387,7 @@ src/
     spine/                       # 共享 Spine 引擎：useSpineAsset / SpineStage（WebGL 与相机）
     animation.js                 # 默认动画 / 表情挑选（两个 feature 共用）
     assets.js                    # BASE_URL 相关的资源 URL + 格式化
+    uiScale.js                   # 按视口算 --ui-scale（1080p = 1），chrome 长度的唯一来源
   styles/global.css
 model-library/                   # 唯一素材源，只读
 ```
