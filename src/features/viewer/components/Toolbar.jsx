@@ -3,6 +3,14 @@ import { assetUrl } from '../../../lib/assets.js'
 const SPEEDS = [0.25, 0.5, 1, 1.5, 2]
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
 
+// Stage viewport shape. 'auto' keeps the old behaviour (the canvas fills the
+// workspace and follows the window); '16:9' letterboxes a 1920×1080-shaped box
+// so the framing can be judged as it will look on a real wallpaper screen.
+const RATIOS = [
+  { key: 'auto', label: '自适应', title: '预览铺满工作区，宽度 / 高度随窗口变化' },
+  { key: '16:9', label: '1920×1080', title: '按 1920×1080（16:9）比例居中预览，看构图更接近真实屏幕' },
+]
+
 export default function Toolbar({
   model,
   playing,
@@ -11,6 +19,8 @@ export default function Toolbar({
   zoom,
   bgMode,
   backdropUrl,
+  stageRatio,
+  onStageRatioChange,
   onTogglePlay,
   onLoopChange,
   onSpeedChange,
@@ -89,6 +99,25 @@ export default function Toolbar({
       </div>
 
       <div className="toolbar-group toolbar-group-right">
+        <span className="inline-field" title="预览区比例">
+          视口
+        </span>
+        {RATIOS.map((item) => {
+          const active = stageRatio === item.key
+          return (
+            <button
+              key={item.key}
+              type="button"
+              className={`btn${active ? ' is-on' : ''}`}
+              aria-pressed={active}
+              title={item.title}
+              onClick={() => onStageRatioChange(item.key)}
+            >
+              {item.label}
+            </button>
+          )
+        })}
+        <span className="toolbar-divider" />
         <label className="inline-field" title="画布背景">
           背景
           <select value={bgValue} onChange={handleBgChange} aria-label="画布背景">

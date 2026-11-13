@@ -54,8 +54,23 @@ export default function SpineStage(props) {
     // Fixed design canvas { width, height, model, transform? }. When present,
     // the camera uses the immutable setup bounds and one shared
     // design->screen transform. `transform` is the model layer's independent
-    // { scale, dx, dy } in DESIGN pixels, resolved by features/wallpaper/config.js.
+    // { scale, dx, dy } in DESIGN pixels, resolved by lib/composition.js.
+    // `transformRef` (optional) overrides it on every frame without a re-render:
+    // the wallpaper's entrance cross-fade writes there while it eases from the
+    // cutscene framing into the composed one.
     design = null,
+    // Entrance sequence on track 0: an ordered list of animation names played
+    // back to back, the LAST one looping (e.g. ['cut_A','cut_B','loop_2']).
+    // `sequenceToken` re-runs it from the start without reloading the asset.
+    // Unknown names are dropped, and an empty / missing list means "just play
+    // ``animation`", i.e. the debug viewer's behaviour. `onSequenceDone` fires
+    // once when the last clip becomes the current one. `onSequenceStage` fires
+    // every time a DIFFERENT clip takes over (including the first), so a caller
+    // can swap the framing per shot — it is one call per clip, not per frame.
+    sequence = null,
+    sequenceToken = 0,
+    onSequenceDone,
+    onSequenceStage,
   } = props
 
   const canvasRef = useRef(null)
@@ -124,12 +139,67 @@ export default function SpineStage(props) {
     liveRef.current.onLoaded?.(readAssetInfo(asset))
   }, [asset, infoReady])
 
-  // Track 0: the selected body animation.
+  // Track 0 owner: true while a sequence is running, so the single-animation
+  // effects below do not fight it for the same track.
+  const sequenceActiveRef = useRef(false)
+  const sequenceKey = Array.isArray(sequence) ? sequence.join('|') : ''
+  // Last entry of the running sequence + whether we still have to announce it.
+  // The render loop watches for that entry becoming the current one.
+  const sequenceTailRef = useRef('')
+  const sequencePendingRef = useRef(false)
+  // Last clip announced through `onSequenceStage`. The loop compares against the
+  // live track entry, so a caller gets exactly one call per shot.
+  const sequenceStageRef = useRef('')
+
+  // Track 0: the selected body animation. Skipped while a sequence owns the
+  // track — the sequence effect below has already queued what should play.
   useEffect(() => {
-    if (!asset || !animation || !asset.data.findAnimation(animation)) return
+    if (!asset || sequenceActiveRef.current) return
+    if (!animation || !asset.data.findAnimation(animation)) return
     asset.state.setAnimation(0, animation, liveRef.current.loop)
     fitPendingRef.current = true
   }, [asset, animation])
+
+  // Track 0, sequence mode: every entry plays once and the LAST one loops.
+  // `setAnimation` also drops anything still queued on track 0, so a replay
+  // restarts cleanly; track 1 (`_faceN`) is untouched.
+  const sequenceLengthRef = useRef(0)
+  useEffect(() => {
+    if (!asset) return
+    const names = Array.isArray(sequence)
+      ? sequence.filter((name) => typeof name === 'string' && name && asset.data.findAnimation(name))
+      : []
+    if (!names.length) {
+      const wasSequence = sequenceActiveRef.current
+      sequenceActiveRef.current = false
+      sequencePendingRef.current = false
+      sequenceStageRef.current = ''
+      sequenceLengthRef.current = 0
+      if (!wasSequence) return
+      // Sequence removed at runtime: fall back to the plain animation.
+      const fallback = liveRef.current.animation
+      if (fallback && asset.data.findAnimation(fallback)) {
+        asset.state.setAnimation(0, fallback, liveRef.current.loop)
+        fitPendingRef.current = true
+      }
+      return
+    }
+    sequenceActiveRef.current = true
+    const last = names.length - 1
+    sequenceLengthRef.current = names.length
+    sequenceTailRef.current = names[last]
+    sequencePendingRef.current = true
+    sequenceStageRef.current = ''
+    const { state } = asset
+    // Only a MULTI-clip list is an entrance; a one-clip list means "loop this
+    // clip" (the debug viewer's single-shot preview), so it must loop too.
+    const tailLoops = liveRef.current.loop !== false
+    state.setAnimation(0, names[0], last === 0 && tailLoops)
+    for (let i = 1; i < names.length; i += 1) {
+      state.addAnimation(0, names[i], i === last && tailLoops, 0)
+    }
+    fitPendingRef.current = true
+  }, [asset, sequenceKey, sequenceToken])
 
   // Track 1: BD2 character portraits keep facial features in _faceN
   // animations; without one the face renders as a blank white mask.
@@ -143,7 +213,9 @@ export default function SpineStage(props) {
   }, [asset, expression])
 
   useEffect(() => {
-    if (!asset) return
+    // A sequence decides loop per entry; forcing `loop` here would make the
+    // intro cut repeat forever.
+    if (!asset || sequenceActiveRef.current) return
     const track = asset.state.getCurrent(0)
     if (track) track.loop = loop
   }, [asset, loop])
@@ -237,6 +309,42 @@ export default function SpineStage(props) {
       state.apply(skeleton)
       skeleton.updateWorldTransform()
 
+      // Entrance sequence: announce the hand-off to the last clip exactly once,
+      // so the parent can ease from the cutscene framing into its own, and
+      // announce every clip change so the framing can follow the shot.
+      if (sequenceActiveRef.current) {
+        const head = state.getCurrent(0)
+        const clip = head?.animation?.name ?? ''
+        if (clip && clip !== sequenceStageRef.current) {
+          sequenceStageRef.current = clip
+          live.onSequenceStage?.(clip)
+        }
+      }
+      if (sequencePendingRef.current) {
+        const head = state.getCurrent(0)
+        if (head?.animation?.name === sequenceTailRef.current) {
+          sequencePendingRef.current = false
+          // The entrance is over. Hand track 0 back to the caller's own
+          // `animation` so that setting finally means something again: before
+          // this, the last clip owned the track forever and any `animation`
+          // from the config was silently ignored.
+          //   * same clip  -> keep the running entry, a `setAnimation` would
+          //                   restart it at frame 0 and visibly jump;
+          //   * other clip -> cross-fade over the default mix.
+          // A ONE-clip list is not an entrance (the debug viewer's single-shot
+          // preview), so it keeps looping that clip untouched.
+          if (sequenceLengthRef.current > 1) {
+            sequenceActiveRef.current = false
+            const rest = live.animation
+            if (rest && rest !== sequenceTailRef.current && state.data.skeletonData.findAnimation(rest)) {
+              state.setAnimation(0, rest, live.loop !== false)
+              fitPendingRef.current = true
+            }
+          }
+          live.onSequenceDone?.()
+        }
+      }
+
       // Bounds are pose-dependent; recompute when the model / animation
       // changes or the user presses "fit". getBoundsRect is expensive, so it
       // never runs on every frame.
@@ -300,7 +408,8 @@ export default function SpineStage(props) {
         // to the camera target moves its centre by exactly (dx, dy) design px,
         // independent of that scale — the same semantics as the backdrop's
         // CSS `translate(dx,dy) scale(s)` (transform-origin 50% 50%).
-        const t = d.transform ?? {}
+        // A ref wins over the prop so a cross-fade can drive it per frame.
+        const t = d.transformRef?.current ?? d.transform ?? {}
         const layerScale = t.scale > 0 ? t.scale : 1
         const offsetX = Number.isFinite(t.dx) ? t.dx : 0
         const offsetY = Number.isFinite(t.dy) ? t.dy : 0

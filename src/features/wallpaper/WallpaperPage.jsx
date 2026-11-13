@@ -23,12 +23,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { models } from 'virtual:model-library'
 import SpineStage from '../../lib/spine/SpineStage.jsx'
-import { pickDefaultAnimation, pickDefaultExpression } from '../../lib/animation.js'
+import { pickDefaultAnimation, pickDefaultExpression, resolveSequence } from '../../lib/animation.js'
 import { assetUrl } from '../../lib/assets.js'
 import WallpaperSettings from './components/WallpaperSettings.jsx'
 import SettingsBoundary from './components/SettingsBoundary.jsx'
 import WallpaperOverlay from './components/WallpaperOverlay.jsx'
 import useParallax from './useParallax.js'
+import useCompositionBlend from './useCompositionBlend.js'
 import {
   WALLPAPER,
   loadWallpaperConfig,
@@ -37,10 +38,17 @@ import {
   resolveDesign,
   designScale,
   resolveLayerTransform,
+  resolveEntrance,
+  clipFraming,
   resolveParallax,
 } from './config.js'
 
 const readViewport = () => ({ width: window.innerWidth, height: window.innerHeight })
+
+// Passed to useParallax while an entrance sequence runs: a cutscene has its own
+// camera, so the artwork must not drift with the pointer. Constant identity keeps
+// the hook's effect from re-running on every render.
+const PARALLAX_OFF = { enabled: false, backdrop: 0, model: 0 }
 
 // Config specs may use design pixels or '10%'; the drawer always works with
 // resolved design pixels, so both spellings start from the same numbers.
@@ -71,9 +79,12 @@ export default function WallpaperPage() {
     const override = new URLSearchParams(window.location.search).get('model') ?? ''
     return resolveWallpaperModel(models, override, config.modelId)
   }, [config])
-  const backdrop = useMemo(() => pickBackdrop(model, config.backdrop), [model, config])
-  const design = useMemo(() => resolveDesign(backdrop, config.design), [backdrop, config])
-  const backdropUrl = useMemo(() => (backdrop ? assetUrl(backdrop.url) : ''), [backdrop])
+  // The design canvas always follows the GLOBAL `backdrop` pick. A clip may show
+  // a different image, but the canvas — and therefore every design-pixel number
+  // in the config — must not change when a shot swaps, or the whole composition
+  // would jump.
+  const baseBackdrop = useMemo(() => pickBackdrop(model, config.backdrop), [model, config])
+  const design = useMemo(() => resolveDesign(baseBackdrop, config.design), [baseBackdrop, config])
   // Both adjustments resolve to design-canvas pixels, so the numbers below are
   // independent of the screen. The backdrop uses a CSS transform; the model
   // applies the SAME tuple inside the WebGL camera (see SpineStage).
@@ -103,8 +114,86 @@ export default function WallpaperPage() {
 
   const [settingsOpen, setSettingsOpen] = useState(false)
 
+  // Model state reported by the stage. Declared up here because the entrance
+  // playlist below needs the animation list.
+  const [info, setInfo] = useState(null)
+  const [animation, setAnimation] = useState('')
+  const [expression, setExpression] = useState('')
+  const [message, setMessage] = useState('')
+
+  // ---- entrance sequence -------------------------------------------------
+  // BD2 opens a character scene with a CHAIN of shots (cut_A -> cut_B ->
+  // loop_2). Every clip carries its own backdrop / scale / offsets — the shots
+  // are joined at playback time instead of being baked into one framing.
+  // `sequence: 'auto'` derives the names from the model's animations.
+  const sequence = useMemo(() => {
+    const names = resolveSequence(config.sequence, info?.animations ?? [])
+    if (!names.length || !info) return names
+    const available = new Set(info.animations.map((item) => item.name))
+    return names.filter((name) => available.has(name))
+  }, [config.sequence, info])
+  const sequenceKey = sequence.join('|')
+  const [entranceDone, setEntranceDone] = useState(false)
+  // Which shot is on screen right now, reported by the stage once per clip.
+  const [stageClip, setStageClip] = useState('')
+  // Bumped to replay the entrance from the first clip (no asset reload).
+  const [sequenceToken, setSequenceToken] = useState(0)
+  const replaySequence = useCallback(() => setSequenceToken((token) => token + 1), [])
+  useEffect(() => {
+    setEntranceDone(false)
+    setStageClip('')
+  }, [sequenceKey, sequenceToken, model?.id])
+  const handleSequenceDone = useCallback(() => setEntranceDone(true), [])
+  const handleSequenceStage = useCallback((name) => setStageClip(name), [])
+
+  const entrance = useMemo(() => resolveEntrance(config.entrance, design), [config.entrance, design])
+  // `autoplay: false` means the wallpaper opens on its resting composition and
+  // the entrance only runs when asked for. A replay request (the round play
+  // button, or the drawer's 重新播放) always wins over the flag.
+  // The drawer may flip the switch live; `null` = follow the config file, so a
+  // reloaded config is never shadowed by a stale copy of itself.
+  const [autoplayOverride, setAutoplayOverride] = useState(null)
+  const autoplay = autoplayOverride ?? entrance.autoplay
+  const wantsEntrance = autoplay || sequenceToken > 0
+  // Each clip's own framing only applies WHILE the entrance plays. Once the last
+  // clip takes over, the wallpaper returns to its own 「构图」
+  // (`backdropTransform` / `modelTransform`) — that is exactly what the debug
+  // panel calls 「构图（循环时）」, and it is also the pair the drawer's sliders
+  // edit. Keeping the last clip's framing forever would silently kill those
+  // sliders, which is not what the two labels promise.
+  const inEntrance = wantsEntrance && sequence.length > 0 && !entranceDone
+  const activeClip = inEntrance ? stageClip || sequence[0] || '' : ''
+  // Memoised: `clipFraming` builds a fresh object, and an unstable identity here
+  // would restart the cross-fade on every render.
+  const clip = useMemo(() => clipFraming(entrance, activeClip), [entrance, activeClip])
+  const framingT = useMemo(
+    () => (activeClip ? { backdrop: clip.backdropTransform, model: clip.modelTransform } : null),
+    [activeClip, clip],
+  )
+
   const backdropT = useMemo(() => resolveLayerTransform(tweaks.backdrop, design), [tweaks.backdrop, design])
   const modelT = useMemo(() => resolveLayerTransform(tweaks.model, design), [tweaks.model, design])
+  const composedT = useMemo(() => ({ backdrop: backdropT, model: modelT }), [backdropT, modelT])
+  const targetT = framingT ?? composedT
+
+  // A clip may show a different backdrop image than the global pick. It is set
+  // on the SAME <img>, so the CSS transform (and its custom properties) survive
+  // the swap; every clip image is preloaded so the switch is not a blank frame.
+  const activeBackdrop = useMemo(
+    () => pickBackdrop(model, clip.backdrop || config.backdrop),
+    [model, clip.backdrop, config.backdrop],
+  )
+  const backdropUrl = useMemo(() => (activeBackdrop ? assetUrl(activeBackdrop.url) : ''), [activeBackdrop])
+  useEffect(() => {
+    const { clips } = entrance
+    for (const name of Object.keys(clips)) {
+      const picked = pickBackdrop(model, clips[name].backdrop || config.backdrop)
+      if (!picked) continue
+      const img = new Image()
+      img.src = assetUrl(picked.url)
+    }
+  }, [entrance, model, config.backdrop])
+
   // Both layers render on a surface slightly larger than the design canvas, so
   // panning / enlarging stops cutting them off with a visible straight edge at
   // the canvas bounds (the viewport does the clipping instead).
@@ -115,11 +204,30 @@ export default function WallpaperPage() {
   // re-render the page. See useParallax.js.
   const designRef = useRef(null)
   const modelOffsetRef = useRef({ x: 0, y: 0 })
+  // The camera reads the model layer from a ref, so the entrance cross-fade can
+  // animate it without a render; `transform` stays as the first-paint value.
+  const modelTransformRef = useRef(null)
+  // State, not a ref: the blend hook has to re-run once the <img> exists.
+  const [backdropEl, setBackdropEl] = useState(null)
   const stageDesign = useMemo(
-    () => ({ ...design, model: config.model, transform: modelT, overscan, offsetRef: modelOffsetRef }),
+    () => ({
+      ...design,
+      model: config.model,
+      transform: modelT,
+      transformRef: modelTransformRef,
+      overscan,
+      offsetRef: modelOffsetRef,
+    }),
     [design, config, modelT, overscan],
   )
-  useParallax({ design, parallax: tweaks.parallax, designRef, modelOffsetRef })
+  useParallax({ design, parallax: inEntrance ? PARALLAX_OFF : tweaks.parallax, designRef, modelOffsetRef })
+  useCompositionBlend({
+    backdropEl,
+    modelTransformRef,
+    target: targetT,
+    active: inEntrance,
+    duration: entrance.blend,
+  })
 
   const updateTweaks = useCallback((layer, patch) => {
     setTweaks((prev) => ({ ...prev, [layer]: { ...prev[layer], ...patch } }))
@@ -148,6 +256,7 @@ export default function WallpaperPage() {
     if (target === 'all') {
       setTweaks({ ...base })
       setOverlayTweaks({ ...overlayBase })
+      setAutoplayOverride(null)
       return
     }
     if (target === 'backdrop' || target === 'model' || target === 'parallax') {
@@ -190,11 +299,6 @@ export default function WallpaperPage() {
   const scale = designScale(design, viewport, config.fit)
   const left = (viewport.width - design.width * scale) / 2
   const top = (viewport.height - design.height * scale) / 2
-
-  const [info, setInfo] = useState(null)
-  const [animation, setAnimation] = useState('')
-  const [expression, setExpression] = useState('')
-  const [message, setMessage] = useState('')
 
   const handleLoaded = useCallback(
     (next) => {
@@ -241,14 +345,13 @@ export default function WallpaperPage() {
             src={backdropUrl}
             alt=""
             draggable="false"
-            // Layer transform lives in CSS custom properties so the parallax
+            ref={setBackdropEl}
+            // The layer transform lives in CSS custom properties so the parallax
             // loop can append `--parallax-x/y` on the parent without fighting
             // React for the inline `transform` (see .wallpaper-backdrop).
-            style={{
-              '--backdrop-x': `${backdropT.dx}px`,
-              '--backdrop-y': `${backdropT.dy}px`,
-              '--backdrop-scale': String(backdropT.scale),
-            }}
+            // They are written imperatively by useCompositionBlend (entrance
+            // cross-fade); React must not own them, or the next render would
+            // snap the backdrop back to the composed framing mid-fade.
           />
         )}
         {/* Mounting only after the config settles avoids loading the model
@@ -259,6 +362,13 @@ export default function WallpaperPage() {
               model={model}
               animation={animation}
               expression={expression}
+              // `null` while no entrance is running: an empty list is exactly
+              // the stage's "just play `animation`" mode, so with autoplay off
+              // the model opens on its idle loop and nothing is queued.
+              sequence={inEntrance ? sequence : null}
+              sequenceToken={sequenceToken}
+              onSequenceDone={handleSequenceDone}
+              onSequenceStage={handleSequenceStage}
               skin={config.skin}
               playing
               speed={config.speed}
@@ -287,20 +397,39 @@ export default function WallpaperPage() {
       {ready && <WallpaperOverlay config={overlayTweaks} />}
 
       {!settingsOpen && (
-        <button
-          type="button"
-          className="wallpaper-settings-toggle"
-          onClick={() => setSettingsOpen(true)}
-          aria-label="打开构图设置"
-          title="构图设置（S）"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-            <path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h9M17 17h3" />
-            <circle cx="15" cy="7" r="2" />
-            <circle cx="9" cy="12" r="2" />
-            <circle cx="15" cy="17" r="2" />
-          </svg>
-        </button>
+        <div className="wallpaper-tools">
+          {/* Same call as the drawer's 「重新播放」, for when the entrance was
+              missed. Only offered when the config plays it automatically — with
+              `autoplay: false` the wallpaper is meant to stay on its resting
+              composition and offer no way in. */}
+          {autoplay && sequence.length > 0 && (
+            <button
+              type="button"
+              className="wallpaper-play-toggle"
+              onClick={replaySequence}
+              aria-label="播放开场动画"
+              title="播放开场动画"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                <path d="M9 6.5v11l9.5-5.5z" />
+              </svg>
+            </button>
+          )}
+          <button
+            type="button"
+            className="wallpaper-settings-toggle"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="打开构图设置"
+            title="构图设置（S）"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+              <path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h9M17 17h3" />
+              <circle cx="15" cy="7" r="2" />
+              <circle cx="9" cy="12" r="2" />
+              <circle cx="15" cy="17" r="2" />
+            </svg>
+          </button>
+        </div>
       )}
 
       <SettingsBoundary open={settingsOpen}>
@@ -310,10 +439,17 @@ export default function WallpaperPage() {
           config={config}
           spec={tweaks}
           overlay={overlayTweaks}
+          sequence={sequence}
+          entrance={entrance}
+          autoplay={autoplay}
+          activeClip={activeClip}
+          inEntrance={inEntrance}
           source={loaded?.source ?? 'builtin'}
           onChange={updateTweaks}
           onOverlayChange={updateOverlay}
           onAccentChange={updateAccent}
+          onAutoplayChange={setAutoplayOverride}
+          onReplaySequence={replaySequence}
           onReset={resetTweaks}
           onClose={() => setSettingsOpen(false)}
         />

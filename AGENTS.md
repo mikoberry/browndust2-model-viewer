@@ -29,7 +29,7 @@
 
 | 路径 | 用途 |
 | --- | --- |
-| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，无侧栏 / 无交互（滚轮、拖拽、双击都不响应）；默认值在 `public/wallpaper.config.json`（运行期）与 `src/features/wallpaper/config.js`（内置兜底）。chrome 只有右下角半透明构图手柄（`S` 键同效）与 `overlay` 配置开启的 WallKit 控件 |
+| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，无侧栏 / 无交互（滚轮、拖拽、双击都不响应）；配置三层 = `src/features/wallpaper/config.js`（内置兜底）→ `public/wallpaper.config.json`（**出厂默认**）→ 用户「记录配置」的 `localStorage` 快照（**最优先**）。chrome 只有右下角半透明构图手柄（`S` 键同效）与 `overlay` 配置开启的 WallKit 控件 |
 | `/spine-viewer` | **开发调试辅助页**：完整查看器 UI（侧栏 / 工具栏 / 检查器 / 时间轴 / 状态栏）。**不挂任何壁纸浮层** |
 
 旧 WE 方案留下的 `src/stage/`、`src/backdrop/`、`src/overlay/`、`src/we/`、`public/models/`、`project.json`、
@@ -59,7 +59,7 @@ npm run preview        # 预览构建产物
 index.html                       # 挂载点；内联脚本规范化 /spine-viewer/ 尾斜杠
 vite.config.js                   # react() + modelLibraryPlugin() + wallkitWE()，base: './'
 public/
-  wallpaper.config.json          # 运行期配置，原样复制到 dist/ 根；改完刷新即生效
+  wallpaper.config.json          # 出厂默认配置，原样复制到 dist/ 根；用户「记录」过则以记录为准
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR 尺寸）
   model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile
@@ -72,9 +72,10 @@ src/
   features/
     wallpaper/                   # Feature：根路由正式壁纸，默认无 chrome
       WallpaperPage.jsx          # 背景 img + canvas，页面入口 / 组合根；设置抽屉开关与 tweak 状态
-      config.js                  # 内置默认值 + mergeConfig/loadWallpaperConfig + 构图纯函数
+      config.js                  # 内置默认值 + mergeConfig/loadWallpaperConfig（几何函数从 lib/composition.js 转出）
       color.js                   # hex ↔ HSV 换算（取色面板用，无 React/DOM，可在 Node 里测）
       useParallax.js             # 鼠标视差：归一化指针 + 缓动，写 CSS 变量（背景）与 offsetRef（模型）
+      useCompositionBlend.js     # 段间 / 入场 → 固定构图的渐变：写 --backdrop-* 与 transformRef，不进 state
       components/
         WallpaperSettings.jsx    # 壁纸设置抽屉：主题色 + 「构图 / 时钟 / 频谱 / 专辑卡 / 氛围 / 指针」tab
         SettingsBoundary.jsx     # 抽屉的错误边界（面板崩了只隐藏面板，壁纸继续跑）
@@ -82,17 +83,21 @@ src/
         settings-fields.jsx      # 共用表单控件（滑块 + 步进 / CSS 长度步进 / 颜色 / 开关 / 按钮组 / 3×3 锚点）
         WallpaperOverlay.jsx     # WallKit 控件浮层（视口锚定），按 overlay 配置逐项显示
     viewer/                      # Feature：/spine-viewer 开发调试辅助页
-      ViewerPage.jsx             # 状态 + 布局
+      ViewerPage.jsx             # 状态 + 布局（含构图预览状态与配置文件读取）
       components/                # 只被 viewer 使用的 UI
         ModelSidebar.jsx
         Toolbar.jsx
-        Inspector.jsx
+        Inspector.jsx             # 三个 tab：动画 / 构图 / 信息
+        CompositionPanel.jsx      # 构图调参 + 「复制完整配置」
+        CompositionStage.jsx      # 固定设计画布预览（背景 img + SpineStage 共用一层 transform）
         Timeline.jsx
   lib/                           # 共享技术层（不依赖任何 feature）
     spine/                       # 共享 Spine WebGL 引擎
-      SpineStage.jsx             # 渲染循环 / 相机 / 指针交互
+      SpineStage.jsx             # 渲染循环 / 相机 / 指针交互 / 入场队列
       useSpineAsset.js           # 资源加载 + 运行时对象构建
-    animation.js                 # 默认动画 / 表情挑选（两个 feature 共用）
+    composition.js               # 设计画布几何（唯一来源，无 DOM，可纯 Node 复算）
+    backdrops.js                 # 背景挑选（'auto' 规则，两个 feature 共用）
+    animation.js                 # 默认动画 / 表情挑选 + 入场序列识别（两个 feature 共用）
     assets.js                    # BASE_URL 资源 URL + 格式化
     uiScale.js                   # 视口 → --ui-scale（1080p = 1），壁纸 chrome 长度都乘它
   styles/
@@ -129,8 +134,10 @@ src/features/<feature>/
   **不要**全量改成 kebab-case，也**不要**引入 `@/` 路径别名 —— 本项目一律用相对路径。
 - **样式**：集中在 `src/styles/global.css`，class 用页面前缀（`.stage-*` / `.wallpaper-*` / `.model-item-*` 等），
   不用 CSS-in-JS、不用 Tailwind、不用组件库。
-- **纯函数与副作用隔离**：构图 / 变换计算放在 `features/wallpaper/config.js` 等无 DOM 依赖的模块里，
+- **纯函数与副作用隔离**：构图 / 变换计算放在 `lib/composition.js` 等无 DOM 依赖的模块里，
   保证能直接在 Node 里 import 复算；WebGL 与 rAF 只出现在 `lib/spine/`。
+  注意：不要让它间接 import `lib/assets.js`（模块顶层读 `import.meta.env.BASE_URL`，Node 里会炸），
+  所以背景挑选单独放在 `lib/backdrops.js`。
 - 组件文件顶部写一段英文注释说明职责；改了行为就同步改注释。
 
 ## 5. 组件约定（Component Guidelines）
@@ -140,17 +147,39 @@ src/features/<feature>/
   可选 props，**默认值必须保持调试页行为**，不要写第二套 WebGL / 资源加载逻辑。
 - 组件靠 props + 回调通信，不因为「参数有点多」就引入全局 store；确实要共享时按 §3 提升到 `lib/`。
 - **壁纸页的 chrome 只能是「按需呼出」**：`WallpaperSettings` 默认收起（`visibility: hidden`，不占 Tab 焦点），
-  由右下角手柄或 `S` 键打开、`Esc` / × 关闭。抽屉用 tab 分组：`构图`（背景 / 模型两层）+ 五个控件各一个 tab，
+  由右下角手柄或 `S` 键打开、`Esc` / × 关闭。抽屉用 tab 分组：`构图`（背景 / 模型两层 + 鼠标视差 + 入场动画重播）
+  + 五个控件各一个 tab，
   顶部是共用主题色（`overlay.accent`）。它的编辑只改页面内存状态，**绝不写回 `config.js`**；
-  唯一出口是「记录配置」：生成**完整配置文件内容**（`_readme` + 全部字段，两层 transform 与 `overlay` 都用面板当前值），
-  写进 `localStorage['wallpaper.config.record']`（`{ at: ISO, text }`）**并**复制到剪贴板（clipboard API 失败时回退
+  唯一出口是「记录配置」：生成**完整配置内容**（`_readme` + 全部字段，两层 transform、入场开关与 `overlay` 都用面板当前值），
+  写进 `localStorage['wallpaper.config.user']`（`{ at: ISO, config: <完整配置对象> }`）**并**复制到剪贴板（clipboard API 失败时回退
   `execCommand`，两者都失败也要把状态如实显示成「记录失败 / 复制失败」）。
-  未调整时这份文本与 `public/wallpaper.config.json` **逐字节相同**（键顺序沿用 `WALLPAPER`，`JSON.stringify(..., 2)` + 换行）。
-  **记录只写不读**：启动 / 打开抽屉时不得从 localStorage 恢复任何值（文件仍是唯一真源），只允许读 `at` 显示「上次记录 hh:mm:ss」。
+  未调整时这份内容与 `public/wallpaper.config.json` **逐字节相同**（键顺序沿用 `WALLPAPER`，`JSON.stringify(..., 2)` + 换行）。
+  **优先级：内置 `WALLPAPER` < `wallpaper.config.json` < 用户记录**（`loadWallpaperConfig()` 先读文件、再
+  `mergeConfig(file, recorded.config)`，`source` 变成 `'user'` 并带 `recordedAt`）。
+  也就是：**文件只是出厂 / 首次默认值**，用户记录过就以记录为准，刷新、切到别的壁纸再切回来都一样；
+  只有「恢复首次默认」（`clearRecordedConfig()` + `location.reload()`）或宿主清掉该壁纸的存储（卸载重装）才回到文件。
+  记录是**完整文档**，所以它会连同当时等于内置值的字段一起覆盖文件——这是刻意的（「按我记录的来」），不要改成
+  「只记录与默认不同的键」；只有记录里根本没有的键（新版本才加的）才回落到文件 / 内置值。
+  旧键 `wallpaper.config.record`（`{ at, text }`，当年只写不读）**故意不再读**：它的内容已经过时。
   storage 在 WE 的 `file://` 宿主里可能被拒（`setItem` 抛错），必须 try/catch 且不因此中断复制。
   改字段或顺序时要保持这个等价性；面板控件只能**原值透传**，不要在 UI 层做单位换算或格式化后写回
   （唯一例外是两层 transform 的 `round2` / `Math.round`，它们对未调整的值是恒等变换）。
-  不要给它加常驻按钮、toast 或自动保存。
+  不要给它加常驻按钮、toast 或自动保存；「恢复首次默认」用**两步点击**（按钮文字变「确认恢复？」），
+  因为在 WE 的 CEF 里 `confirm()` 会把壁纸窗口带崩。
+- **调试页的「构图」tab 是壁纸构图的调参台**（`viewer/components/CompositionPanel.jsx` +
+  `CompositionStage.jsx`）：它用同一个 `lib/composition.js` 按壁纸的方式渲染设计画布，
+  读写的就是 `wallpaper.config.json` 的键（启动时 fetch 该文件作起点），「复制完整配置」按文件的键顺序生成整份内容。
+  这里允许原生 `<select>` / `<input type="range">` / 数字框（只在浏览器里跑，没有 CEF 弹窗与无键盘问题）；
+  **不要把这类控件搬进壁纸抽屉**。切换预览开关时 `CompositionStage` 保持同一棵子元素树，避免重挂 `SpineStage`
+  导致模型重新加载。预览的播放源有两条：点某一镜（`compose.solo`）= 只把 `[这一段]` 交给 `SpineStage`，
+  单段序列天然循环，方便单独抠构图；「播放完整入场」才传完整 `sequence` 并把面板切回跟随当前镜头。
+  **不要**让「选段」顺带播整串——那会让人分不清屏幕上是哪一段。
+  **预览区比例**（工具栏右侧「视口」：`auto` / `16:9` = 1920×1080）改的是 `.stage-area` 里那层
+  `.stage-frame` 的**盒子**：`auto` 铺满（`left/top 0` + `100%`），锁定比例时用 JS 量 `.stage-area`
+  （`ResizeObserver`）算一个居中的 16:9 框。`SpineStage` 与 `CompositionStage` 都是量自己的 CSS 盒
+  （canvas 的 `clientWidth/Height`、`.compose-viewport`），所以只换外框就能得到真实的 1080p 取景——
+  **不要**去改相机或加第二套渲染路径。`.stage-frame` 必须**常驻渲染**（只改 inline 盒），否则切比例
+  会把 `SpineStage` 卸掉重挂、重新载入素材。
 - **控件面板不许出现第二份默认值**：`OverlaySettings` 只读 `overlay` 里的当前值，缺字段时用 `?? 常量` 只用于
   渲染（如 `beatIntensity ?? 100`），写回时不要顺手补键，否则「记录配置」的内容就不再与文件等价。
   枚举列表（频谱 / 专辑 / 氛围 / 指针的 variant）优先从 wallkit 的导出取；只有 Clock 的 10 个 `placement`
@@ -236,15 +265,18 @@ src/features/<feature>/
 
 ### 运行期配置文件（`public/wallpaper.config.json`）
 
-唯一的运行期「配置数据」，也是壁纸页默认值的正式入口。
+壁纸页的**出厂默认值**（首次打开 / 恢复默认 / 宿主清空存储时生效）。
 
 - Vite 把 `public/` 原样复制到 `dist/` 根，所以文件名**不带 hash**、可以打包后手改；`import` 里**没有**它，
   它是 `fetch` 出来的静态资源（`configFileUrl()` 用 `document.baseURI` 解析，dev / dist / 子路径都成立）。
-- 加载流程：`loadWallpaperConfig()` → `mergeConfig(WALLPAPER, json)` 深度合并 → 失败则原样用内置 `WALLPAPER`，
-  `console.warn` 一条并返回 `source: 'builtin'`。**绝不 reject**，壁纸必须有画面。
+- 加载流程：`loadWallpaperConfig()` → `readConfigFile()`（`mergeConfig(WALLPAPER, json)`，失败则原样用内置
+  `WALLPAPER`、`console.warn` 一条、`source: 'builtin'`）→ 再叠用户记录（`readRecordedConfig()`，
+  有则 `mergeConfig(file, recorded.config)`、`source: 'user'` + `recordedAt`）。**绝不 reject**，壁纸必须有画面。
 - 合并规则：只对纯对象递归，数字 / 字符串 / 布尔 / 数组 / `null` 整体替换；`_` 前缀键当注释丢弃；未知键保留
   （方便先加字段再实现）。
-- 优先级：内置 `WALLPAPER` → JSON → 抽屉里的临时调整；`?model=` 只覆盖模型选择。
+- 优先级：内置 `WALLPAPER` → JSON（出厂默认）→ **用户记录**（`localStorage['wallpaper.config.user']`）→ 抽屉里的临时调整；
+  `?model=` 只覆盖模型选择。**用户的记录会盖掉文件里同名字段**，所以给所有人换默认值时改文件只对
+  「没记录过 / 点了恢复默认 / 卸载重装」的人生效。
 - 壁纸页在配置 settle 之前**不挂载 `SpineStage`**（否则会按内置 modelId 加载一次、再按文件里的重载一次）。
 - 新增设置的正确做法：先在 `WALLPAPER` 里给默认值 → JSON 里加同名键 → 在 `WallpaperPage` 里读 `config.xxx`。
   不要在组件里写 `?? 某个魔法数`，默认值只允许出现在 `WALLPAPER`。
@@ -265,7 +297,8 @@ src/features/<feature>/
 
 ## 9. 壁纸构图（Wallpaper Composition，改相机前必读）
 
-对应实现：`features/wallpaper/config.js`（配置 + 纯函数）与 `lib/spine/SpineStage.jsx` 的 `design` 分支。
+对应实现：`lib/composition.js`（几何纯函数）、`features/wallpaper/config.js`（配置 + 合并）与
+`lib/spine/SpineStage.jsx` 的 `design` 分支。
 
 - `skel.width/height` 只是 setup pose 包围盒，**不是**设计分辨率。基准 = **对应背景图的原生像素尺寸**
   （扫描器读 PNG IHDR 写入 manifest 的 `width`/`height`，构建期就确定）。
@@ -291,6 +324,42 @@ src/features/<feature>/
   模型走 `design.offsetRef.current`，由 `SpineStage` 每帧读 ref 加进相机 target（同样乘 `k`）。
   **两侧都不要走 React state**：60fps 的漂移会整页重渲染。缓动与 rAF 只存在于 `features/wallpaper/useParallax.js`，
   指针静止后循环自己停下。改这里时保证「指针居中 = 偏移 0」「同一归一化指针在不同设计尺寸下比例相同」。
+- **入场序列（`sequence`）**：BD2 的 `cut_A → cut_B → loop_2` 是**同一个 track 0 的队列**，不要为它另建播放器。
+  `sequence` 名字先过一遍 `asset.data.findAnimation()` 过滤（换 `modelId` 后不会抛错，只会少播几段），
+  然后 `setAnimation(0, 第一段, loop=false)` + 对每段 `addAnimation(0, name, 最后一段 ? loop : false, 0)`；
+  `setAnimation` 会顺带清掉 track 0 上残留的队列，所以「重新播放」只要让 effect 重跑即可。
+  `sequenceActiveRef` 是 track 0 的**归属标记**：单动画 effect 与 `loop` effect 看到它必须直接 return，
+  否则入场会被重置成循环动画、或被强制 `loop=true` 变成死循环。`sequenceToken` 是唯一的重播入口
+  （抽屉「入场动画 → 重新播放」），**不要**用重载 asset / 重挂组件的方式重播。
+  序列每段之间的过渡沿用 `AnimationStateData.defaultMix`（0.2s）；名字因模型而异，配置里改（`sequence: "auto"` 会走
+  `lib/animation.js` 的 `pickEntranceSequence()` 按动画名识别），代码里不要针对某个皮肤硬编码。
+- **入场构图（`entrance.clips`，按段）**：入场不是「一组构图」，而是**每段一组**——BD2 的 `cut_A` / `cut_B` /
+  `loop_2` 是三个独立镜头，背景、缩放、位置都可能不同。`entrance.clips` 以**动画名**为键（不是数组下标：
+  名字来自 skel，顺序来自 `sequence`），每项是 `{ backdrop, backdropTransform, modelTransform }`；
+  `backdrop: ''` = 跟随全局 `backdrop`。没配置的段用 `NEUTRAL_LAYER`（`1×`、无偏移 = 原始画布）。
+  `SpineStage` 在 rAF 里比对 `state.getCurrent(0).animation.name`，**每段只回调一次** `onSequenceStage`
+  （不是每帧），壁纸据此换构图与背景图——60fps 里做这件事会整页重渲染。
+  **设计画布永远跟全局 `backdrop` 走**，某段换图只换 `<img>` 的 `src`（启动时预加载所有段的图，避免闪白）；
+  让画布跟着段变会让所有设计像素数字失去意义、画面整体跳一下。
+  最后一段（`sequence` 末尾）成为当前动画时入场即结束（`onSequenceDone`）：`SpineStage` 把 track 0 交还给
+  `animation`（同名就用现有 entry，**不要**再 `setAnimation`，那会把循环段从第 0 帧重启、明显跳一下；
+  不同名则 `setAnimation(0, animation, loop)` 交叉淡入），`useCompositionBlend` 同时在 `entrance.blend` 秒内缓动回
+  `backdropTransform` / `modelTransform`。**「入场（按段）」只在入场期间生效，结束后一律回「构图」**——
+  别让最后一段的 clip 变成常驻构图（那会让抽屉里「构图」的滑块彻底失效，用户看到的就是「设置没用了」）。
+  单段序列（调试页的「单段循环」预览）不算入场，不做交还、就一直循环那一镜。
+  **是否自动播放由 `entrance.autoplay` 决定**：`true`（默认）= 加载完成后自动播一遍，并且在壁纸右下角
+  齿轮**上方**多一个圆形播放按钮（`.wallpaper-play-toggle`，和抽屉「重新播放」共用 `replaySequence`）；
+  `false` = 打开就直接是「构图」、不出现播放按钮（抽屉里仍能手动重播）。实现上多了一级
+  `wantsEntrance = autoplay || sequenceToken > 0`，且**不播入场时给 `SpineStage` 传 `sequence={null}`**
+  —— 空列表正是「只播 `animation`」的既有语义，不要为此新增开关。抽屉里的勾选框改的是内存 override
+  （`autoplayOverride`，`null` = 跟随配置，避免配置晚到时被一份旧副本盖住），「全部重置」把它清回 `null`。
+  **段间过渡也用同一个 `blend`**：hook 在 `active`（序列进行中）
+  或刚离开序列时对每次 target 变化做缓动，其余情况（首帧、抽屉滑块、换背景）直接贴值。
+  两个通道和视差同源：背景写 `--backdrop-x/y/scale`、模型写 `design.transformRef`（`SpineStage` 里
+  `d.transformRef.current ?? d.transform`）——**不要**把这些值搬进 React state，60fps 渐变会让整页 + 所有控件重渲染。
+  背景的三个变量**只能有一个写者**：React 不再给 `.wallpaper-backdrop` 设 inline style，否则一次重渲染就会把画面
+  掸回构图值、而渐变循环不会重跑。入场期间视差强制关闭（`PARALLAX_OFF`）。
+  这是唯一允许「壁纸画面跟随某个动画阶段改构图」的机制，不要在别处再开第二条。
 - 构图设置抽屉（`features/wallpaper/components/WallpaperSettings.jsx`）里的数值一律是**设计像素**，
   进入渲染前同样走 `resolveLayerTransform()`，所以「面板调到 X」与「`wallpaper.config.json` 写 X」等价。
 - 改默认构图时**优先改 `public/wallpaper.config.json`**（打包后仍可改、无需重建），`config.js` 里的 `WALLPAPER`
@@ -335,8 +404,9 @@ src/features/<feature>/
   `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用 `WE_PROJECT` 覆盖；
   它会写仓库外的文件，**只在用户明确要求时执行**。
 - 只清 `assets/` / `models/` / `index.html` 三项，其它文件（`preview.gif`、WE 自己生成的快照等）必须保留。
-- `wallpaper.config.json` **和其他文件一样直接覆盖**（部署目录是 `dist/` 的镜像）。想留下在 WE 里调好的值，
-  用抽屉的「记录配置」拿回仓库，别指望部署目录里那份能存活；
+- `wallpaper.config.json` **和其他文件一样直接覆盖**（部署目录是 `dist/` 的镜像）。它只是出厂默认值，
+  所以覆盖它不会影响已经「记录」过的用户（那份在客户端的 `localStorage` 里）；想把这些值拿回仓库，
+  用抽屉的「记录配置」复制出来再整份粘进 `public/wallpaper.config.json`；
   不要为了「一致性」改成每次覆盖。
 - `project.json` 由脚本生成：`file: index.html`、`type: "Web"`（大写）、
   `general.supportsaudioprocessing: true`（**必须在 `general` 内**）。`preview` 只在目标目录里真有图片时才登记。
@@ -351,18 +421,32 @@ src/features/<feature>/
    node_modules/.bin/esbuild src/main.jsx --bundle --external:react --external:react-dom --external:@esotericsoftware/spine-webgl --external:virtual:model-library --external:wallkit --external:wallkit/* --loader:.css=css --format=esm --outfile=/tmp/check.js
    ```
    退出码 0 = 语法与所有 import 路径解析成功（`wallkit` 本身由 Vite 编译，这里按外部依赖跳过）。
-2. **纯 Node**：`npm run model:list`；构图数学校验直接 import `src/features/wallpaper/config.js` 的
-   `compositionRects()` / `normalizeRect()`；配置合并用 `mergeConfig()` 断言（空 override 等于默认值、
+2. **纯 Node**：`npm run model:list`；构图数学校验直接 import `src/lib/composition.js` 的
+   `compositionRects()` / `normalizeRect()` / `resolveEntrance()` / `blendLayerTransform()`；
+   配置合并用 `mergeConfig()` 断言（空 override 等于默认值、
    嵌套部分覆盖、`_` 键被丢弃、`public/wallpaper.config.json` 的键与 `WALLPAPER` 一致）。
-   该文件顶层**不能**依赖 `import.meta.env` / `document`（否则 Node 无法 import），只在函数体内用 `document`。
+   这些文件顶层**不能**依赖 `import.meta.env` / `document`（否则 Node 无法 import），只在函数体内用 `document`。
+   `lib/assets.js` 顶层读了 `import.meta.env.BASE_URL`，所以**不要**从构图 / 背景挑选模块转出它。
    抽屉的「记录配置」也要断言：未调整面板时，生成内容与 `public/wallpaper.config.json` **逐字节相同**。
+   新增字段时必须同时出现在 `WALLPAPER` 与 JSON 的**同一位置**（键顺序 = 输出顺序），否则这条断言会挂。
+   配置**优先级**用桩 `window.localStorage` + 桩 `fetch` 直接调 `loadWallpaperConfig()` 断言：
+   无记录 → `source: 'file'`；`saveRecordedConfig()` 后 → `source: 'user'` 且记录里的值盖过文件；
+   `clearRecordedConfig()` 后 → 又回到文件；`localStorage` getter 抛错时降级到文件且不抛。
 3. **构建**：`npm run build`（仅用户明确要求时），核对 `dist/` 只含 manifest 引用的素材，
    且 `dist/wallpaper.config.json` 存在、文件名无 hash。
 4. **取色面板**：`src/features/wallpaper/color.js` 可在 Node 里直接 import，断言 `hsvToHex(hexToHsv(x)) === x`
    （含 `#000000` / 饱和色）与 `s`/`v` 越界裁剪；组件本身不做渲染验证。
 5. **视差方向 / 比例**：`parallaxOffset(strength, design, { x, y })` 也是纯函数，断言
    「指针在左上 → 偏移为负（左上）」「负强度反向」「指针居中 → 0」「同一归一化指针在 1024 与 2048 画布上比例相同」。
-6. 实际画面由用户自己在浏览器 / 壁纸宿主里确认。
+6. **入场序列识别**：`pickEntranceSequence()` / `resolveSequence()` 是纯函数，用假动画列表断言
+   `cut_A/cut_B` 与 `A_cut/B_cut` 两种拼写都能排对、`cut_A_water` 不会顶掉 `cut_A`、没有 cut 段时返回 `[]`、
+   最后接 `loop_2`（其次 `loop`）。
+7. **入场按段构图**：`resolveEntrance()` / `clipFraming()` 是纯函数，断言
+   「未列出的段 → `1×` 无偏移、`backdrop: ''`」「`'10%'` 偏移换算成设计像素」「负/缺省 `blend` → 0」
+   「`autoplay` 缺省 / 非 `false` → `true`」。面板的「复制完整配置」也要断言与
+   `public/wallpaper.config.json` **逐字节相同**（`entrance` 块里键序必须是 `autoplay` → `blend` → `clips`
+   → 段名 → `backdrop` → 两个 transform）。
+8. 实际画面（入场接缝、渐变手感、构图观感）由用户自己在浏览器 / 壁纸宿主里确认。
 
 **不要**跑无头浏览器、截图、Playwright 或任何浏览器自动化；不要在报告里把「构建通过」说成「验证通过」。
 
@@ -379,14 +463,18 @@ src/features/<feature>/
 
 - **加模型**：把 `.skel` / `.json` + `.atlas` + 全部图集页 PNG 放进 `model-library/<角色>/<皮肤>/`，刷新即可；
   用 `npm run model:list` 核对图集页是否齐全。不要改 `src/` 去硬编码模型列表。
-- **改壁纸**：调默认构图改 `public/wallpaper.config.json`（运行期、打包后可改）；`src/features/wallpaper/config.js`
+- **改壁纸**：调默认构图改 `public/wallpaper.config.json`（出厂默认、打包后可改）；`src/features/wallpaper/config.js`
   的 `WALLPAPER` 只是兜底默认值，改了要同步 JSON。这些都不参与调试页。
+  **注意**：客户端一旦「记录配置」，那份 `localStorage` 快照会盖掉文件里的同名字段（见 §7 优先级），
+  所以改文件只对没记录过 / 点过「恢复首次默认」/ 卸载重装的场景生效。
 - **改调试 UI**：只动 `src/features/viewer/`；若某组件要复用到壁纸，先按 §3 提升到共享层。
 - **加 / 调控件浮层**：只动 `WallpaperOverlay.jsx` + `overlay` 配置两处；组件 API 与 WE 接线细节查
   `node_modules/wallkit/README.md` 与 `node_modules/wallkit/docs/we-integration.md`（上游仓库
   https://github.com/mikoberry/wallkit），不要凭记忆猜 prop。
 - **改相机 / 构图数学**：同时对照 `lib/spine/SpineStage.jsx` 的 `design` 分支与
-  `features/wallpaper/config.js` 的 `compositionRects()`，并用 §13 的纯 Node 复算确认归一化矩形不变。
+  `lib/composition.js` 的 `compositionRects()`，并用 §13 的纯 Node 复算确认归一化矩形不变。
+- **调入场构图 / 序列**：不要在壁纸抽屉里硬塞控件，去 `/spine-viewer` → 「构图」tab 调，再「复制完整配置」
+  覆盖 `public/wallpaper.config.json`。壁纸抽屉只读展示当前值 + 「重新播放」。
 - **加 feature**：在 `src/features/` 下自建目录（页面 + 专属 `components/` / `config.js`），
   在 `app/App.jsx` 增加分发分支；共享逻辑下沉到 `lib/`。
 

@@ -10,11 +10,42 @@
 // design coordinates (design pixels or % of the design canvas) — see
 // resolveLayerTransform() below. Screen-pixel units would break invariance.
 //
-// These are the BUILT-IN DEFAULTS. The live values come from
-// `wallpaper.config.json` (shipped next to index.html), deep-merged on top of
-// this object at startup — see loadWallpaperConfig(). Keep this object usable
-// on its own: it is the fallback when the file is missing or unreadable
-// (e.g. a `file://` build, where fetch cannot read local JSON).
+// Configuration has three layers, in increasing priority:
+//
+//   1. this BUILT-IN object — fallback when even the JSON file is unreadable
+//      (e.g. a `file://` build, where fetch cannot read local JSON);
+//   2. `wallpaper.config.json` (shipped next to index.html) — the FACTORY
+//      DEFAULTS: what a fresh install / first open shows;
+//   3. the user's own snapshot, saved by the drawer's 「记录配置」 into
+//      localStorage — once it exists it WINS over the file, so a wallpaper that
+//      was tuned by hand keeps that tune across reloads and across switching to
+//      another wallpaper and back. It is dropped only by 「恢复默认」 (or by the
+//      host throwing the wallpaper's storage away, which is what uninstalling
+//      and reinstalling it does).
+//
+// See loadWallpaperConfig() for the exact merge order.
+//
+// The geometry helpers re-exported here live in src/lib/composition.js, because
+// the debug viewer's composition preview uses the exact same maths. Keeping one
+// import path for the wallpaper keeps the two call sites honest.
+
+export {
+  FALLBACK_DESIGN,
+  designLength,
+  resolveLayerTransform,
+  resolveEntrance,
+  clipFraming,
+  NEUTRAL_LAYER,
+  blendLayerTransform,
+  resolveDesign,
+  designScale,
+  resolveParallax,
+  parallaxOffset,
+  layerRect,
+  modelBaseRect,
+  compositionRects,
+  normalizeRect,
+} from '../../lib/composition.js'
 
 export const WALLPAPER = {
   // Exact model id (see `npm run model:list`). Exact match -> partial match ->
@@ -111,6 +142,48 @@ export const WALLPAPER = {
   // an empty string disables that track entirely.
   animation: null,
   expression: null,
+
+  // Entrance sequence on track 0: names played back to back once, and the LAST
+  // one then loops. BD2 boss/character cutscenes ship a `cut_A` / `cut_B` pair
+  // (some models spell it `A_cut` / `B_cut`, a few add `C_cut`) that lead into
+  // the idle loop, so the game plays cut_A -> cut_B -> loop_2 when the scene
+  // opens. Names vary per model, so this is a plain list: edit it (or set it to
+  // null / []) when you switch `modelId`. Unknown names are ignored, and it runs
+  // once per load; the composition tab has a "replay" button to start it again.
+  // The literal string 'auto' derives the list from the model's own animation
+  // names (cut_A/cut_B/…, then loop_2) — handy when you keep switching models.
+  sequence: ['cut_A', 'cut_B', 'loop_2'],
+
+  // Framing used WHILE each clip of the sequence above plays. Every clip keeps
+  // its OWN backdrop / scale / offset, because a game cutscene is a chain of
+  // separate shots: cut_A may be a wide establishing frame, cut_B a close-up on
+  // a different backdrop, and loop_2 the settled idle view. They are joined at
+  // playback time, so nothing has to be baked into the artwork.
+  //
+  //   autoplay — true = play the sequence once the model has loaded (the
+  //              wallpaper "opens" with its cutscene). false = start directly on
+  //              the resting composition; a round play button above the
+  //              settings button then starts it on demand.
+  //   blend    — seconds of cross-fade between two clips (0 = hard cut)
+  //   clips    — keyed by ANIMATION NAME; each entry may set
+  //                backdrop          image pick ('auto' / 'none' / filename part),
+  //                                  '' = keep the global `backdrop` above
+  //                backdropTransform { scale, offsetX, offsetY }
+  //                modelTransform    { scale, offsetX, offsetY }
+  //              Offsets are design pixels (or '10%'), exactly like the two
+  //              blocks above; a clip with no entry plays on the raw canvas.
+  //
+  // The LAST clip is special: if it has an entry here, its framing stays on
+  // screen for the rest of the session (it IS the wallpaper). If it has none,
+  // the layers ease back to `backdropTransform` / `modelTransform` when it
+  // starts. Names vary per model — tune this in the debug viewer's 构图 tab,
+  // which reads and writes the same file.
+  entrance: {
+    autoplay: true,
+    blend: 0.9,
+    clips: {},
+  },
+
   skin: '',
   speed: 1,
   // Extra multiplier on top of the fixed composition (>1 enlarges).
@@ -194,12 +267,16 @@ export const WALLPAPER = {
 }
 
 // ---------------------------------------------------------------------------
-// External config file
+// External config file (factory defaults)
 // ---------------------------------------------------------------------------
 // `public/wallpaper.config.json` is copied verbatim to `dist/`, so a built
 // wallpaper can be retuned by editing ONE file next to index.html — no rebuild.
 // Every key it omits keeps the built-in default above; `_`-prefixed keys are
 // treated as comments and may be added freely.
+//
+// Think of it as the FIRST-RUN default: the moment the user hits 「记录配置」 in
+// the drawer, their snapshot (below) takes over and this file is only read
+// again after 「恢复默认」.
 export const CONFIG_FILE = 'wallpaper.config.json'
 
 // Kept identical to the `_readme` in public/wallpaper.config.json; the drawer
@@ -230,10 +307,74 @@ export function configFileUrl() {
   return new URL(CONFIG_FILE, document.baseURI).href
 }
 
-// Never rejects: a missing / unreadable file (e.g. `file://`, plain static
-// hosting without the JSON) just falls back to the built-in defaults, so the
-// wallpaper always renders.
-export async function loadWallpaperConfig({ timeout = 5000 } = {}) {
+// ---------------------------------------------------------------------------
+// User snapshot (localStorage)
+// ---------------------------------------------------------------------------
+// Wallpaper Engine runs a web wallpaper on a file:// / localhost origin where
+// storage can be unavailable, so every access is guarded and a failure only
+// means "the tune will not survive a reload".
+//
+// Deliberately a NEW key: the old `wallpaper.config.record` slot held a
+// `{ at, text }` snapshot that was never read back, so its contents are stale
+// (they still carry whatever the file said the day it was recorded). It stays
+// in storage as inert junk and gets replaced by the first new 「记录配置」.
+const RECORD_KEY = 'wallpaper.config.user'
+
+function storage() {
+  try {
+    return window.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
+// `{ at: ISO string, config: <complete config object> }`.
+export function readRecordedConfig() {
+  const store = storage()
+  if (!store) return null
+  let raw
+  try {
+    raw = store.getItem(RECORD_KEY)
+  } catch {
+    return null
+  }
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!isPlainObject(parsed?.config)) return null
+    return { at: typeof parsed?.at === 'string' ? parsed.at : '', config: parsed.config }
+  } catch {
+    return null
+  }
+}
+
+export function saveRecordedConfig(config, at = new Date().toISOString()) {
+  const store = storage()
+  if (!store) return false
+  try {
+    store.setItem(RECORD_KEY, JSON.stringify({ at, config }))
+    return true
+  } catch {
+    return false
+  }
+}
+
+// 「恢复默认」: forget the snapshot so the shipped file applies again.
+export function clearRecordedConfig() {
+  const store = storage()
+  if (!store) return false
+  try {
+    store.removeItem(RECORD_KEY)
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Reads the shipped JSON file. Never rejects: a missing / unreadable file (e.g.
+// `file://`, plain static hosting without the JSON) just falls back to the
+// built-in defaults, so the wallpaper always renders.
+async function readConfigFile({ timeout = 5000 } = {}) {
   const url = configFileUrl()
   const controller = typeof AbortController === 'function' ? new AbortController() : null
   const timer = controller ? setTimeout(() => controller.abort(), timeout) : 0
@@ -250,154 +391,34 @@ export async function loadWallpaperConfig({ timeout = 5000 } = {}) {
   }
 }
 
+// Priority: built-in < shipped file < the user's own recorded snapshot.
+// `source` tells the drawer where the live values came from:
+//   'user'    — a recorded snapshot is in charge (the file is inert)
+//   'file'    — first run, no snapshot yet: the shipped file is the default
+//   'builtin' — the file could not be read either
+// The snapshot is merged ON TOP of the file (not used verbatim) so a newer
+// build that adds keys still gets sane values for them.
+export async function loadWallpaperConfig(options) {
+  const base = await readConfigFile(options)
+  const recorded = readRecordedConfig()
+  if (!recorded) return base
+  return {
+    ...base,
+    config: mergeConfig(base.config, recorded.config),
+    source: 'user',
+    recordedAt: recorded.at,
+  }
+}
+
+export { pickBackdrop } from '../../lib/backdrops.js'
+
 export function resolveWallpaperModel(models, overrideId = '', modelId = WALLPAPER.modelId) {
   if (!models?.length) return null
   const id = overrideId || modelId
   return models.find((item) => item.id === id) ?? models.find((item) => item.id.includes(id)) ?? models[0]
 }
 
-export function pickBackdrop(model, preference = WALLPAPER.backdrop) {
-  const all = model?.backdrops ?? []
-  if (!all.length || preference === 'none' || preference === '') return null
+// Composition geometry lives in src/lib/composition.js (re-exported at the top):
+// resolveDesign / designScale / resolveLayerTransform / resolveEntrance /
+// parallaxOffset / compositionRects / normalizeRect.
 
-  if (typeof preference === 'string' && preference !== 'auto') {
-    const needle = preference.toLowerCase()
-    const hit = all.find(
-      (item) =>
-        item.file.toLowerCase() === needle ||
-        item.url.toLowerCase() === needle ||
-        item.file.toLowerCase().includes(needle),
-    )
-    if (hit) return hit
-  }
-
-  // Clean full scenes only; prefer the highest native resolution, then a
-  // stable filename order so the choice never depends on filesystem order.
-  return (
-    [...all.filter((item) => item.usable !== false)].sort(
-      (a, b) =>
-        (b.width || 0) * (b.height || 0) - (a.width || 0) * (a.height || 0) ||
-        a.file.localeCompare(b.file),
-    )[0] ?? null
-  )
-}
-
-export function resolveDesign(backdrop, override = WALLPAPER.design) {
-  if (override?.width > 0 && override?.height > 0) {
-    return { width: override.width, height: override.height }
-  }
-  if (backdrop?.width > 0 && backdrop?.height > 0) {
-    return { width: backdrop.width, height: backdrop.height }
-  }
-  // Fallback when no backdrop is available (or its size could not be read).
-  return { width: 2048, height: 2048 }
-}
-
-// Pure helper, also used by offline composition checks.
-export function designScale(design, viewport, fit = WALLPAPER.fit) {
-  const sx = viewport.width / design.width
-  const sy = viewport.height / design.height
-  return fit === 'cover' ? Math.max(sx, sy) : Math.min(sx, sy)
-}
-
-const FALLBACK_DESIGN = { width: 2048, height: 2048 }
-
-// Number = design pixels. '10%' = 10% of the design canvas width/height.
-// A numeric string is also accepted as plain design pixels.
-function designLength(value, basis) {
-  if (typeof value === 'string') {
-    const percent = /^\s*(-?(?:\d+\.?\d*|\.\d+))%\s*$/.exec(value)
-    if (percent) return (Number(percent[1]) / 100) * basis
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : 0
-  }
-  return Number.isFinite(value) ? value : 0
-}
-
-// Resolve one layer's adjustment to a single design-space tuple. Both the
-// backdrop's CSS transform and the model's camera use THIS result, so their
-// semantics can never diverge.
-export function resolveLayerTransform(spec = {}, design = FALLBACK_DESIGN) {
-  const s = spec ?? {}
-  const scale = Number.isFinite(s.scale) && s.scale > 0 ? s.scale : 1
-  return {
-    scale,
-    dx: designLength(s.offsetX ?? 0, design.width),
-    dy: designLength(s.offsetY ?? 0, design.height),
-  }
-}
-
-// Normalise the parallax block. Unknown / missing numbers fall back to 0 so a
-// half-written config file cannot make a layer jump.
-export function resolveParallax(spec = WALLPAPER.parallax) {
-  const s = spec ?? {}
-  return {
-    enabled: s.enabled !== false,
-    backdrop: Number.isFinite(s.backdrop) ? s.backdrop : 0,
-    model: Number.isFinite(s.model) ? s.model : 0,
-  }
-}
-
-const clampUnit = (value) => Math.min(1, Math.max(-1, Number.isFinite(value) ? value : 0))
-
-// Parallax offset for ONE layer, in design pixels. `strength` is a percentage
-// of the design canvas, `pointer` is the normalised cursor position in -1..1
-// on both axes (x: left..right, y: top..bottom). Positive strength = the layer
-// moves in the same direction as the pointer, negative = the opposite way.
-// Pure, so the direction / magnitude can be checked in plain Node.
-export function parallaxOffset(strength, design = FALLBACK_DESIGN, pointer = {}) {
-  const pct = (Number.isFinite(strength) ? strength : 0) / 100
-  return {
-    x: pct * design.width * clampUnit(pointer.x),
-    y: pct * design.height * clampUnit(pointer.y),
-  }
-}
-
-// Apply a layer transform to a rect given in design pixels. The translation is
-// intentionally NOT scaled: CSS `translate(dx,dy) scale(s)` behaves the same.
-export function layerRect(rect, transform) {
-  const { scale, dx, dy } = transform
-  return {
-    cx: rect.cx + dx,
-    cy: rect.cy + dy,
-    w: rect.w * scale,
-    h: rect.h * scale,
-  }
-}
-
-// The model's rect BEFORE its layer transform, in design pixels. Mirrors the
-// camera maths in SpineStage's fixed-design branch (same max() constraint).
-export function modelBaseRect(design, model = WALLPAPER.model, setupBounds, zoom = WALLPAPER.zoom) {
-  const m = model ?? WALLPAPER.model
-  const hRatio = m.heightRatio > 0 ? m.heightRatio : 1
-  const wRatio = m.widthRatio > 0 ? m.widthRatio : 1
-  const alignX = Number.isFinite(m.alignX) ? m.alignX : 0.5
-  const alignY = Number.isFinite(m.alignY) ? m.alignY : 0.5
-  const bw = setupBounds?.width > 0 ? setupBounds.width : design.width
-  const bh = setupBounds?.height > 0 ? setupBounds.height : design.height
-  const z = Math.max(bh / (design.height * hRatio), bw / (design.width * wRatio))
-  const unitsPerDesignPx = z / Math.max(zoom, 0.001)
-  return {
-    cx: alignX * design.width,
-    cy: alignY * design.height,
-    w: bw / unitsPerDesignPx,
-    h: bh / unitsPerDesignPx,
-  }
-}
-
-// Both layers' final rects in design pixels — the single source of truth for
-// offline invariance checks. Nothing here depends on a viewport.
-export function compositionRects(design, backdropSpec, modelSpec, setupBounds, zoom = WALLPAPER.zoom) {
-  const base = { cx: design.width / 2, cy: design.height / 2, w: design.width, h: design.height }
-  return {
-    backdrop: layerRect(base, resolveLayerTransform(backdropSpec, design)),
-    model: layerRect(
-      modelBaseRect(design, WALLPAPER.model, setupBounds, zoom),
-      resolveLayerTransform(modelSpec, design),
-    ),
-  }
-}
-
-export function normalizeRect(rect, design) {
-  return [rect.cx / design.width, rect.cy / design.height, rect.w / design.width, rect.h / design.height]
-}

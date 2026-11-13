@@ -1,0 +1,450 @@
+// Composition panel for the debug viewer.
+//
+// The wallpaper route only *shows* the composition: its drawer has no room for
+// a background picker, and tuning a cutscene framing by eye needs the animation
+// list, so the real tuning happens here. Everything is in design-canvas units,
+// i.e. the exact numbers wallpaper.config.json expects, and "复制配置" emits the
+// complete file (the shipped one with these values overwritten) ready to paste.
+//
+// An entrance sequence is a CHAIN of shots, so the panel edits one clip at a
+// time: each of cut_A / cut_B / loop_2 keeps its own backdrop, scale and offsets,
+// and the wallpaper joins them at playback time.
+//
+// Unlike the wallpaper drawer this page has a real keyboard and no CEF host, so
+// native range / number / select inputs are fine here. Keep them out of the
+// wallpaper feature — that is where the popup and no-keyboard rules apply.
+
+import { useEffect, useState } from 'react'
+
+const round2 = (value) => Math.round(value * 100) / 100
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+const SCALE_MIN = 0.25
+const SCALE_MAX = 3
+const SCALE_STEP = 0.01
+
+const NEUTRAL = { scale: 1, offsetX: 0, offsetY: 0 }
+
+const layerKeyOf = (which) => (which === 'backdrop' ? 'backdropTransform' : 'modelTransform')
+
+// Range + numeric box, both editing the same value. `draft` keeps the raw text so
+// typing "1." or "-" does not get rewritten mid-keystroke.
+function NumberRow({ label, value, min, max, step, onChange }) {
+  const [draft, setDraft] = useState(String(round2(value)))
+
+  useEffect(() => {
+    setDraft(String(round2(value)))
+  }, [value])
+
+  const commit = (text) => {
+    const next = Number(text)
+    if (Number.isFinite(next)) onChange(clamp(next, min, max))
+  }
+
+  return (
+    <div className="num-row">
+      <span className="num-label">{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        aria-label={label}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+      <input
+        className="num-input"
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={draft}
+        aria-label={`${label}（数值）`}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          commit(event.target.value)
+        }}
+        onBlur={() => setDraft(String(round2(clamp(Number(draft) || 0, min, max))))}
+      />
+    </div>
+  )
+}
+
+function LayerFields({ title, spec, design, onChange }) {
+  const limitX = Math.max(1, Math.round(design.width))
+  const limitY = Math.max(1, Math.round(design.height))
+  const value = (raw, fallback) => (Number.isFinite(raw) ? raw : fallback)
+  return (
+    <>
+      <div className="section-head">
+        <h3>{title}</h3>
+        <span className="badge">{value(spec.scale, 1).toFixed(2)}×</span>
+      </div>
+      <NumberRow
+        label="缩放"
+        value={value(spec.scale, 1)}
+        min={SCALE_MIN}
+        max={SCALE_MAX}
+        step={SCALE_STEP}
+        onChange={(scale) => onChange({ scale })}
+      />
+      <NumberRow
+        label="水平偏移"
+        value={value(spec.offsetX, 0)}
+        min={-limitX}
+        max={limitX}
+        step={1}
+        onChange={(offsetX) => onChange({ offsetX })}
+      />
+      <NumberRow
+        label="垂直偏移"
+        value={value(spec.offsetY, 0)}
+        min={-limitY}
+        max={limitY}
+        step={1}
+        onChange={(offsetY) => onChange({ offsetY })}
+      />
+    </>
+  )
+}
+
+// Backdrop picker shared by the global pick and every clip. `''` is only offered
+// for clips ("keep the global pick"); the global select always owns a value.
+function BackdropSelect({ label, value, options, onChange, allowInherit = false }) {
+  return (
+    <select className="full-select" value={value} aria-label={label} onChange={(event) => onChange(event.target.value)}>
+      {allowInherit && <option value="">跟随全局背景</option>}
+      <option value="auto">自动（最高分辨率完整场景）</option>
+      <option value="none">无背景</option>
+      {/* Keep a hand-written name (e.g. a non-usable backdrop) visible instead of
+          letting the select silently fall back to the first option. */}
+      {value !== '' && value !== 'auto' && value !== 'none' && !options.some((item) => item.file === value) && (
+        <option value={value}>{value}</option>
+      )}
+      {options.map((item) => (
+        <option key={item.source ?? item.file} value={item.file}>
+          {item.file}
+          {item.width > 0 ? ` · ${item.width}×${item.height}` : ''}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+// The config file is the thing being edited, so it is what gets emitted: every
+// key of the shipped file, with the tuned values overwritten. Key order is kept,
+// which makes the pasted result diff-clean against public/wallpaper.config.json.
+function buildConfigText(fileConfig, state) {
+  const layer = (item) => ({
+    scale: round2(item?.scale ?? 1),
+    offsetX: Math.round(item?.offsetX ?? 0),
+    offsetY: Math.round(item?.offsetY ?? 0),
+  })
+  const clips = {}
+  for (const [name, clip] of Object.entries(state.entrance.clips)) {
+    clips[name] = {
+      backdrop: clip.backdrop ?? '',
+      backdropTransform: layer(clip.backdropTransform),
+      modelTransform: layer(clip.modelTransform),
+    }
+  }
+  const payload = {
+    ...(fileConfig ?? {}),
+    backdrop: state.backdrop,
+    backdropTransform: layer(state.backdropTransform),
+    modelTransform: layer(state.modelTransform),
+    entrance: {
+      autoplay: state.entrance.autoplay !== false,
+      blend: round2(state.entrance.blend),
+      clips,
+    },
+    sequence: state.sequence
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  }
+  return `${JSON.stringify(payload, null, 2)}\n`
+}
+
+export default function CompositionPanel({
+  state,
+  design,
+  backdrops,
+  playingSequence,
+  fileConfig,
+  flash,
+  onPatch,
+  onDetect,
+  onReplay,
+  onCopy,
+}) {
+  const isEntrance = state.layer === 'entrance'
+  const layerKey = state.layerKey === 'backdrop' ? 'backdrop' : 'model'
+  const options = (backdrops ?? []).filter((item) => item.usable !== false)
+
+  // Clip chips follow the sequence text, so editing the list above immediately
+  // offers the new shot. `playingSequence` (model-verified names) is preferred.
+  const names = playingSequence.length
+    ? playingSequence
+    : state.sequence
+        .split(',')
+        .map((name) => name.trim())
+        .filter(Boolean)
+  const clipName = state.clip && names.includes(state.clip) ? state.clip : names[0] ?? ''
+  const clip = clipName ? state.entrance.clips[clipName] ?? null : null
+  // Soloing = the stage loops this one clip instead of chaining the sequence,
+  // which is what clicking a chip switches to.
+  const soloing = Boolean(state.solo && clipName)
+
+  const replaceClip = (next) => {
+    const clips = { ...state.entrance.clips }
+    if (next) clips[clipName] = next
+    else delete clips[clipName]
+    onPatch({ entrance: { ...state.entrance, clips } })
+  }
+
+  const patchClip = (patch) => {
+    if (!clipName) return
+    replaceClip({
+      backdrop: clip?.backdrop ?? '',
+      backdropTransform: clip?.backdropTransform ?? NEUTRAL,
+      modelTransform: clip?.modelTransform ?? NEUTRAL,
+      ...patch,
+    })
+  }
+
+  const composed = { backdrop: state.backdropTransform, model: state.modelTransform }
+  const activeSpec = isEntrance ? clip?.[layerKeyOf(layerKey)] ?? NEUTRAL : composed[layerKey]
+
+  const patchActive = (patch) => {
+    if (!isEntrance) {
+      const key = layerKeyOf(layerKey)
+      onPatch({ [key]: { ...state[key], ...patch } })
+      return
+    }
+    patchClip({
+      [layerKeyOf(layerKey)]: { ...(clip?.[layerKeyOf(layerKey)] ?? NEUTRAL), ...patch },
+    })
+  }
+
+  return (
+    <div className="compose-panel">
+      <label className="check-row">
+        <input type="checkbox" checked={state.on} onChange={(event) => onPatch({ on: event.target.checked })} />
+        固定设计画布预览
+      </label>
+      <p className="hint">
+        开启后完全按壁纸渲染：背景原生像素 = 设计画布，两层各自缩放 / 平移。工具栏的缩放、背景下拉此时让位给这里。
+      </p>
+
+      {state.on && (
+        <>
+          <div className="section-head">
+            <h3>设计画布</h3>
+            <span className="badge">
+              {Math.round(design.width)} × {Math.round(design.height)}
+            </span>
+          </div>
+          <BackdropSelect
+            label="全局背景（决定设计画布）"
+            value={state.backdrop}
+            options={options}
+            onChange={(backdrop) => onPatch({ backdrop })}
+          />
+          <p className="hint">设计画布的尺寸跟着这张图走；某一段换背景只会换图，不会改画布。</p>
+
+          <div className="section-head">
+            <h3>调哪一层构图</h3>
+          </div>
+          <div className="seg-row" role="group" aria-label="构图层">
+            <button
+              type="button"
+              className={`btn${isEntrance ? ' is-on' : ''}`}
+              onClick={() => onPatch({ layer: 'entrance' })}
+              title="入场序列播放期间，每一段各自的构图"
+            >
+              入场（按段）
+            </button>
+            <button
+              type="button"
+              className={`btn${!isEntrance ? ' is-on' : ''}`}
+              onClick={() => onPatch({ layer: 'composed' })}
+              title="入场结束后循环播放时使用的构图"
+            >
+              构图（循环时）
+            </button>
+          </div>
+
+          {isEntrance && (
+            <>
+              <div className="section-head">
+                <h3>调哪一段</h3>
+                {(soloing || state.follow) && (
+                  <span className="badge">{soloing ? '单段循环' : '跟随播放'}</span>
+                )}
+              </div>
+              <div className="seg-row seg-wrap" role="group" aria-label="入场片段">
+                {names.map((name) => (
+                  <button
+                    key={name}
+                    type="button"
+                    className={`btn${name === clipName ? ' is-on' : ''}`}
+                    onClick={() => onPatch({ clip: name, follow: false, solo: true, layer: 'entrance' })}
+                    title={`只循环播放 ${name}，不拼接其它段（完整入场用下面的「播放完整入场」）· ${
+                      state.entrance.clips[name] ? '已单独配置' : '未配置，按原始画布播放'
+                    }`}
+                  >
+                    {name}
+                    {state.entrance.clips[name] ? '' : ' ·'}
+                  </button>
+                ))}
+                {!names.length && <span className="hint">先填好下面的入场序列</span>}
+              </div>
+              {names.length > 0 && (
+                <p className="hint">
+                  点某一镜 = 只循环播放这一段，方便单独看构图；想看拼接后的完整入场，点下面的「播放完整入场」。
+                </p>
+              )}
+              {clipName && (
+                <>
+                  <div className="section-head">
+                    <h3>{clipName} 的背景</h3>
+                    {clip && (
+                      <button type="button" className="btn btn-mini" onClick={() => replaceClip(null)}>
+                        移除该段配置
+                      </button>
+                    )}
+                  </div>
+                  <BackdropSelect
+                    label={`${clipName} 的背景`}
+                    value={clip?.backdrop ?? ''}
+                    options={options}
+                    allowInherit
+                    onChange={(backdrop) => patchClip({ backdrop })}
+                  />
+                  {!clip && (
+                    <p className="hint">
+                      这一段还没有自己的配置，按原始画布（1× 无偏移）播放。调下面任意一个滑块就会为它建一条。
+                    </p>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          <div className="section-head">
+            <h3>调哪一层</h3>
+          </div>
+          <div className="seg-row" role="group" aria-label="图层">
+            <button
+              type="button"
+              className={`btn${layerKey === 'backdrop' ? ' is-on' : ''}`}
+              onClick={() => onPatch({ layerKey: 'backdrop' })}
+            >
+              背景
+            </button>
+            <button
+              type="button"
+              className={`btn${layerKey === 'model' ? ' is-on' : ''}`}
+              onClick={() => onPatch({ layerKey: 'model' })}
+            >
+              人物
+            </button>
+          </div>
+
+          {isEntrance && !clipName ? (
+            <p className="hint">没有可调的片段。</p>
+          ) : (
+            <LayerFields
+              title={`${layerKey === 'backdrop' ? '背景' : '人物'}（${
+                isEntrance ? `${clipName || '入场'}${clip ? '' : ' · 未配置'}` : '构图'
+              }）`}
+              spec={activeSpec}
+              design={design}
+              onChange={patchActive}
+            />
+          )}
+
+          {isEntrance && (
+            <>
+              <div className="section-head">
+                <h3>过渡</h3>
+              </div>
+              <NumberRow
+                label="段间渐变"
+                value={state.entrance.blend}
+                min={0}
+                max={5}
+                step={0.1}
+                onChange={(blend) => onPatch({ entrance: { ...state.entrance, blend } })}
+              />
+              <p className="hint">
+                单位秒。相邻两段之间、以及最后一段交回「构图」时都用它；0 = 硬切。
+                最后一段开始后入场就结束：两层渐变回「构图（循环时）」，动画交回 `animation` 循环。
+              </p>
+            </>
+          )}
+
+          <div className="section-head">
+            <h3>入场序列</h3>
+          </div>
+          <input
+            className="full-input"
+            type="text"
+            value={state.sequence}
+            aria-label="入场序列（英文逗号分隔，最后一段循环）"
+            placeholder="cut_A, cut_B, loop_2"
+            onChange={(event) => onPatch({ sequence: event.target.value, follow: false })}
+          />
+          <div className="seg-row">
+            <button type="button" className="btn" onClick={onDetect} title="按动画名自动识别 cut_A / cut_B / loop_2">
+              识别
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={onReplay}
+              disabled={!playingSequence.length}
+              title="从头播放完整入场：按顺序拼接全部段，最后一段循环"
+            >
+              播放完整入场
+            </button>
+          </div>
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={state.entrance.autoplay !== false}
+              onChange={(event) =>
+                onPatch({ entrance: { ...state.entrance, autoplay: event.target.checked } })
+              }
+            />
+            启动时自动播放
+          </label>
+          <p className="hint">
+            勾选 = 壁纸加载完成后自动放一遍，右下角设置按钮上方还会多一个播放按钮，随时可以重放。
+            不勾选 = 打开就是「构图（循环时）」，不出现播放按钮（这里的「播放完整入场」照样能用）。
+          </p>
+          <p className="hint">
+            {soloing
+              ? `当前只循环 ${clipName}（单段预览），不会拼接其它段。`
+              : `实际播放：${playingSequence.length ? playingSequence.join(' → ') : '无（只循环单个动画）'}`}
+          </p>
+
+          <div className="section-head">
+            <h3>写回壁纸</h3>
+          </div>
+          <button type="button" className="btn full-btn" onClick={() => onCopy(buildConfigText(fileConfig, state))}>
+            复制完整配置
+          </button>
+          <p className="hint">
+            {flash ||
+              (fileConfig
+                ? '已按 wallpaper.config.json 的键顺序生成，整份替换该文件即可。'
+                : '没读到 wallpaper.config.json，复制出来的只有构图相关的几项。')}
+          </p>
+        </>
+      )}
+    </div>
+  )
+}

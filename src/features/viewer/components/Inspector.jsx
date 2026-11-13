@@ -1,5 +1,6 @@
 import { formatBytes, formatSeconds } from '../../../lib/assets.js'
 import { FACE_ANIM } from '../../../lib/animation.js'
+import CompositionPanel from './CompositionPanel.jsx'
 
 function InfoRow({ label, value }) {
   return (
@@ -47,6 +48,7 @@ export default function Inspector({
   onShowBonesChange,
   showBounds,
   onShowBoundsChange,
+  composition,
 }) {
   const animations = info?.animations ?? []
   const bodyAnimations = animations.filter((item) => !FACE_ANIM.test(item.name))
@@ -68,6 +70,16 @@ export default function Inspector({
         <button
           type="button"
           role="tab"
+          aria-selected={tab === 'compose'}
+          className={tab === 'compose' ? 'is-active' : ''}
+          onClick={() => onTabChange('compose')}
+          title="按壁纸的构图预览并调数值"
+        >
+          构图
+        </button>
+        <button
+          type="button"
+          role="tab"
           aria-selected={tab === 'info'}
           className={tab === 'info' ? 'is-active' : ''}
           onClick={() => onTabChange('info')}
@@ -77,7 +89,9 @@ export default function Inspector({
       </div>
 
       <div className="inspector-scroll">
-        {tab === 'animations' ? (
+        {tab === 'compose' ? (
+          <CompositionPanel {...composition} />
+        ) : tab === 'animations' ? (
           <>
             <div className="section-head">
               <h3>动画轨道 0</h3>

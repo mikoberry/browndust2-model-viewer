@@ -1,5 +1,4 @@
-// Settings drawer for the wallpaper route. Two kinds of editing, both live and
-// both purely in-memory:
+// Settings drawer for the wallpaper route. Two kinds of editing, both live:
 //
 //   1. the composition tab nudges the two picture layers (scale + offset) in
 //      design-canvas units, so anything tuned here can be pasted into the
@@ -9,16 +8,25 @@
 //      and its own options.
 //
 // The wallpaper itself must stay a chrome-free image, so this drawer is closed
-// by default and opened by the bottom-right button or the `S` key. Edits never
-// write back to config.js. The exit is "记录配置": it snapshots the COMPLETE
-// config file (byte-identical to public/wallpaper.config.json when nothing was
-// touched) into localStorage and puts the same text on the clipboard, so a
-// tuned setup survives the wallpaper being reloaded or the host restarting.
-// The snapshot is never read back automatically — the file stays the single
-// source of truth.
+// by default and opened by the bottom-right button or the `S` key.
+//
+// What 「记录配置」 means: it stores the COMPLETE config document in
+// localStorage, and from then on the wallpaper LOADS THAT instead of
+// `wallpaper.config.json` — so a hand-tuned wallpaper survives reloads, and
+// keeps its tune when you switch to another wallpaper and back. The JSON file
+// is therefore only the factory default ("what a fresh install shows"); this
+// drawer's 「恢复首次默认」 throws the snapshot away to get back to it. The same
+// text is also put on the clipboard, so it can still be pasted into the file
+// when shipping a build with new defaults.
 
 import { useEffect, useRef, useState } from 'react'
-import { CONFIG_FILE, CONFIG_README } from '../config.js'
+import {
+  CONFIG_FILE,
+  CONFIG_README,
+  clearRecordedConfig,
+  readRecordedConfig,
+  saveRecordedConfig,
+} from '../config.js'
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
 import { ColorField, Group, SliderField, ToggleField } from './settings-fields.jsx'
 
@@ -129,6 +137,81 @@ function ParallaxGroup({ spec, onChange, onReset }) {
   )
 }
 
+// Entrance sequence is played by the model itself, so the controls here are
+// "play it again" plus one switch: whether it runs by itself on load. The
+// playlist AND each clip's framing are read-only: names differ per model,
+// tuning a shot needs a live background and the animation list, and Wallpaper
+// Engine has neither a keyboard nor room for more sliders. Both are edited in
+// the debug viewer's 构图 tab, which writes the same file.
+//
+// One row per clip so it is obvious that a sequence is a CHAIN of framings and
+// not one shared zoom that "resets" on load.
+function SequenceGroup({
+  sequence,
+  entrance,
+  autoplay,
+  activeClip,
+  inEntrance,
+  onAutoplayChange,
+  onReplay,
+}) {
+  const list = Array.isArray(sequence) ? sequence : []
+  const clips = entrance?.clips ?? {}
+  const blend = Number(entrance?.blend ?? 0)
+  const scale = (layer) => `${Number(layer?.scale ?? 1).toFixed(2)}×`
+  return (
+    <Group title="入场动画">
+      <div className="ws-seq">
+        <span
+          className="ws-seq-list"
+          title="在 wallpaper.config.json 的 sequence 里修改（也可写 'auto' 自动识别）；留空则只播放单个循环动画"
+        >
+          {list.length ? list.join(' → ') : '未配置（直接播放循环动画）'}
+        </span>
+        <button type="button" className="ws-btn" onClick={onReplay} disabled={!list.length}>
+          重新播放
+        </button>
+      </div>
+      {list.length > 0 && (
+        <>
+          {/* `autoplay` is not just a start-up flag: while it is on, the bare
+              wallpaper also shows a round play button above the settings gear,
+              because a cutscene is easy to miss and this drawer is hidden. */}
+          <ToggleField
+            label="启动时播放"
+            checked={autoplay}
+            onChange={onAutoplayChange}
+          />
+          <ul className="ws-clips">
+            {list.map((name) => {
+              const clip = clips[name]
+              return (
+                <li key={name} className={`ws-clip${name === activeClip ? ' is-active' : ''}`}>
+                  <span className="ws-clip-name">{name}</span>
+                  <span className="ws-clip-value">
+                    {clip
+                      ? `背景 ${scale(clip.backdropTransform)} · 人物 ${scale(clip.modelTransform)}`
+                      : '原始画布（未单独配置）'}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+      <p className="ws-note">
+        {autoplay
+          ? '勾选「启动时播放」：加载完成后自动放一遍，右下角设置按钮上方会出现播放按钮，随时可重放。'
+          : '不自动播放：打开就是上面的「构图」，设置按钮上方不显示播放按钮（这里的「重新播放」仍可用）。'}
+        每段都有各自的背景 / 缩放 / 位置，播放时按顺序拼起来，段间过渡 {blend.toFixed(1)}s。
+        最后一段开始后入场就结束：两层用 {blend.toFixed(1)}s 渐变回上面的「构图」，动画交回 `animation` 循环。
+        {inEntrance ? ' 正在播放入场。' : ''} 这些数值在 <code>/spine-viewer</code> 的「构图」面板里调；
+        本页的改动要点「记录配置」才会保存到下次启动。
+      </p>
+    </Group>
+  )
+}
+
 // The accent is shared by every audio-reactive effect (spectrum bars, ambient
 // bubbles, pointer trails); the clock and album card colour themselves from
 // their own `theme`, so it is presented once, above the tabs.
@@ -144,19 +227,20 @@ function AccentField({ value, onChange }) {
   )
 }
 
-// Full config document, ready to replace wallpaper.config.json: every key of
-// the live config, with the two layer transforms and the overlay block
+// Full config document, ready to become the user's snapshot (and, pasted back,
+// to replace wallpaper.config.json): every key of the live config, with the two
+// layer transforms, the entrance autoplay switch and the overlay block
 // overwritten by what the drawer is showing right now. Key order follows the
 // built-in object, so the clipboard content is diff-stable against the shipped
 // file.
-function configJson(config, spec, overlay) {
+function configPayload(config, spec, overlay, autoplay) {
   const layer = (item) => ({
     scale: round2(item.scale),
     offsetX: Math.round(item.offsetX),
     offsetY: Math.round(item.offsetY),
   })
   const parallax = spec.parallax ?? {}
-  const payload = {
+  return {
     _readme: CONFIG_README,
     ...config,
     backdropTransform: layer(spec.backdrop),
@@ -166,18 +250,17 @@ function configJson(config, spec, overlay) {
       backdrop: round2(parallax.backdrop ?? 0),
       model: round2(parallax.model ?? 0),
     },
+    // Spread first so `blend` / `clips` keep their place in the file; only the
+    // switch is authoritative here.
+    entrance: {
+      ...(config.entrance ?? {}),
+      autoplay: autoplay !== false,
+    },
     overlay,
   }
-  return `${JSON.stringify(payload, null, 2)}\n`
 }
 
 const TABS = [{ key: 'composition', label: '构图' }, ...OVERLAY_TABS]
-
-// localStorage slot holding the last snapshot: `{ at: ISO string, text: string }`.
-// A Wallpaper Engine web project usually runs on a file:// / localhost origin
-// where storage may be blocked, so every access is guarded and the snapshot is
-// still copied even when storing fails.
-const RECORD_KEY = 'wallpaper.config.record'
 
 const pad = (value) => String(value).padStart(2, '0')
 const clockLabel = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
@@ -188,43 +271,53 @@ export default function WallpaperSettings({
   config,
   spec,
   overlay,
+  sequence,
+  entrance,
+  autoplay,
+  activeClip,
+  inEntrance,
   source,
   onChange,
   onOverlayChange,
   onAccentChange,
+  onAutoplayChange,
+  onReplaySequence,
   onReset,
   onClose,
 }) {
   const [flash, setFlash] = useState('')
   const [lastAt, setLastAt] = useState('')
+  // A snapshot recorded in THIS session makes the stored config live without a
+  // reload, so the header must say so right away.
+  const [recordedNow, setRecordedNow] = useState(false)
+  const [confirmRestore, setConfirmRestore] = useState(false)
   const [tab, setTab] = useState('composition')
   const timerRef = useRef(0)
+  const restoreTimerRef = useRef(0)
 
-  useEffect(() => () => window.clearTimeout(timerRef.current), [])
+  useEffect(
+    () => () => {
+      window.clearTimeout(timerRef.current)
+      window.clearTimeout(restoreTimerRef.current)
+    },
+    [],
+  )
 
   // Show when the previous snapshot was taken, so "记录" is not a black box.
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(RECORD_KEY)
-      const at = raw ? JSON.parse(raw).at : ''
-      if (at) setLastAt(clockLabel(new Date(at)))
-    } catch {
-      setLastAt('')
-    }
+    const recorded = readRecordedConfig()
+    if (recorded?.at) setLastAt(clockLabel(new Date(recorded.at)))
   }, [])
 
-  // Recording is the whole point of the drawer: tune by eye, keep a snapshot,
-  // then replace the file with what is on the clipboard.
+  // Recording is what turns the shipped file into a mere default: the snapshot
+  // is read back at startup, so it survives reloads and wallpaper switches.
+  // The same text also goes to the clipboard, for the case where the tune
+  // should become the new factory default of a build.
   const handleRecord = async () => {
-    const text = configJson(config, spec, overlay)
+    const payload = configPayload(config, spec, overlay, autoplay)
+    const text = `${JSON.stringify(payload, null, 2)}\n`
     const at = new Date()
-    let stored = false
-    try {
-      window.localStorage.setItem(RECORD_KEY, JSON.stringify({ at: at.toISOString(), text }))
-      stored = true
-    } catch {
-      stored = false
-    }
+    const stored = saveRecordedConfig(payload, at.toISOString())
 
     let copied = false
     try {
@@ -245,12 +338,45 @@ export default function WallpaperSettings({
       document.body.removeChild(area)
     }
 
-    if (stored) setLastAt(clockLabel(at))
-    const parts = [stored ? '已记录' : '记录失败', copied ? '已复制' : '复制失败']
-    setFlash(`${parts.join(' · ')}（${clockLabel(at)}）`)
+    if (stored) {
+      setLastAt(clockLabel(at))
+      setRecordedNow(true)
+      setConfirmRestore(false)
+    }
+    const parts = [stored ? '已记录' : '记录失败（浏览器存储不可用）', copied ? '已复制' : '复制失败']
+    setFlash(
+      stored
+        ? `${parts.join(' · ')}（${clockLabel(at)}）· 以后打开壁纸都按这份配置`
+        : `${parts.join(' · ')}（${clockLabel(at)}）· 只有剪贴板里这一份，无法自动生效`,
+    )
     window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => setFlash(''), 4000)
   }
+
+  // 「恢复首次默认」: drop the snapshot and reload, so the shipped JSON (or the
+  // built-in object) applies again. Two-step instead of `confirm()` — Wallpaper
+  // Engine's CEF host cannot host a modal dialog.
+  const handleRestore = () => {
+    if (!confirmRestore) {
+      setConfirmRestore(true)
+      window.clearTimeout(restoreTimerRef.current)
+      restoreTimerRef.current = window.setTimeout(() => setConfirmRestore(false), 5000)
+      return
+    }
+    window.clearTimeout(restoreTimerRef.current)
+    clearRecordedConfig()
+    setConfirmRestore(false)
+    setRecordedNow(false)
+    window.location.reload()
+  }
+
+  const activeSource = recordedNow || source === 'user' ? 'user' : source
+  const sourceLabel =
+    activeSource === 'user'
+      ? `正在使用你记录的配置${lastAt ? `（${lastAt}）` : ''}`
+      : activeSource === 'file'
+        ? `默认值：${CONFIG_FILE}（还会被记录覆盖）`
+        : '默认值：内置（未读到配置文件）'
 
   const enabledWidgets = TABS.filter((item) => item.key !== 'composition' && overlay?.[item.key]?.enabled)
 
@@ -262,9 +388,7 @@ export default function WallpaperSettings({
           <p>
             设计画布 {Math.round(design.width)} × {Math.round(design.height)}
           </p>
-          <p className={`ws-source${source === 'file' ? '' : ' is-fallback'}`}>
-            {source === 'file' ? `默认值：${CONFIG_FILE}` : '默认值：内置（未读到配置文件）'}
-          </p>
+          <p className={`ws-source${activeSource === 'user' ? ' is-user' : ''}`}>{sourceLabel}</p>
         </div>
         <button type="button" className="ws-close" onClick={onClose} aria-label="关闭设置">
           ×
@@ -315,6 +439,15 @@ export default function WallpaperSettings({
               onChange={(patch) => onChange('parallax', patch)}
               onReset={() => onReset('parallax')}
             />
+            <SequenceGroup
+              sequence={sequence}
+              entrance={entrance}
+              autoplay={autoplay}
+              activeClip={activeClip}
+              inEntrance={inEntrance}
+              onAutoplayChange={onAutoplayChange}
+              onReplay={onReplaySequence}
+            />
             <p className="ws-note">
               偏移单位为设计画布像素（与 {CONFIG_FILE} 一致），平移不会被缩放放大。
               1× 时背景正好等于画布，拖出去的部分会露出模糊补边；想铺满整屏就先放大再拖。
@@ -334,12 +467,25 @@ export default function WallpaperSettings({
           <button type="button" className="ws-btn" onClick={() => onReset('all')}>
             全部重置
           </button>
+          {activeSource === 'user' && (
+            <button
+              type="button"
+              className={`ws-btn${confirmRestore ? ' is-danger' : ''}`}
+              onClick={handleRestore}
+              title="丢弃本机记录的配置，回到壁纸自带的默认值（会重新加载页面）"
+            >
+              {confirmRestore ? '确认恢复？' : '恢复首次默认'}
+            </button>
+          )}
           <button type="button" className="ws-btn is-primary" onClick={handleRecord}>
             记录配置
           </button>
         </div>
         <p className={`ws-status${flash ? ' is-flash' : ''}`} aria-live="polite">
-          {flash || (lastAt ? `上次记录 ${lastAt} · 写入浏览器存储并复制到剪贴板` : '记录到浏览器存储，并复制到剪贴板')}
+          {flash ||
+            (lastAt
+              ? `已记录 ${lastAt} · 之后打开 / 切换壁纸再切回都按这份配置`
+              : '记录 = 保存到本机，此后打开壁纸按这份配置（文件只作为首次默认）')}
         </p>
       </div>
     </aside>

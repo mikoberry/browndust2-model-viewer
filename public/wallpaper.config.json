@@ -25,11 +25,61 @@
   },
   "parallax": {
     "enabled": true,
-    "backdrop": 0,
-    "model": 2
+    "backdrop": 2,
+    "model": 3
   },
   "animation": null,
   "expression": null,
+  "sequence": [
+    "cut_A",
+    "cut_B",
+    "loop_2"
+  ],
+  "entrance": {
+    "autoplay": true,
+    "blend": 0.9,
+    "clips": {
+      "cut_A": {
+        "backdrop": "char067601_back2.png",
+        "backdropTransform": {
+          "scale": 1.8,
+          "offsetX": 0,
+          "offsetY": 0
+        },
+        "modelTransform": {
+          "scale": 1.8,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "cut_B": {
+        "backdrop": "",
+        "backdropTransform": {
+          "scale": 2.5,
+          "offsetX": 0,
+          "offsetY": 0
+        },
+        "modelTransform": {
+          "scale": 2.5,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "loop_2": {
+        "backdrop": "char067601_back1.png",
+        "backdropTransform": {
+          "scale": 2.5,
+          "offsetX": 0,
+          "offsetY": 0
+        },
+        "modelTransform": {
+          "scale": 2.5,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      }
+    }
+  },
   "skin": "",
   "speed": 1,
   "zoom": 1,
