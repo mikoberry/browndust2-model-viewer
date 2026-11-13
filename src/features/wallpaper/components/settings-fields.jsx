@@ -134,20 +134,35 @@ export function ToggleField({ label, note, checked, onChange }) {
 
 // `options` is `[{ value, label }]`; the value is written back verbatim, so an
 // unknown option in the config file would show as-is rather than be rewritten.
-export function SelectField({ label, value, options, onChange }) {
+//
+// Plain buttons, NOT a native <select>: Wallpaper Engine renders the wallpaper
+// in a CEF host where the dropdown list is an OS-level popup, and opening one
+// takes the whole wallpaper window down. Nothing inside the drawer may rely on
+// a popup — buttons, checkboxes and text fields only.
+export function ChipField({ label, value, options, onChange }) {
+  const known = options.some((option) => option.value === value)
   return (
     <div className="ws-field">
       <div className="ws-field-head">
         <span className="ws-field-label">{label}</span>
+        {!known && <span className="ws-field-readout">{value}（不在预设内）</span>}
       </div>
-      <div className="ws-field-controls">
-        <select className="ws-select" value={value} onChange={(event) => onChange(event.target.value)}>
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
+      <div className="ws-chips" role="group" aria-label={label}>
+        {options.map((option) => {
+          const active = option.value === value
+          return (
+            <button
+              key={option.value}
+              type="button"
+              className={`ws-chip${active ? ' is-active' : ''}`}
+              aria-pressed={active}
+              title={option.value}
+              onClick={() => onChange(option.value)}
+            >
               {option.label}
-            </option>
-          ))}
-        </select>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
@@ -155,10 +170,27 @@ export function SelectField({ label, value, options, onChange }) {
 
 const HEX = /^#[0-9a-f]{6}$/i
 
-// `#rrggbb` field with a native swatch. An empty value means "inherit": the
-// swatch then previews `fallback` and the text shows it as a placeholder.
-export function ColorField({ label, value, fallback, onChange }) {
+// Palette offered next to every colour field, so a colour can be picked with two
+// clicks instead of typing hex.
+export const COLOR_PRESETS = [
+  '#a8c4ff',
+  '#8b88ff',
+  '#7bd1ff',
+  '#7ef2c7',
+  '#ffd166',
+  '#ff9ec7',
+  '#ff6b6b',
+  '#ffffff',
+]
+
+// `#rrggbb` field. An empty value means "inherit": the swatch then previews
+// `fallback` and the text shows it as a placeholder.
+//
+// The swatch is a plain <span>: `input type="color"` opens the OS colour
+// dialog, which is the same popup trap as <select> under Wallpaper Engine.
+export function ColorField({ label, value, fallback, onChange, presets = COLOR_PRESETS }) {
   const swatch = HEX.test(value || '') ? value : HEX.test(fallback || '') ? fallback : '#a8c4ff'
+  const current = (value || '').toLowerCase()
   return (
     <div className="ws-field">
       <div className="ws-field-head">
@@ -172,13 +204,7 @@ export function ColorField({ label, value, fallback, onChange }) {
         )}
       </div>
       <div className="ws-field-controls">
-        <input
-          className="ws-swatch"
-          type="color"
-          value={swatch}
-          aria-label={label}
-          onChange={(event) => onChange(event.target.value)}
-        />
+        <span className="ws-swatch-preview" style={{ background: swatch }} aria-hidden="true" />
         <input
           className="ws-text"
           type="text"
@@ -187,6 +213,20 @@ export function ColorField({ label, value, fallback, onChange }) {
           spellCheck={false}
           onChange={(event) => onChange(event.target.value.trim())}
         />
+      </div>
+      <div className="ws-presets" role="group" aria-label={`${label}预设`}>
+        {presets.map((color) => (
+          <button
+            key={color}
+            type="button"
+            className={`ws-preset${current === color ? ' is-active' : ''}`}
+            style={{ background: color }}
+            title={color}
+            aria-label={color}
+            aria-pressed={current === color}
+            onClick={() => onChange(color)}
+          />
+        ))}
       </div>
     </div>
   )

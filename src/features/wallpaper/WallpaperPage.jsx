@@ -26,6 +26,7 @@ import SpineStage from '../../lib/spine/SpineStage.jsx'
 import { pickDefaultAnimation, pickDefaultExpression } from '../../lib/animation.js'
 import { assetUrl } from '../../lib/assets.js'
 import WallpaperSettings from './components/WallpaperSettings.jsx'
+import SettingsBoundary from './components/SettingsBoundary.jsx'
 import WallpaperOverlay from './components/WallpaperOverlay.jsx'
 import {
   WALLPAPER,
@@ -284,19 +285,21 @@ export default function WallpaperPage() {
         </button>
       )}
 
-      <WallpaperSettings
-        open={settingsOpen}
-        design={design}
-        config={config}
-        spec={tweaks}
-        overlay={overlayTweaks}
-        source={loaded?.source ?? 'builtin'}
-        onChange={updateTweaks}
-        onOverlayChange={updateOverlay}
-        onAccentChange={updateAccent}
-        onReset={resetTweaks}
-        onClose={() => setSettingsOpen(false)}
-      />
+      <SettingsBoundary open={settingsOpen}>
+        <WallpaperSettings
+          open={settingsOpen}
+          design={design}
+          config={config}
+          spec={tweaks}
+          overlay={overlayTweaks}
+          source={loaded?.source ?? 'builtin'}
+          onChange={updateTweaks}
+          onOverlayChange={updateOverlay}
+          onAccentChange={updateAccent}
+          onReset={resetTweaks}
+          onClose={() => setSettingsOpen(false)}
+        />
+      </SettingsBoundary>
     </div>
   )
 }

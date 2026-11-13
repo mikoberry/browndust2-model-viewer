@@ -31,6 +31,15 @@ tab 上带小圆点表示该控件当前已开启。
 氛围的形态、密度；指针的拖尾 / 点击形态与强度）。位置用**视口百分比**，与构图的画布像素是两套单位。
 面板只在壁纸页存在；抽屉关闭时 `visibility: hidden`，不参与 Tab 焦点；所有改动只活在当前页面。
 
+面板里**没有原生下拉框和原生取色器**：风格 / 布局之类的枚举是**一排按钮**（选中项高亮，悬停显示库里的
+原名，如 `cyberpunk`），颜色是「色块预览 + 十六进制输入 + 8 个预设色按钮」。这不是审美选择——WE 的
+CEF 宿主里 `<select>` 的下拉列表和 `input type="color"` 的系统配色框都是 OS 级弹窗，
+一旦弹出会把整个壁纸窗口带崩。同理也不要用 `alert` / `confirm` / `prompt`。
+调试页（`/spine-viewer`）不在此列，它只在浏览器里用，仍保留原生下拉。
+
+抽屉外面还包了一层 `SettingsBoundary`：面板渲染抛错时只是隐藏面板并把错误打到 console，
+壁纸本身继续跑；关掉再按 `S` 会重新尝试渲染。
+
 根路由显示的模型、背景、构图与播放参数由两个地方决定：**内置默认值**在
 `src/features/wallpaper/config.js`，**运行时实际值**来自随页面发布的 `wallpaper.config.json`
 （见下文「配置文件」）。改动都不会影响调试页。
@@ -360,8 +369,9 @@ src/
       config.js                  # 壁纸唯一配置 + 构图纯函数
       components/
         WallpaperSettings.jsx    # 壁纸设置抽屉：主题色 + 构图 / 5 个控件 tab
+        SettingsBoundary.jsx     # 抽屉错误边界（面板出错不牵连壁纸）
         OverlaySettings.jsx      # 每个控件 tab 的字段面板（尺寸 / 位置 / 颜色 / 专有属性）
-        settings-fields.jsx      # 抽屉共用表单控件（滑块 / 数字 / 颜色 / 锚点 3×3 …）
+        settings-fields.jsx      # 抽屉共用表单控件（滑块 / 数字 / 颜色 / 选项按钮组 / 锚点 3×3 …）
         WallpaperOverlay.jsx     # WallKit 控件浮层（视口锚定，按 overlay 配置逐项显示）
     viewer/                      # /spine-viewer 调试查看器
       ViewerPage.jsx             # 状态 + 布局

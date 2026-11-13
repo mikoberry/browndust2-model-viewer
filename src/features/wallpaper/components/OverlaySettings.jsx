@@ -6,67 +6,69 @@
 // Option lists come from wallkit itself wherever it exports them, so a new
 // variant in the library shows up here without a second source of truth.
 
-import { Group, AnchorPicker, ColorField, NumberField, SelectField, SliderField, TextField, ToggleField } from './settings-fields.jsx'
+import { Group, AnchorPicker, ChipField, ColorField, NumberField, SliderField, TextField, ToggleField } from './settings-fields.jsx'
 
+// Option lists are rendered as button chips (never a <select>), so labels are
+// kept short; the library's own identifier is in the button's `title`/tooltip.
 // Not exported by wallkit (only documented in the component's JSDoc).
 const CLOCK_PLACEMENTS = [
-  { value: 'card', label: 'card 卡片' },
-  { value: 'bar', label: 'bar 条' },
-  { value: 'minimal', label: 'minimal 极简' },
-  { value: 'cyberpunk', label: 'cyberpunk 赛博' },
-  { value: 'infobar', label: 'infobar 信息条' },
-  { value: 'split', label: 'split 分栏' },
-  { value: 'poster', label: 'poster 海报' },
-  { value: 'ring', label: 'ring 环形进度' },
-  { value: 'segments', label: 'segments 三段进度' },
-  { value: 'stamp', label: 'stamp 记录卡' },
+  { value: 'card', label: '卡片' },
+  { value: 'bar', label: '条形' },
+  { value: 'minimal', label: '极简' },
+  { value: 'cyberpunk', label: '赛博' },
+  { value: 'infobar', label: '信息条' },
+  { value: 'split', label: '分栏' },
+  { value: 'poster', label: '海报' },
+  { value: 'ring', label: '环形' },
+  { value: 'segments', label: '三段' },
+  { value: 'stamp', label: '记录卡' },
 ]
 
 // WallKit convention: the name is the TEXT colour.
 const THEMES = [
-  { value: 'light', label: 'light 浅色文字（深色壁纸）' },
-  { value: 'dark', label: 'dark 深色文字（浅色壁纸）' },
+  { value: 'light', label: '浅色文字' },
+  { value: 'dark', label: '深色文字' },
 ]
 
 const SPECTRUM_VARIANTS = [
-  { value: 'bars', label: 'bars 柱状' },
-  { value: 'mirror', label: 'mirror 镜像' },
-  { value: 'curve', label: 'curve 曲线' },
-  { value: 'pill', label: 'pill 胶囊' },
-  { value: 'ring', label: 'ring 环形' },
-  { value: 'ringwave', label: 'ringwave 环形波' },
-  { value: 'dots', label: 'dots 点阵' },
-  { value: 'ripples', label: 'ripples 涟漪' },
-  { value: 'aurora', label: 'aurora 极光' },
+  { value: 'bars', label: '柱状' },
+  { value: 'mirror', label: '镜像' },
+  { value: 'curve', label: '曲线' },
+  { value: 'pill', label: '胶囊' },
+  { value: 'ring', label: '环形' },
+  { value: 'ringwave', label: '环形波' },
+  { value: 'dots', label: '点阵' },
+  { value: 'ripples', label: '涟漪' },
+  { value: 'aurora', label: '极光' },
 ]
 
 const ALBUM_VARIANTS = [
-  { value: 'classic', label: 'classic 经典' },
-  { value: 'glass', label: 'glass 毛玻璃' },
-  { value: 'vinyl', label: 'vinyl 唱片（无频谱）' },
-  { value: 'minimal', label: 'minimal 极简' },
-  { value: 'bar', label: 'bar 条形' },
-  { value: 'wall', label: 'wall 墙面' },
+  { value: 'classic', label: '经典' },
+  { value: 'glass', label: '毛玻璃' },
+  { value: 'vinyl', label: '唱片' },
+  { value: 'minimal', label: '极简' },
+  { value: 'bar', label: '条形' },
+  { value: 'wall', label: '墙面' },
 ]
 
 const AMBIENT_VARIANTS = [
-  { value: 'snow', label: 'snow 飘雪' },
-  { value: 'sakura', label: 'sakura 樱花' },
-  { value: 'bubble', label: 'bubble 气泡' },
+  { value: 'snow', label: '飘雪' },
+  { value: 'sakura', label: '樱花' },
+  { value: 'bubble', label: '气泡' },
 ]
 
 const POINTER_TRAIL_VARIANTS = [
-  { value: 'glow', label: 'glow 柔光粒子' },
-  { value: 'ribbon', label: 'ribbon 丝带' },
-  { value: 'bubble', label: 'bubble 气泡' },
-  { value: 'firework', label: 'firework 烟花' },
+  { value: 'glow', label: '柔光' },
+  { value: 'ribbon', label: '丝带' },
+  { value: 'bubble', label: '气泡' },
+  { value: 'firework', label: '烟花' },
 ]
 
 const POINTER_CLICK_VARIANTS = [
-  { value: 'ripple', label: 'ripple 涟漪' },
-  { value: 'sparks', label: 'sparks 星尘' },
-  { value: 'bubble', label: 'bubble 气泡' },
-  { value: 'firework', label: 'firework 烟花' },
+  { value: 'ripple', label: '涟漪' },
+  { value: 'sparks', label: '星尘' },
+  { value: 'bubble', label: '气泡' },
+  { value: 'firework', label: '烟花' },
 ]
 
 // Offsets are viewport percentages in this drawer. A config file may hold a CSS
@@ -108,13 +110,13 @@ function ClockPanel({ spec, onChange, onReset }) {
         <ToggleField label="在壁纸上显示时钟" checked={spec.enabled} onChange={(enabled) => onChange({ enabled })} />
       </Group>
       <Group title="外观">
-        <SelectField
+        <ChipField
           label="布局"
           value={spec.placement}
           options={CLOCK_PLACEMENTS}
           onChange={(placement) => onChange({ placement })}
         />
-        <SelectField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
+        <ChipField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
         <SliderField
           label="尺寸"
           value={spec.size}
@@ -178,7 +180,7 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
         />
       </Group>
       <Group title="外观">
-        <SelectField
+        <ChipField
           label="样式"
           value={spec.variant}
           options={SPECTRUM_VARIANTS}
@@ -249,13 +251,13 @@ function AlbumPanel({ spec, accent, onChange, onReset }) {
         />
       </Group>
       <Group title="外观">
-        <SelectField
+        <ChipField
           label="布局"
           value={spec.variant}
           options={ALBUM_VARIANTS}
           onChange={(variant) => onChange({ variant })}
         />
-        <SelectField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
+        <ChipField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
         <ColorField
           label="频谱颜色"
           value={spec.color ?? ''}
@@ -291,7 +293,7 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
         />
       </Group>
       <Group title="外观">
-        <SelectField
+        <ChipField
           label="形态"
           value={spec.variant}
           options={AMBIENT_VARIANTS}
@@ -350,14 +352,14 @@ function PointerPanel({ spec, accent, onChange, onReset }) {
       </Group>
       <Group title="通道">
         <ToggleField label="鼠标拖尾" checked={Boolean(spec.trail)} onChange={(trail) => onChange({ trail })} />
-        <SelectField
+        <ChipField
           label="拖尾形态"
           value={spec.trailVariant}
           options={POINTER_TRAIL_VARIANTS}
           onChange={(trailVariant) => onChange({ trailVariant })}
         />
         <ToggleField label="点击特效" checked={Boolean(spec.click)} onChange={(click) => onChange({ click })} />
-        <SelectField
+        <ChipField
           label="点击形态"
           value={spec.clickVariant}
           options={POINTER_CLICK_VARIANTS}
