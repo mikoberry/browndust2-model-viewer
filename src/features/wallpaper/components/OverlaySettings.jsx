@@ -81,19 +81,21 @@ function PlacementFields({ spec, onChange }) {
   const irregular = !isNumeric(spec.offsetX) || !isNumeric(spec.offsetY)
   return (
     <>
-      <AnchorPicker value={spec.anchor} onChange={(anchor) => onChange({ anchor })} />
-      <NumberField
-        label="水平偏移"
-        value={asNumber(spec.offsetX)}
-        suffix="视口 %（从锚点向内）"
-        onChange={(offsetX) => onChange({ offsetX })}
-      />
-      <NumberField
-        label="垂直偏移"
-        value={asNumber(spec.offsetY)}
-        suffix="视口 %（从锚点向内）"
-        onChange={(offsetY) => onChange({ offsetY })}
-      />
+      <div className="ws-pair is-three">
+        <AnchorPicker value={spec.anchor} onChange={(anchor) => onChange({ anchor })} />
+        <NumberField
+          label="水平偏移"
+          value={asNumber(spec.offsetX)}
+          suffix="视口 %"
+          onChange={(offsetX) => onChange({ offsetX })}
+        />
+        <NumberField
+          label="垂直偏移"
+          value={asNumber(spec.offsetY)}
+          suffix="视口 %"
+          onChange={(offsetY) => onChange({ offsetY })}
+        />
+      </div>
       {irregular && (
         <p className="ws-note">
           当前偏移不是纯数字（配置文件里写了 CSS 长度），面板按百分比显示为 0；改动后会写回数字。
@@ -116,16 +118,18 @@ function ClockPanel({ spec, onChange, onReset }) {
           options={CLOCK_PLACEMENTS}
           onChange={(placement) => onChange({ placement })}
         />
-        <ChipField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
-        <SliderField
-          label="尺寸"
-          value={spec.size}
-          min={40}
-          max={200}
-          step={1}
-          suffix="%"
-          onChange={(size) => onChange({ size })}
-        />
+        <div className="ws-pair">
+          <ChipField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
+          <SliderField
+            label="尺寸"
+            value={spec.size}
+            min={40}
+            max={200}
+            step={1}
+            suffix="%"
+            onChange={(size) => onChange({ size })}
+          />
+        </div>
       </Group>
       <Group title="位置" note="锚点描述「视口上的一点」与「控件上同名的一点」重合；偏移从锚点向内计。">
         <PlacementFields spec={spec} onChange={onChange} />
@@ -144,7 +148,7 @@ function ClockPanel({ spec, onChange, onReset }) {
           onChange={(beat) => onChange({ beat })}
         />
         {spec.beat && (
-          <>
+          <div className="ws-pair">
             <SliderField
               label="响应强度"
               value={spec.beatIntensity ?? 100}
@@ -161,7 +165,7 @@ function ClockPanel({ spec, onChange, onReset }) {
               step={0.01}
               onChange={(beatCurve) => onChange({ beatCurve })}
             />
-          </>
+          </div>
         )}
       </Group>
     </>
@@ -186,54 +190,60 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
           options={SPECTRUM_VARIANTS}
           onChange={(variant) => onChange({ variant })}
         />
-        <ColorField
-          label="颜色"
-          value={spec.color ?? ''}
-          fallback={accent}
-          onChange={(color) => onChange({ color })}
-        />
-        <SliderField
-          label="尺寸"
-          value={spec.size}
-          min={20}
-          max={500}
-          step={1}
-          suffix="%"
-          onChange={(size) => onChange({ size })}
-        />
-        <TextField
-          label="宽度"
-          value={spec.width ?? ''}
-          placeholder="留空 = 由尺寸决定（可写 100vw / 640px）"
-          onChange={(width) => onChange({ width })}
-        />
-        <TextField
-          label="高度"
-          value={spec.height ?? ''}
-          placeholder="留空 = 由尺寸决定（可写 14vh / 120px）"
-          onChange={(height) => onChange({ height })}
-        />
+        <div className="ws-pair">
+          <ColorField
+            label="颜色"
+            value={spec.color ?? ''}
+            fallback={accent}
+            onChange={(color) => onChange({ color })}
+          />
+          <SliderField
+            label="尺寸"
+            value={spec.size}
+            min={20}
+            max={500}
+            step={1}
+            suffix="%"
+            onChange={(size) => onChange({ size })}
+          />
+        </div>
+        <div className="ws-pair">
+          <TextField
+            label="宽度"
+            value={spec.width ?? ''}
+            placeholder="留空 = 由尺寸决定"
+            onChange={(width) => onChange({ width })}
+          />
+          <TextField
+            label="高度"
+            value={spec.height ?? ''}
+            placeholder="留空 = 由尺寸决定"
+            onChange={(height) => onChange({ height })}
+          />
+        </div>
       </Group>
       <Group title="位置">
         <PlacementFields spec={spec} onChange={onChange} />
       </Group>
       <Group title="响应">
-        <SliderField
-          label="强度"
-          value={spec.intensity}
-          min={0}
-          max={1000}
-          step={1}
-          onChange={(intensity) => onChange({ intensity })}
-        />
-        <SliderField
-          label="曲线"
-          value={spec.curve}
-          min={0.2}
-          max={2}
-          step={0.01}
-          onChange={(curve) => onChange({ curve })}
-        />
+        <div className="ws-pair">
+          <SliderField
+            label="强度"
+            value={spec.intensity}
+            min={0}
+            max={1000}
+            step={1}
+            onChange={(intensity) => onChange({ intensity })}
+          />
+          <SliderField
+            label="曲线"
+            value={spec.curve}
+            min={0.2}
+            max={2}
+            step={0.01}
+            onChange={(curve) => onChange({ curve })}
+          />
+        </div>
       </Group>
     </>
   )
@@ -257,21 +267,23 @@ function AlbumPanel({ spec, accent, onChange, onReset }) {
           options={ALBUM_VARIANTS}
           onChange={(variant) => onChange({ variant })}
         />
-        <ChipField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
+        <div className="ws-pair">
+          <ChipField label="文字色" value={spec.theme} options={THEMES} onChange={(theme) => onChange({ theme })} />
+          <SliderField
+            label="尺寸"
+            value={spec.size}
+            min={20}
+            max={300}
+            step={1}
+            suffix="%"
+            onChange={(size) => onChange({ size })}
+          />
+        </div>
         <ColorField
           label="频谱颜色"
           value={spec.color ?? ''}
           fallback={accent}
           onChange={(color) => onChange({ color })}
-        />
-        <SliderField
-          label="尺寸"
-          value={spec.size}
-          min={20}
-          max={300}
-          step={1}
-          suffix="%"
-          onChange={(size) => onChange({ size })}
         />
       </Group>
       <Group title="位置">
@@ -307,24 +319,26 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
         />
       </Group>
       <Group title="密度与强度">
-        <SliderField
-          label="密度"
-          value={spec.density}
-          min={10}
-          max={300}
-          step={1}
-          suffix="%"
-          onChange={(density) => onChange({ density })}
-        />
-        <SliderField
-          label="尺寸"
-          value={spec.size}
-          min={20}
-          max={300}
-          step={1}
-          suffix="%"
-          onChange={(size) => onChange({ size })}
-        />
+        <div className="ws-pair">
+          <SliderField
+            label="密度"
+            value={spec.density}
+            min={10}
+            max={300}
+            step={1}
+            suffix="%"
+            onChange={(density) => onChange({ density })}
+          />
+          <SliderField
+            label="尺寸"
+            value={spec.size}
+            min={20}
+            max={300}
+            step={1}
+            suffix="%"
+            onChange={(size) => onChange({ size })}
+          />
+        </div>
         <SliderField
           label="不透明度"
           value={spec.intensity}
@@ -351,20 +365,24 @@ function PointerPanel({ spec, accent, onChange, onReset }) {
         />
       </Group>
       <Group title="通道">
-        <ToggleField label="鼠标拖尾" checked={Boolean(spec.trail)} onChange={(trail) => onChange({ trail })} />
-        <ChipField
-          label="拖尾形态"
-          value={spec.trailVariant}
-          options={POINTER_TRAIL_VARIANTS}
-          onChange={(trailVariant) => onChange({ trailVariant })}
-        />
-        <ToggleField label="点击特效" checked={Boolean(spec.click)} onChange={(click) => onChange({ click })} />
-        <ChipField
-          label="点击形态"
-          value={spec.clickVariant}
-          options={POINTER_CLICK_VARIANTS}
-          onChange={(clickVariant) => onChange({ clickVariant })}
-        />
+        <div className="ws-pair">
+          <ToggleField label="鼠标拖尾" checked={Boolean(spec.trail)} onChange={(trail) => onChange({ trail })} />
+          <ToggleField label="点击特效" checked={Boolean(spec.click)} onChange={(click) => onChange({ click })} />
+        </div>
+        <div className="ws-pair">
+          <ChipField
+            label="拖尾形态"
+            value={spec.trailVariant}
+            options={POINTER_TRAIL_VARIANTS}
+            onChange={(trailVariant) => onChange({ trailVariant })}
+          />
+          <ChipField
+            label="点击形态"
+            value={spec.clickVariant}
+            options={POINTER_CLICK_VARIANTS}
+            onChange={(clickVariant) => onChange({ clickVariant })}
+          />
+        </div>
       </Group>
       <Group title="外观">
         <ColorField
@@ -373,24 +391,26 @@ function PointerPanel({ spec, accent, onChange, onReset }) {
           fallback={accent}
           onChange={(color) => onChange({ color })}
         />
-        <SliderField
-          label="尺寸"
-          value={spec.size}
-          min={20}
-          max={300}
-          step={1}
-          suffix="%"
-          onChange={(size) => onChange({ size })}
-        />
-        <SliderField
-          label="强度"
-          value={spec.intensity}
-          min={0}
-          max={300}
-          step={1}
-          suffix="%"
-          onChange={(intensity) => onChange({ intensity })}
-        />
+        <div className="ws-pair">
+          <SliderField
+            label="尺寸"
+            value={spec.size}
+            min={20}
+            max={300}
+            step={1}
+            suffix="%"
+            onChange={(size) => onChange({ size })}
+          />
+          <SliderField
+            label="强度"
+            value={spec.intensity}
+            min={0}
+            max={300}
+            step={1}
+            suffix="%"
+            onChange={(intensity) => onChange({ intensity })}
+          />
+        </div>
       </Group>
     </>
   )
