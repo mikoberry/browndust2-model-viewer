@@ -9,13 +9,18 @@
 // Each layer may additionally be scaled / offset independently, but ONLY in
 // design coordinates (design pixels or % of the design canvas) — see
 // resolveLayerTransform() below. Screen-pixel units would break invariance.
+//
+// These are the BUILT-IN DEFAULTS. The live values come from
+// `wallpaper.config.json` (shipped next to index.html), deep-merged on top of
+// this object at startup — see loadWallpaperConfig(). Keep this object usable
+// on its own: it is the fallback when the file is missing or unreadable
+// (e.g. a `file://` build, where fetch cannot read local JSON).
 
 export const WALLPAPER = {
   // Exact model id (see `npm run model:list`). Exact match -> partial match ->
   // first model, so changing the library never blanks the page.
   // Dev only: /?model=<id> overrides this without a rebuild.
   modelId: 'Wilhelmina/Iron_Monarch/cutscene_char067601',
-
   // Which backdrop to use:
   //   'auto'         -> the highest-resolution *usable* backdrop linked to this model
   //   'none' / ''    -> no backdrop
@@ -37,6 +42,15 @@ export const WALLPAPER = {
   letterbox: '#101319',
   // Fill the letterbox with a blurred, enlarged copy of the same backdrop.
   bleed: true,
+
+  // Render surface, relative to the design canvas. Both layers are drawn on a
+  // surface `overscan` times larger and centred on the canvas, then the visible
+  // overflow is clipped by the viewport instead of the canvas bounds. Without
+  // it, panning / enlarging either layer produced a hard straight edge exactly
+  // at the canvas rectangle. 1 = old behaviour (exact canvas, hard clip).
+  // Layout is unaffected at scale 1: the camera still maps design -> device
+  // pixels with k = renderScale, so the composition maths is unchanged.
+  overscan: 1.5,
 
   // Model placement INSIDE the design canvas, as ratios (0..1). These never
   // depend on the screen: heightRatio is relative to design.height, alignX/Y
@@ -60,13 +74,16 @@ export const WALLPAPER = {
   // Because these numbers live inside the fixed design canvas, the whole
   // composition is just scaled by one factor on the real screen: the result is
   // identical on every resolution / aspect ratio / DPR / fit mode.
+  // Keep these in sync with public/wallpaper.config.json: that file overrides
+  // them at runtime, but `file://` cannot fetch it, so this copy must already
+  // hold the intended defaults.
   backdropTransform: {
-    scale: 1,
+    scale: 1.7,
     offsetX: 0,
     offsetY: 0,
   },
   modelTransform: {
-    scale: 1,
+    scale: 1.7,
     offsetX: 0,
     offsetY: 0,
   },
@@ -81,9 +98,66 @@ export const WALLPAPER = {
   zoom: 1,
 }
 
-export function resolveWallpaperModel(models, overrideId = '') {
+// ---------------------------------------------------------------------------
+// External config file
+// ---------------------------------------------------------------------------
+// `public/wallpaper.config.json` is copied verbatim to `dist/`, so a built
+// wallpaper can be retuned by editing ONE file next to index.html — no rebuild.
+// Every key it omits keeps the built-in default above; `_`-prefixed keys are
+// treated as comments and may be added freely.
+export const CONFIG_FILE = 'wallpaper.config.json'
+
+// Kept identical to the `_readme` in public/wallpaper.config.json; the drawer
+// re-emits it so a copied file can be pasted back verbatim.
+export const CONFIG_README =
+  '壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 \'10%\'（相对设计画布宽 / 高）。'
+
+const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
+// Deep-merge `override` onto `base`. Only plain objects recurse; numbers,
+// strings, booleans, arrays and null replace wholesale. Unknown keys survive,
+// so the file can introduce new settings before the code is taught about them.
+export function mergeConfig(base, override) {
+  if (!isPlainObject(override)) return { ...base }
+  const merged = { ...base }
+  for (const [key, value] of Object.entries(override)) {
+    if (key.startsWith('_') || value === undefined) continue
+    merged[key] = isPlainObject(value) && isPlainObject(merged[key])
+      ? mergeConfig(merged[key], value)
+      : value
+  }
+  return merged
+}
+
+// Resolved against the document URL, which is exactly where the file sits (both
+// in dev — `public/` — and in dist, since Vite copies public/ verbatim).
+export function configFileUrl() {
+  return new URL(CONFIG_FILE, document.baseURI).href
+}
+
+// Never rejects: a missing / unreadable file (e.g. `file://`, plain static
+// hosting without the JSON) just falls back to the built-in defaults, so the
+// wallpaper always renders.
+export async function loadWallpaperConfig({ timeout = 5000 } = {}) {
+  const url = configFileUrl()
+  const controller = typeof AbortController === 'function' ? new AbortController() : null
+  const timer = controller ? setTimeout(() => controller.abort(), timeout) : 0
+  try {
+    const response = await fetch(url, { signal: controller?.signal, cache: 'no-cache' })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    const raw = await response.json()
+    return { config: mergeConfig(WALLPAPER, raw), source: 'file', url }
+  } catch (error) {
+    console.warn('[wallpaper] 配置文件不可用，改用内置默认值：', url, error)
+    return { config: { ...WALLPAPER }, source: 'builtin', url }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+export function resolveWallpaperModel(models, overrideId = '', modelId = WALLPAPER.modelId) {
   if (!models?.length) return null
-  const id = overrideId || WALLPAPER.modelId
+  const id = overrideId || modelId
   return models.find((item) => item.id === id) ?? models.find((item) => item.id.includes(id)) ?? models[0]
 }
 

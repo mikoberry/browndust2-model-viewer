@@ -26,7 +26,7 @@
 
 | 路径 | 用途 |
 | --- | --- |
-| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，零 UI、零文字、零交互；唯一配置在 `src/features/wallpaper/config.js` |
+| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，无侧栏 / 无文字 / 无交互（滚轮、拖拽、双击都不响应）；默认值在 `public/wallpaper.config.json`（运行期）与 `src/features/wallpaper/config.js`（内置兜底）。仅右下角有一个默认半透明的构图设置手柄（`S` 键同效），用于调缩放 / 偏移 |
 | `/spine-viewer` | **开发调试辅助页**：完整查看器 UI（侧栏 / 工具栏 / 检查器 / 时间轴 / 状态栏） |
 
 旧 WE 方案留下的 `src/stage/`、`src/backdrop/`、`src/overlay/`、`src/we/`、`public/models/`、`project.json`、
@@ -53,6 +53,8 @@ npm run preview        # 预览构建产物
 ```
 index.html                       # 挂载点；内联脚本规范化 /spine-viewer/ 尾斜杠
 vite.config.js                   # react() + modelLibraryPlugin()，base: './'
+public/
+  wallpaper.config.json          # 运行期配置，原样复制到 dist/ 根；改完刷新即生效
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR 尺寸）
   model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile
@@ -62,9 +64,11 @@ src/
     App.jsx                      # 只做路由分发，不承载业务逻辑
     router.js                    # useRoute：两路由判断 + pushState 导航
   features/
-    wallpaper/                   # Feature：根路由正式壁纸，零 UI
-      WallpaperPage.jsx          # 背景 img + canvas，页面入口 / 组合根
-      config.js                  # 该 feature 唯一配置 + 构图纯函数
+    wallpaper/                   # Feature：根路由正式壁纸，默认无 chrome
+      WallpaperPage.jsx          # 背景 img + canvas，页面入口 / 组合根；设置抽屉开关与 tweak 状态
+      config.js                  # 内置默认值 + mergeConfig/loadWallpaperConfig + 构图纯函数
+      components/
+        WallpaperSettings.jsx    # 构图设置抽屉（背景 / 模型的缩放与偏移），仅 wallpaper 使用
     viewer/                      # Feature：/spine-viewer 开发调试辅助页
       ViewerPage.jsx             # 状态 + 布局
       components/                # 只被 viewer 使用的 UI
@@ -122,6 +126,13 @@ src/features/<feature>/
 - 两个页面**共用同一个** `SpineStage`；`fitRatio` / `interactive` / `showLoading` / `design` 是壁纸页专用的
   可选 props，**默认值必须保持调试页行为**，不要写第二套 WebGL / 资源加载逻辑。
 - 组件靠 props + 回调通信，不因为「参数有点多」就引入全局 store；确实要共享时按 §3 提升到 `lib/`。
+- **壁纸页的 chrome 只能是「按需呼出」**：`WallpaperSettings` 默认收起（`visibility: hidden`，不占 Tab 焦点），
+  由右下角手柄或 `S` 键打开、`Esc` / × 关闭。它的编辑只改页面内存状态，**绝不写回 `config.js`，也不持久化**；
+  唯一出口是「复制配置」：输出**完整配置文件内容**（`_readme` + 全部字段，两层 transform 用面板当前值），
+  未调整时与 `public/wallpaper.config.json` **逐字节相同**（键顺序沿用 `WALLPAPER`，`JSON.stringify(..., 2)` + 换行）。
+  改字段或顺序时要保持这个等价性。不要给它加常驻按钮、toast 或自动保存。
+- **画面本身永不响应指针**：壁纸页没有拖拽 / 滚轮 / 双击，构图只能通过抽屉里的滑块或数字框改。
+  不要重新引入「在画面上拖动图层」这类交互，它和「背景原生像素 = 设计画布」的构图模型冲突，容易只拖得动背景。
 - 时间由 `SpineStage` 的 rAF 循环回调（`onProgress` / `onStats`）驱动，**组件不自行起定时器轮询**。
 - **选中状态与 `onLoaded` 的三条耦合不要破坏**：
   1. `SpineStage` 只在 asset 变化时上报模型信息 → `selectModel` 对同 id 必须幂等（否则清空面板后无人补报）；
@@ -131,8 +142,11 @@ src/features/<feature>/
 ## 6. 状态管理（State Management）
 
 - **只有 React 内置 state**：`useState` 管 UI 状态，`useRef` 管 rAF 循环中要读的可变值
-  （pan / zoom / bounds / drag）。没有全局 store，也没有服务端状态或表单状态 —— 本项目没有后端、
-  没有登录、没有表单提交，不要为此引入状态库或数据请求层。
+  （pan / zoom / bounds / drag）。没有全局 store、没有登录、没有表单提交，不要为此引入状态库。
+  唯一的「请求」是壁纸页 mount 时读一次 `wallpaper.config.json`，用 `useState` + `useEffect` 存即可，
+  不要引入 react-query / SWR 之类的数据层。
+- 壁纸页的 `useState(configTweaks)` + `useEffect(() => setTweaks(configTweaks), [configTweaks])` 是**故意**的：
+  配置是异步到的，默认值必须以它为准；别把它改成 `useState` 懒初始化，否则文件里的值永远不生效。
 - `SpineStage` 把所有 props 镜像进 `liveRef.current`，让渲染循环按 asset 创建一次、不随每次 UI 重渲染重建。
   改这里时保持「循环闭包读 ref，不读旧 props」。
 - **不要开 `StrictMode`**：dev 下双挂载会在同一个 canvas 上创建 / 销毁 / 重建 WebGL 上下文，
@@ -140,7 +154,8 @@ src/features/<feature>/
 
 ## 7. 素材流水线 / 数据层（Asset Pipeline）
 
-本项目唯一的「数据层」是构建期扫描出的素材清单（虚拟模块 `virtual:model-library`），没有 HTTP API。
+本项目唯一的「数据层」是构建期扫描出的素材清单（虚拟模块 `virtual:model-library`），以及一个运行期读取的
+`public/wallpaper.config.json`；没有 HTTP API / 后端。
 
 - 目录为 `model-library/<角色>/<皮肤>/` 两级，扫描器递归任意深度；当前 7 套（Olivier 4 / Wilhelmina 3），全部 Spine 4.1.11。
 - 共享背景库 `model-library/skill_cutscene_background/` 约 1036 张 / 366MB，按文件名与模型 stem 里的 **6 位角色 ID** 关联。
@@ -152,6 +167,21 @@ src/features/<feature>/
 - `model-library/` 只读；源素材不做重编码，`.atlas` 里的页名与磁盘文件名天然一致。
 - `.gitignore` 排除 `/model-library/skill_cutscene_background/`：本地保留供扫描器读取，确实需要入库时 `git add -f`。
   **新环境 clone 后没有背景库**，壁纸背景会缺失，需要用户自行放置。
+
+### 运行期配置文件（`public/wallpaper.config.json`）
+
+唯一的运行期「配置数据」，也是壁纸页默认值的正式入口。
+
+- Vite 把 `public/` 原样复制到 `dist/` 根，所以文件名**不带 hash**、可以打包后手改；`import` 里**没有**它，
+  它是 `fetch` 出来的静态资源（`configFileUrl()` 用 `document.baseURI` 解析，dev / dist / 子路径都成立）。
+- 加载流程：`loadWallpaperConfig()` → `mergeConfig(WALLPAPER, json)` 深度合并 → 失败则原样用内置 `WALLPAPER`，
+  `console.warn` 一条并返回 `source: 'builtin'`。**绝不 reject**，壁纸必须有画面。
+- 合并规则：只对纯对象递归，数字 / 字符串 / 布尔 / 数组 / `null` 整体替换；`_` 前缀键当注释丢弃；未知键保留
+  （方便先加字段再实现）。
+- 优先级：内置 `WALLPAPER` → JSON → 抽屉里的临时调整；`?model=` 只覆盖模型选择。
+- 壁纸页在配置 settle 之前**不挂载 `SpineStage`**（否则会按内置 modelId 加载一次、再按文件里的重载一次）。
+- 新增设置的正确做法：先在 `WALLPAPER` 里给默认值 → JSON 里加同名键 → 在 `WallpaperPage` 里读 `config.xxx`。
+  不要在组件里写 `?? 某个魔法数`，默认值只允许出现在 `WALLPAPER`。
 
 ## 8. Spine 运行时约束（Runtime Constraints，实测，不要凭直觉改）
 
@@ -172,7 +202,11 @@ src/features/<feature>/
 - 背景 `<img>` 与 WebGL `<canvas>` 同为 `.wallpaper-design` 子元素，**共用唯一一个 CSS transform**；
   屏幕尺寸 / 比例变化只改这一个 `scale`（`contain` / `cover`），容器内部相对几何恒定。
 - `SpineStage` 的 `design` 模式用**加载时冻结的 `setupBounds`**（实时姿态包围盒会让动画播放时构图漂移），
-  以 `k = canvas.width / design.width` 为唯一「设计→设备像素」因子反解相机；调试页不传 `design`，行为不变。
+  以 `k = canvas.width / (design.width * overscan)` 为唯一「设计→设备像素」因子反解相机；调试页不传 `design`，行为不变。
+  因为 canvas 布局宽度同样乘了 `overscan`，`k` 恒等于 `renderScale`，构图数学与「画布正好一层」时逐位相同。
+- **不要在 `.wallpaper-design` 上加 `overflow: hidden`**：两层都被允许平移 / 放大到画布之外（`WALLPAPER.overscan`，
+  默认 1.5 倍的渲染面 `.wallpaper-surface`），裁剪由视口负责。裁在画布边界上会让宽屏留边区「拖不过去」——
+  背景图正好等于画布大小，一旦平移就被切掉，只剩模糊的 `bleed` 补边，看起来像一个方块在滑动。
 - canvas 位图分辨率按 transform 后的实际显示尺寸渲染；**canvas 自身不能加 CSS transform**，否则 `displayScale` / `k` 失效。
 - 背景与模型可分别缩放 / 平移（`backdropTransform` / `modelTransform`），但**只允许设计坐标单位**：
   倍率、设计像素、`'10%'`（相对设计画布宽 / 高）。屏幕 px / `vw` / `vh` / 视口百分比会破坏确定性。
@@ -180,6 +214,10 @@ src/features/<feature>/
   模型用 `design.transform` 在相机里 `worldZoom / s` + `target += (dx,dy)*k`。**平移不被该层缩放放大**。
 - 改相机数学时必须保持「模型 / 画布归一化矩形与 scale、dpr、屏幕比例无关」。用纯 Node 复算验证：
   `compositionRects()` / `normalizeRect()` 是这套计算的唯一来源，7 视口 × DPR 1/2 × contain/cover 下偏差应为浮点误差量级。
+- 构图设置抽屉（`features/wallpaper/components/WallpaperSettings.jsx`）里的数值一律是**设计像素**，
+  进入渲染前同样走 `resolveLayerTransform()`，所以「面板调到 X」与「`wallpaper.config.json` 写 X」等价。
+- 改默认构图时**优先改 `public/wallpaper.config.json`**（打包后仍可改、无需重建），`config.js` 里的 `WALLPAPER`
+  只作为兜底默认值同步更新；两者字段必须一一对应。
 
 ## 10. 路由（Routing）
 
@@ -190,8 +228,10 @@ src/features/<feature>/
 
 ## 11. 错误处理（Error Handling）
 
-- **壁纸页**：刻意零 UI，只有加载失败或素材库为空时左下角显示一行纯文本，同时 `console.error`。
-  不要加 toast / 弹窗 / 重试按钮。
+- **壁纸页**：默认无 UI，只有加载失败或素材库为空时左下角显示一行纯文本，同时 `console.error`。
+  不要加 toast / 弹窗 / 重试按钮（构图设置抽屉是唯一的例外，且必须保持收起状态）。
+- **配置文件读取失败必须静默降级**：`loadWallpaperConfig()` 不 reject，返回内置默认值 + `source: 'builtin'`，
+  `console.warn` 一条即可。`file://` 下 fetch 本地 JSON 必然失败，这是预期路径，不要当错误弹提示。
 - **调试页**：`onError` → 右下角 `error-toast`，可手动关闭；资源加载带 60s 超时与图集页缺失提示。
 - WebGL 上下文创建失败由 `SpineStage` 捕获并走 `onError`；`AssetManager.dispose()` 放在 effect cleanup，
   切模型前释放图集纹理。
@@ -199,8 +239,9 @@ src/features/<feature>/
 
 ## 12. 性能与构建产物（Performance & Build Output）
 
-- canvas 位图分辨率按 CSS transform 之后的**实际显示尺寸**渲染，`renderScale = min(dpr * displayScale, 3)`；
-  canvas 自身不能加 CSS transform，否则 `displayScale` / `k` 失效。
+- canvas 位图分辨率按 CSS transform 之后的**实际显示尺寸**渲染，`renderScale = min(dpr * displayScale, 3 / overscan)`；
+  canvas 自身不能加 CSS transform，否则 `displayScale` / `k` 失效。除以 `overscan` 是为了让放大后的渲染面
+  **最大位图尺寸（显存占用）与画布正好一层时相同**，不要去掉这个除法。
 - 每份 asset 只创建**一个** rAF 循环；姿态包围盒只在 `fitPendingRef` 时重算，不逐帧调 `getBoundsRect()`。
 - 调试包围盒 overlay 在隐藏时避免每帧写 DOM（防强制重排）。
 - build 只 emit manifest 引用的素材，`dist/` 不含 366MB 背景库；`base: './'` 保证 `file://` 与任意子路径可用。
@@ -216,8 +257,12 @@ src/features/<feature>/
    ```
    退出码 0 = 语法与所有 import 路径解析成功。
 2. **纯 Node**：`npm run model:list`；构图数学校验直接 import `src/features/wallpaper/config.js` 的
-   `compositionRects()` / `normalizeRect()`。
-3. **构建**：`npm run build`（仅用户明确要求时），核对 `dist/` 只含 manifest 引用的素材。
+   `compositionRects()` / `normalizeRect()`；配置合并用 `mergeConfig()` 断言（空 override 等于默认值、
+   嵌套部分覆盖、`_` 键被丢弃、`public/wallpaper.config.json` 的键与 `WALLPAPER` 一致）。
+   该文件顶层**不能**依赖 `import.meta.env` / `document`（否则 Node 无法 import），只在函数体内用 `document`。
+   抽屉的「复制配置」也要断言：未调整面板时，生成内容与 `public/wallpaper.config.json` **逐字节相同**。
+3. **构建**：`npm run build`（仅用户明确要求时），核对 `dist/` 只含 manifest 引用的素材，
+   且 `dist/wallpaper.config.json` 存在、文件名无 hash。
 4. 实际画面由用户自己在浏览器 / 壁纸宿主里确认。
 
 **不要**跑无头浏览器、截图、Playwright 或任何浏览器自动化；不要在报告里把「构建通过」说成「验证通过」。
@@ -235,7 +280,8 @@ src/features/<feature>/
 
 - **加模型**：把 `.skel` / `.json` + `.atlas` + 全部图集页 PNG 放进 `model-library/<角色>/<皮肤>/`，刷新即可；
   用 `npm run model:list` 核对图集页是否齐全。不要改 `src/` 去硬编码模型列表。
-- **改壁纸**：只动 `src/features/wallpaper/config.js`；该文件不参与调试页。
+- **改壁纸**：调默认构图改 `public/wallpaper.config.json`（运行期、打包后可改）；`src/features/wallpaper/config.js`
+  的 `WALLPAPER` 只是兜底默认值，改了要同步 JSON。这些都不参与调试页。
 - **改调试 UI**：只动 `src/features/viewer/`；若某组件要复用到壁纸，先按 §3 提升到共享层。
 - **改相机 / 构图数学**：同时对照 `lib/spine/SpineStage.jsx` 的 `design` 分支与
   `features/wallpaper/config.js` 的 `compositionRects()`，并用 §13 的纯 Node 复算确认归一化矩形不变。

@@ -249,6 +249,7 @@ export default function SpineStage(props) {
       }
 
       const canvas = canvasRef.current
+      const d = live.design
       const cssWidth = Math.max(canvas.clientWidth, 1)
       const cssHeight = Math.max(canvas.clientHeight, 1)
       // The wallpaper scales its fixed design canvas with a CSS transform, so
@@ -258,7 +259,11 @@ export default function SpineStage(props) {
       const rect = canvas.getBoundingClientRect()
       const displayScale = Math.max(rect.width / cssWidth, rect.height / cssHeight, 0.01)
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      const renderScale = Math.min(dpr * displayScale, 3)
+      // The wallpaper may render on a surface `overscan` times larger than the
+      // design canvas. Divide the density cap by it so the maximum bitmap size
+      // (and so GPU memory) stays what the exact-canvas case used to allow.
+      const surfaceOverscan = d?.overscan > 0 ? d.overscan : 1
+      const renderScale = Math.min(dpr * displayScale, 3 / surfaceOverscan)
       const width = Math.max(1, Math.round(cssWidth * renderScale))
       const height = Math.max(1, Math.round(cssHeight * renderScale))
       if (canvas.width !== width || canvas.height !== height) {
@@ -268,7 +273,6 @@ export default function SpineStage(props) {
         renderer.camera.setViewport(width, height)
       }
 
-      const d = live.design
       const sb = asset.setupBounds
       const fixed = d && sb && d.width > 0 && d.height > 0
       // Fixed mode uses the immutable setup-pose bounds, never the live pose,
@@ -282,8 +286,10 @@ export default function SpineStage(props) {
       let camY
       if (fixed) {
         // Design pixels -> device pixels, one factor shared with the backdrop.
-        // d.width is also the canvas layout width, so k === renderScale.
-        const k = width / d.width
+        // The canvas bitmap covers a surface `overscan` times the design canvas,
+        // so dividing by d.width alone would over-scale the camera. Either way
+        // k === renderScale, so the composition maths is identical.
+        const k = width / (d.width * surfaceOverscan)
         const m = d.model ?? {}
         const hRatio = m.heightRatio > 0 ? m.heightRatio : 1
         const wRatio = m.widthRatio > 0 ? m.widthRatio : 1

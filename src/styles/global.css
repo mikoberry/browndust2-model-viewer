@@ -921,13 +921,22 @@ code {
   pointer-events: none;
 }
 
-/* The ONE fixed design canvas. Both children (backdrop <img> + WebGL canvas)
+/* The ONE fixed design canvas. Both children (backdrop <img> + model surface)
    share this single transform, so their relative size and position cannot
-   change with screen size or aspect ratio. */
+   change with screen size or aspect ratio.
+   Deliberately NOT clipped: each layer may be panned / enlarged, and a clip
+   here would cut it with a hard straight edge exactly at the canvas rectangle.
+   The viewport does the clipping instead (see .wallpaper-page). */
 .wallpaper-design {
   position: absolute;
-  overflow: hidden;
   transform-origin: 0 0;
+}
+
+/* Overscan surface for the WebGL canvas: `overscan` times the design canvas,
+   centred on it, so an enlarged model can bleed past the canvas bounds.
+   SpineStage maps design -> device pixels knowing about this factor. */
+.wallpaper-surface {
+  position: absolute;
 }
 
 .wallpaper-backdrop {
@@ -944,6 +953,8 @@ code {
   user-select: none;
 }
 
+/* The canvas needs an explicit cursor because `cursor: auto` would not inherit
+   the page's, and the wallpaper must not advertise any interaction. */
 .wallpaper-page .stage-canvas,
 .wallpaper-page .stage-canvas:active {
   cursor: default;
@@ -962,3 +973,275 @@ code {
   line-height: 1.5;
   pointer-events: none;
 }
+
+/* ---------- wallpaper composition drawer ----------
+   Hidden chrome: a nearly invisible handle in the corner, and a dark glass
+   drawer. Everything here sits on top of artwork, so it is always dark. */
+
+.wallpaper-settings-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: rgba(12, 16, 24, 0.5);
+  color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  opacity: 0.25;
+  transition: opacity 0.18s ease, background 0.18s ease;
+}
+
+.wallpaper-settings-toggle:hover,
+.wallpaper-settings-toggle:focus-visible {
+  opacity: 1;
+  background: rgba(12, 16, 24, 0.78);
+  outline: none;
+}
+
+.wallpaper-settings-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.wallpaper-settings {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  background: rgba(15, 19, 27, 0.84);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(20px) saturate(1.15);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateX(calc(100% + 26px));
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease,
+    visibility 0s linear 0.26s;
+}
+
+.wallpaper-settings.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease, visibility 0s linear 0s;
+}
+
+.wallpaper-settings code {
+  background: rgba(255, 255, 255, 0.1);
+  color: inherit;
+}
+
+.wallpaper-settings .ws-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 14px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wallpaper-settings .ws-head h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.wallpaper-settings .ws-head p {
+  margin: 3px 0 0;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Where the current defaults came from: the JSON file, or the built-in object. */
+.wallpaper-settings .ws-head .ws-source {
+  margin-top: 6px;
+  font-size: 10px;
+  word-break: break-all;
+  color: rgba(140, 200, 170, 0.75);
+}
+
+.wallpaper-settings .ws-head .ws-source.is-fallback {
+  color: rgba(230, 180, 120, 0.8);
+}
+
+.wallpaper-settings .ws-close {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.wallpaper-settings .ws-close:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.wallpaper-settings .ws-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 14px 14px;
+}
+
+.wallpaper-settings .ws-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.wallpaper-settings .ws-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+}
+
+.wallpaper-settings .ws-group {
+  margin-top: 14px;
+}
+
+.wallpaper-settings .ws-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.wallpaper-settings .ws-group-head h3 {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+
+.wallpaper-settings .ws-reset {
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+}
+
+.wallpaper-settings .ws-reset:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.wallpaper-settings .ws-field {
+  margin-bottom: 12px;
+}
+
+.wallpaper-settings .ws-field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.wallpaper-settings .ws-field-label {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.wallpaper-settings .ws-field-readout {
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallpaper-settings .ws-field-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wallpaper-settings .ws-range {
+  flex: 1;
+  min-width: 0;
+  height: 16px;
+  accent-color: #8b88ff;
+}
+
+.wallpaper-settings .ws-number {
+  width: 64px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallpaper-settings .ws-number:focus {
+  border-color: #8b88ff;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+.wallpaper-settings .ws-note {
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.34);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.wallpaper-settings .ws-foot {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wallpaper-settings .ws-btn {
+  flex: 1;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+
+.wallpaper-settings .ws-btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.wallpaper-settings .ws-btn.is-primary {
+  flex: 1.2;
+  border-color: #6f6bf0;
+  background: #6f6bf0;
+  color: #fff;
+  font-weight: 600;
+}
+
+.wallpaper-settings .ws-btn.is-primary:hover {
+  border-color: #817df7;
+  background: #817df7;
+}
+
