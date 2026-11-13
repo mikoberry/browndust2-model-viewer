@@ -1492,6 +1492,18 @@ code {
   margin-bottom: 0;
 }
 
+/* Half-width fields: the readout ("-1024px · -50.0%") can be wider than the
+   label + space allows, so let it drop to a second line instead of squeezing
+   the label, and never break a number in half. */
+.wallpaper-settings .ws-pair .ws-field-head {
+  flex-wrap: wrap;
+  row-gap: calc(2px * var(--ui-scale));
+}
+
+.wallpaper-settings .ws-pair .ws-field-value {
+  white-space: nowrap;
+}
+
 /* Entrance sequence: read-only playlist + a plain replay button. The list is
    truncated rather than wrapped so the composition tab keeps its height. */
 .wallpaper-settings .ws-seq {

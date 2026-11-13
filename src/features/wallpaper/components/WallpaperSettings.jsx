@@ -47,10 +47,11 @@ const formatScale = (value) => `${Number(value).toFixed(2)}×`
 const formatPercent = (value) => `${round2(value ?? 0)}%`
 
 // Offsets are shown as raw design pixels plus the equivalent percentage, so the
-// number maps 1:1 onto the config value the user will copy.
+// number maps 1:1 onto the config value the user will copy. Kept compact (no
+// spaces around the separator) because the two offsets share one row.
 function formatOffset(value, basis) {
   const percent = basis > 0 ? (value / basis) * 100 : 0
-  return `${Math.round(value)} px · ${percent.toFixed(1)}%`
+  return `${Math.round(value)}px · ${percent.toFixed(1)}%`
 }
 
 function LayerGroup({ title, note, spec, design, onChange, onReset }) {
@@ -72,24 +73,29 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
         value={spec.scale}
         onChange={(scale) => onChange({ scale: Math.max(scale, SCALE_MIN) })}
       />
-      <SliderField
-        label="水平偏移"
-        readout={formatOffset(spec.offsetX, design.width)}
-        min={-limitX}
-        max={limitX}
-        step={1}
-        value={spec.offsetX}
-        onChange={(offsetX) => onChange({ offsetX })}
-      />
-      <SliderField
-        label="垂直偏移"
-        readout={formatOffset(spec.offsetY, design.height)}
-        min={-limitY}
-        max={limitY}
-        step={1}
-        value={spec.offsetY}
-        onChange={(offsetY) => onChange({ offsetY })}
-      />
+      {/* The two offsets sit side by side (like the parallax strengths): they are
+          a pair — you nudge X and Y in the same breath — and the drawer has to
+          fit the window height, since Wallpaper Engine has no mouse wheel. */}
+      <div className="ws-pair">
+        <SliderField
+          label="水平偏移"
+          readout={formatOffset(spec.offsetX, design.width)}
+          min={-limitX}
+          max={limitX}
+          step={1}
+          value={spec.offsetX}
+          onChange={(offsetX) => onChange({ offsetX })}
+        />
+        <SliderField
+          label="垂直偏移"
+          readout={formatOffset(spec.offsetY, design.height)}
+          min={-limitY}
+          max={limitY}
+          step={1}
+          value={spec.offsetY}
+          onChange={(offsetY) => onChange({ offsetY })}
+        />
+      </div>
     </Group>
   )
 }
