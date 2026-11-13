@@ -1308,8 +1308,7 @@ code {
 
 /* Two fields per row. The drawer is wide and short-typed (there is no scrolling
    inside Wallpaper Engine, so every tab has to fit the window height), so related
-   fields share a row instead of stacking. `is-three` is used by the placement
-   group, where the 3x3 anchor picker takes the fixed first column. */
+   fields share a row instead of stacking. The placement row is `.is-position`. */
 .wallpaper-settings .ws-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1317,8 +1316,14 @@ code {
   align-items: start;
 }
 
-.wallpaper-settings .ws-pair.is-three {
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+/* Placement row: the 3x3 anchor picker on the left, spanning both rows, with the
+   two offset sliders stacked in the remaining width. */
+.wallpaper-settings .ws-pair.is-position {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.wallpaper-settings .ws-pair.is-position > :first-child {
+  grid-row: span 2;
 }
 
 /* The grid owns the vertical rhythm inside a pair. */
@@ -1373,12 +1378,6 @@ code {
   border-color: #8b88ff;
   background: rgba(255, 255, 255, 0.1);
   outline: none;
-}
-
-.wallpaper-settings .ws-number.is-wide {
-  flex: 1;
-  min-width: 0;
-  width: auto;
 }
 
 .wallpaper-settings .ws-text {

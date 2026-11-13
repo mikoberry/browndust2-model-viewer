@@ -80,30 +80,6 @@ export function SliderField({ label, readout, min, max, step, value, onChange, s
   )
 }
 
-// Free-form number without a slider (offsets can be negative and range widely).
-export function NumberField({ label, value, step = 1, onChange, suffix = '' }) {
-  return (
-    <div className="ws-field">
-      <div className="ws-field-head">
-        <span className="ws-field-label">{label}</span>
-      </div>
-      <div className="ws-field-controls">
-        <input
-          className="ws-number is-wide"
-          type="number"
-          step={step}
-          value={round2(value)}
-          onChange={(event) => {
-            const next = Number(event.target.value)
-            if (Number.isFinite(next)) onChange(next)
-          }}
-        />
-        <span className="ws-field-readout">{suffix}</span>
-      </div>
-    </div>
-  )
-}
-
 export function TextField({ label, value, placeholder, onChange }) {
   return (
     <div className="ws-field">
@@ -306,7 +282,7 @@ export function AnchorPicker({ value, onChange }) {
   return (
     <div className="ws-field">
       <div className="ws-field-head">
-        <span className="ws-field-label">位置</span>
+        <span className="ws-field-label">锚点</span>
         <span className="ws-field-readout">{ANCHOR_LABELS[value] ?? value}</span>
       </div>
       <div className="ws-anchor-grid" role="group" aria-label="位置锚点">

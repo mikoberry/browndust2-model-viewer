@@ -6,7 +6,7 @@
 // Option lists come from wallkit itself wherever it exports them, so a new
 // variant in the library shows up here without a second source of truth.
 
-import { Group, AnchorPicker, ChipField, ColorField, NumberField, SliderField, TextField, ToggleField } from './settings-fields.jsx'
+import { Group, AnchorPicker, ChipField, ColorField, SliderField, TextField, ToggleField } from './settings-fields.jsx'
 
 // Option lists are rendered as button chips (never a <select>), so labels are
 // kept short; the library's own identifier is in the button's `title`/tooltip.
@@ -77,23 +77,44 @@ const POINTER_CLICK_VARIANTS = [
 const asNumber = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
 const isNumeric = (value) => typeof value === 'number' && Number.isFinite(value)
 
+// A slider drags within +/- one full viewport. A config value beyond that widens
+// the track instead of clamping the handle to the edge, so the number box and the
+// slider never disagree.
+const OFFSET_SPAN = 100
+const offsetRange = (value) => {
+  const span = Math.max(OFFSET_SPAN, Math.ceil(Math.abs(value)))
+  return [-span, span]
+}
+
 function PlacementFields({ spec, onChange }) {
   const irregular = !isNumeric(spec.offsetX) || !isNumeric(spec.offsetY)
+  const offsetX = asNumber(spec.offsetX)
+  const offsetY = asNumber(spec.offsetY)
+  const [xMin, xMax] = offsetRange(offsetX)
+  const [yMin, yMax] = offsetRange(offsetY)
   return (
     <>
-      <div className="ws-pair is-three">
+      {/* The anchor grid spans both rows, so the two sliders get the full column
+          width instead of being squeezed next to it. */}
+      <div className="ws-pair is-position">
         <AnchorPicker value={spec.anchor} onChange={(anchor) => onChange({ anchor })} />
-        <NumberField
+        <SliderField
           label="水平偏移"
-          value={asNumber(spec.offsetX)}
-          suffix="视口 %"
-          onChange={(offsetX) => onChange({ offsetX })}
+          value={offsetX}
+          min={xMin}
+          max={xMax}
+          step={0.5}
+          suffix=" %"
+          onChange={(value) => onChange({ offsetX: value })}
         />
-        <NumberField
+        <SliderField
           label="垂直偏移"
-          value={asNumber(spec.offsetY)}
-          suffix="视口 %"
-          onChange={(offsetY) => onChange({ offsetY })}
+          value={offsetY}
+          min={yMin}
+          max={yMax}
+          step={0.5}
+          suffix=" %"
+          onChange={(value) => onChange({ offsetY: value })}
         />
       </div>
       {irregular && (
