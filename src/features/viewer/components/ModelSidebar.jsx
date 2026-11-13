@@ -1,4 +1,4 @@
-import { formatBytes } from '../lib/assets.js'
+import { formatBytes } from '../../../lib/assets.js'
 
 export default function ModelSidebar({ models, warnings, selectedId, onSelect }) {
   const groups = []

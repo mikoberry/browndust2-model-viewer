@@ -1,4 +1,4 @@
-import { assetUrl } from '../lib/assets.js'
+import { assetUrl } from '../../../lib/assets.js'
 
 const SPEEDS = [0.25, 0.5, 1, 1.5, 2]
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))

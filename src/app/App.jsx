@@ -2,9 +2,9 @@
 // wallpaper); /spine-viewer is only a development aid for inspecting assets.
 
 import { useEffect } from 'react'
-import { useRoute } from './lib/router.js'
-import ViewerPage from './pages/ViewerPage.jsx'
-import WallpaperPage from './pages/WallpaperPage.jsx'
+import { useRoute } from './router.js'
+import ViewerPage from '../features/viewer/ViewerPage.jsx'
+import WallpaperPage from '../features/wallpaper/WallpaperPage.jsx'
 
 export default function App() {
   const { isViewer, navigate } = useRoute()

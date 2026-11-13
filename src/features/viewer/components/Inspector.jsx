@@ -1,5 +1,5 @@
-import { formatBytes, formatSeconds } from '../lib/assets.js'
-import { FACE_ANIM } from '../lib/animation.js'
+import { formatBytes, formatSeconds } from '../../../lib/assets.js'
+import { FACE_ANIM } from '../../../lib/animation.js'
 
 function InfoRow({ label, value }) {
   return (

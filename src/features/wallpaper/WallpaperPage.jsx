@@ -9,9 +9,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { models } from 'virtual:model-library'
-import SpineStage from '../spine/SpineStage.jsx'
-import { pickDefaultAnimation, pickDefaultExpression } from '../lib/animation.js'
-import { assetUrl } from '../lib/assets.js'
+import SpineStage from '../../lib/spine/SpineStage.jsx'
+import { pickDefaultAnimation, pickDefaultExpression } from '../../lib/animation.js'
+import { assetUrl } from '../../lib/assets.js'
 import {
   WALLPAPER,
   resolveWallpaperModel,
@@ -19,7 +19,7 @@ import {
   resolveDesign,
   designScale,
   resolveLayerTransform,
-} from '../config/wallpaper.js'
+} from './config.js'
 
 const readViewport = () => ({ width: window.innerWidth, height: window.innerHeight })
 

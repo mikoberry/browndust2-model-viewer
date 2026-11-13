@@ -7,10 +7,10 @@
 
 | 路径 | 用途 | 页面内容 |
 | --- | --- | --- |
-| `/`（以及其它所有路径） | **壁纸**：正式页面 | 全屏只有一个固定模型，没有任何 UI、控件、文字或交互 |
+| `/`（以及其它所有路径） | **壁纸**：正式页面 | 全屏固定模型 + 对应背景，没有任何 UI、控件、文字或交互 |
 | `/spine-viewer` | **开发调试辅助页** | 完整查看器：模型库、工具栏、动画 / 信息面板、时间轴、状态栏 |
 
-根路由显示的模型与播放参数集中在 `src/config/wallpaper.js`，改动不会影响调试页。
+根路由显示的模型、背景、构图与播放参数集中在 `src/features/wallpaper/config.js`，改动不会影响调试页。
 
 ## 运行
 
@@ -39,7 +39,7 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 
 ```
 固定设计画布（例如 2048×2048）
-├─ 背景 <img>     铺满画布，等于原生 1:1，不拉伸
+├─ 背景 <img>     原生 1:1 铺满画布、不拉伸（未应用背景层变换时）
 └─ WebGL <canvas> 同一尺寸，按冻结的 setupBounds + 构图比例放置模型
         ↓ 整块画布只用一个 scale 等比缩放并居中
 真实屏幕（任意分辨率 / 任意宽高比）
@@ -53,7 +53,7 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 - `fit: 'contain'` 保证完整构图（其它比例留边）、`'cover'` 铺满并对称裁切；**两者都不改变相对构图**。
   留边默认用同一张背景的模糊放大版填充（纯装饰层，不参与构图）。
 
-`src/config/wallpaper.js` 是唯一配置文件：
+`src/features/wallpaper/config.js` 是唯一配置文件：
 
 | 字段 | 说明 |
 | --- | --- |
@@ -91,10 +91,12 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 3840×2160 上只等于 94.8 设计 px（归一化 0.04630）—— 分辨率翻倍，相对偏移就减半。
 **所以配置里不要写屏幕像素或 `vw/vh`。**
 
-离线复算（`npm run build` 之外可选的纯 Node 校验）覆盖 7 种视口 × DPR 1/2 × contain/cover
-共 28 组 × 4 种配置，相机实际结果与配置预测的最大偏差为浮点误差量级（~2e-16）。
+离线复算（纯 Node，不需要构建或浏览器）覆盖 7 种视口 × DPR 1/2 × contain/cover
+共 28 组 × 4 种配置 = 112 组，相机实际结果与配置预测的最大偏差为浮点误差量级（~2e-16）。
 `compositionRects()` / `normalizeRect()` 是这套计算的唯一来源，可用于写测试。
 留边模糊层 `bleed` 是纯装饰，不参与构图；两层放大超出设计画布的部分由容器裁切。
+
+### 壁纸页其它说明
 
 - 壁纸页**没有任何 UI**：没有侧栏、工具栏、检查器、时间轴、状态栏、加载动画，也不响应滚轮 / 拖拽 / 双击；固定循环播放。
 - 只有加载失败或素材库为空时，左下角才出现一行纯文本错误（同时打到 console）。
@@ -134,6 +136,8 @@ model-library/
   - **dev**：Vite 插件按 `/models/<磁盘相对路径>` 直接读源文件；
   - **build**：只输出 manifest 引用到的文件（图集页 + 关联背景），366MB 的共享背景库**不会**整包进 `dist/`；
   - 新增/删除文件会自动刷新清单；`npm run model:list` 可检查图集页是否齐全。
+- **共享背景库不进 git**：`.gitignore` 排除 `model-library/skill_cutscene_background/`（1036 张 / 366MB），
+  本地保留供扫描器读取。新环境 clone 后需自行放置该目录，否则壁纸没有背景图；确实要入库用 `git add -f`。
 
 ## 调试查看器功能（/spine-viewer）
 
@@ -159,27 +163,40 @@ model-library/
   `useSpineAsset` 冻结的 `setupBounds`（调试页仍用动画姿态包围盒）。
 - 扫描器会读 PNG 的 IHDR，把背景图原生 `width`/`height` 写进 manifest；壁纸基准在构建期就确定，
   不依赖浏览器里 `Image.onload` 的异步时机。
+- 两层变换都由 `resolveLayerTransform()` 解析成设计坐标元组后分两路应用：背景走 CSS transform，
+  模型走 `design.transform` 进相机；canvas 自身不加 CSS transform，否则 `k = 位图宽 / 设计宽` 会失效。
 
 ## 目录
 
+按 **feature-based** 组织：`app/` 应用层、`features/` 两个独立的产品能力、`lib/` 共享技术层。
+划分依据是「谁会用到这段代码」，不是文件类型；只有被多个 feature 复用的代码才提升到 `lib/`。
+
 ```
-index.html
-vite.config.js
+index.html                       # 挂载点；规范化 /spine-viewer/ 尾斜杠
+vite.config.js                   # react() + modelLibraryPlugin()，base: './'
 scripts/
-  scan-model-library.mjs     # 纯 Node 扫描器，产出 manifest
-  model-library-plugin.mjs   # 虚拟模块 + dev 中间件 + build 产物输出
+  scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR）
+  model-library-plugin.mjs       # 虚拟模块 + dev 中间件 + build 产物输出
 src/
-  App.jsx                    # 路由分发：/ → 壁纸，/spine-viewer → 调试页
-  config/wallpaper.js        # 根路由固定模型与播放 / 背景配置
-  pages/WallpaperPage.jsx    # 全屏壁纸（只有 canvas）
-  pages/ViewerPage.jsx       # 调试查看器（状态 + 布局）
-  spine/                     # useSpineAsset / SpineStage（WebGL 与相机）
-  components/                # 侧栏、工具栏、检查器、时间轴
-  lib/router.js              # 零依赖两路由判断 + pushState 导航
-  lib/animation.js           # 默认动画 / 表情挑选
-  lib/assets.js              # BASE_URL 相关的资源 URL
+  main.jsx                       # Vite 入口
+  app/
+    App.jsx                      # 路由分发：/ → 壁纸，/spine-viewer → 调试页
+    router.js                    # 零依赖两路由判断 + pushState 导航
+  features/
+    wallpaper/                   # 根路由正式壁纸（零 UI）
+      WallpaperPage.jsx          # 全屏壁纸（背景 img + canvas）
+      config.js                  # 壁纸唯一配置 + 构图纯函数
+    viewer/                      # /spine-viewer 调试查看器
+      ViewerPage.jsx             # 状态 + 布局
+      components/                # 侧栏、工具栏、检查器、时间轴
+  lib/
+    spine/                       # 共享 Spine 引擎：useSpineAsset / SpineStage（WebGL 与相机）
+    animation.js                 # 默认动画 / 表情挑选（两个 feature 共用）
+    assets.js                    # BASE_URL 相关的资源 URL + 格式化
   styles/global.css
+model-library/                   # 唯一素材源，只读
 ```
 
-> 注：`AGENTS.md` 里的大部分章节描述的是早期 Wallpaper Engine 壁纸方案（wallkit / project.json / 部署脚本），
-> 与当前查看器实现不一致；本仓库现状以本 README 为准。
+> `AGENTS.md` 是给 coding agent 的约束清单（feature-based 架构规则、Spine 技术坑、构图数学、
+> 执行规则、Git 约定），已与当前实现同步；使用方式与配置说明以本 README 为准。
+> 早期 Wallpaper Engine / wallkit 方案的设计文档已删除。

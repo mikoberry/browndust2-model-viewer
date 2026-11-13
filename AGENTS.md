@@ -1,156 +1,248 @@
 # AGENTS.md
 
-给在本仓库工作的 coding agent 的说明。**动手改代码前先读完本文件**；细节在 `docs/`，本文件只保留会直接导致改错东西的约束。
+给在本仓库工作的 coding agent 的说明。**动手改代码前先读完本文件**。
+章节组织参考 bulletproof-react 的 AGENTS.md（概览 → 命令 → 结构 → 规范 → 组件 → 状态 → 数据层 → 错误处理 → 验证 → 工作流），
+**只保留本项目适用的部分**。本文件只写会直接导致改错东西的约束；完整使用说明、配置表与目录结构见
+[README.md](README.md)，两者冲突时以 README 与源码为准。
 
-## 1. 项目是什么
+## 1. 项目概览（Project Overview）
 
-《棕色尘埃2》（BrownDust 2）的 **Spine 网页壁纸**，跑在 Wallpaper Engine（WE）里。技术栈：
+《棕色尘埃2》（BrownDust 2）的 **Spine 模型查看器 + 全屏壁纸**。直接读取仓库里的 `model-library/`
+（skel / atlas / 图集页 PNG / 背景图），**不依赖 Wallpaper Engine、不用 wallkit、没有 `project.json`**，
+也**没有后端、HTTP API、数据库、登录或远程服务**。
 
-```
-React 18 + JSX（无 TypeScript，沿用 wallkit 约定）
-Vite 5 + @vitejs/plugin-react
-@esotericsoftware/spine-webgl@4.1.56   ← 必须在 4.1 线
-wallkit                               ← git 引用，锁 commit，不 vendored
-```
+| 项 | 本项目实际值 |
+| --- | --- |
+| 语言 | JavaScript + JSX（**无 TypeScript，不要引入 `tsconfig`**） |
+| UI | React 18.3 |
+| 构建 | Vite 5 + `@vitejs/plugin-react`，`base: './'` |
+| 渲染 | `@esotericsoftware/spine-webgl@4.1.56`（**必须在 4.1 线**） |
+| 包管理器 | **npm**（锁文件 `package-lock.json`）。不要用 yarn / pnpm / bun |
+| 样式 | 单一 `src/styles/global.css`，原生 CSS，无 UI 组件库 |
+| 路由 / 状态 | 零依赖自研两路由；只用 React 内置 state / ref，无路由库、无状态库 |
+| 测试 | 无测试框架；验证靠 esbuild + 纯 Node，见 §13 |
 
-当前形态：**单个 cutscene 场景 + wallkit 控件叠加**。方案定稿在 [docs/design-cutscene-wilhelmina.md](docs/design-cutscene-wilhelmina.md)，素材是 Wilhelmina「Iron_Monarch」（`cutscene_char067601`，2 页 2048²，站姿待机），spine 文件已在 `model-library/Iron_Monarch/`（见 §6）。
+`dist/` 可用 `file://` 或任意子路径打开（保留壁纸宿主场景的兼容性）。两个路由，用途严格分开：
 
-**当前进度**：脚手架已建立并验证（esbuild 整包解析通过、choreography 单测通过、`prepare:model` 已产出 2.82MB 素材）。src/ 结构见 §3；`npm install` 后即可 `npm run dev`。
+| 路径 | 用途 |
+| --- | --- |
+| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，零 UI、零文字、零交互；唯一配置在 `src/features/wallpaper/config.js` |
+| `/spine-viewer` | **开发调试辅助页**：完整查看器 UI（侧栏 / 工具栏 / 检查器 / 时间轴 / 状态栏） |
 
-> 仓库根目录的 `cutscene_char067902/` 是早期候选素材，**已弃用**（用户最终选定 Iron_Monarch）。不要拿它替换 067601；它也不该长期留在仓库根，确认后可删。
+旧 WE 方案留下的 `src/stage/`、`src/backdrop/`、`src/overlay/`、`src/we/`、`public/models/`、`project.json`、
+`docs/` 以及部署 / 预处理脚本**都已删除**，不要按旧文档去找或重建。
 
-## 2. 分层（硬约束）
+## 2. 环境与命令（Setup Commands）
 
-```
-控件层  <Clock/> <Spectrum/> …            wallkit（git 引用，不在本仓库修改）
-接线层  App：数据、时间、用户属性         本仓库
-外壳层  WE 注入 / project.json / 部署脚本  本仓库
-背景层  Backdrop（背景图）+ SpineStage    本仓库
-```
-
-三条不能破的边界：
-
-- **控件层不知道背景是什么。** 不要把 spine 的 canvas 尺寸、skeleton 状态、视口坐标喂给 wallkit 组件；反过来也不要在 SpineStage 里 import 控件。
-- **背景层不读 WE API。** `window.wallpaperPropertyListener`、音频、媒体信息只允许出现在 `src/we/` 与应用层，由 `App.jsx` 往下传。
-- **wallkit 是外部依赖。** 需要改控件行为时，改的是本仓库传进去的 props，不是去改 `node_modules/wallkit`。真要改库，去 `D:\code\js\wallkit` 改、提交、再回来升级 commit 引用。
-
-## 3. 目录（目标状态）
-
-```
-├── index.html                 # 挂载点；wallkitWE() 注入脚本由 Vite 插件完成
-├── vite.config.js             # react() + wallkitWE({ audio: true, media: false })
-├── project.json               # WE 工程描述，用户属性（combo / slider）在这里
-├── public/models/wilhelmina/  # 生成物，不进 git（见 §6）
-├── scripts/
-│   ├── prepare-model.mjs      # 源资源 → public/models（PNG 直拷，见 §6）
-│   └── deploy-wallpaper.mjs   # dist → WE 项目目录
-└── src/
-    ├── main.jsx
-    ├── App.jsx                # 唯一编排点：舞台 + 背景 + 控件 + 数据
-    ├── stage/
-    │   ├── SpineStage.jsx     # WebGL canvas + 渲染循环 + 视差
-    │   ├── useSpineAsset.js   # 加载 / 释放
-    │   ├── choreography.js    # 动画状态机（纯函数，可单测）
-    │   └── stageConfig.js     # 坐标系、构图、镜头常量
-    ├── backdrop/Backdrop.jsx  # 背景图 + 暗角 + 呼吸
-    ├── overlay/Overlay.jsx    # wallkit 控件编排
-    ├── we/properties.js       # applyUserProperties 解析 + 默认值
-    └── styles/global.css
+```bash
+npm install            # 安装依赖（Node 18+）
+npm run dev            # Vite dev server —— 由用户自己启动，agent 不要起
+npm run model:list     # 纯 Node 扫描 model-library/，输出模型 / 图集页 / 关联背景
+npm run build          # 生产构建到 dist/ —— 只在用户明确要求时执行
+npm run preview        # 预览构建产物
 ```
 
-## 4. 命令
+没有 `test` / `lint` / `format` / `generate` 脚本，也不要为本项目引入无关的脚手架或代码生成器。
+`prepare:model` / `deploy:wallpaper` 已不存在：素材不复制进 `public/`，也不需要部署脚本。
 
-工作目录是仓库根。脚手架建立后才有这些脚本：
+## 3. 项目结构（Project Structure）
 
-- `npm install` — 安装依赖。
-- `npm run dev` — Vite dev server。**由用户自己启动**，agent 不要起。
-- `npm run prepare:model` — 从源资源生成 `public/models/wilhelmina/`。幂等，可重复执行。
-- `npm run build` — 生产构建到 `dist/`。**只在用户明确要求时执行。**
-- `npm run deploy:wallpaper` — 构建 + 同步到 WE 项目目录（默认 `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\wallpaper`，`WE_PROJECT_DIR` 可覆盖）。
+采用 **feature-based** 组织：`app/` 是应用层，`features/` 放两个互相独立的产品能力，
+`lib/` 放被多个 feature 共用的技术层。划分依据是「**谁会用到这段代码**」，不是「文件是什么类型」。
 
-## 5. Spine 的坑（全部是实测踩出来的，不要凭直觉改）
+```
+index.html                       # 挂载点；内联脚本规范化 /spine-viewer/ 尾斜杠
+vite.config.js                   # react() + modelLibraryPlugin()，base: './'
+scripts/
+  scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR 尺寸）
+  model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile
+src/
+  main.jsx                       # Vite 入口（index.html 引用 /src/main.jsx，位置不要动）
+  app/                           # 应用层：路由分发 + 路由实现
+    App.jsx                      # 只做路由分发，不承载业务逻辑
+    router.js                    # useRoute：两路由判断 + pushState 导航
+  features/
+    wallpaper/                   # Feature：根路由正式壁纸，零 UI
+      WallpaperPage.jsx          # 背景 img + canvas，页面入口 / 组合根
+      config.js                  # 该 feature 唯一配置 + 构图纯函数
+    viewer/                      # Feature：/spine-viewer 开发调试辅助页
+      ViewerPage.jsx             # 状态 + 布局
+      components/                # 只被 viewer 使用的 UI
+        ModelSidebar.jsx
+        Toolbar.jsx
+        Inspector.jsx
+        Timeline.jsx
+  lib/                           # 共享技术层（不依赖任何 feature）
+    spine/                       # 共享 Spine WebGL 引擎
+      SpineStage.jsx             # 渲染循环 / 相机 / 指针交互
+      useSpineAsset.js           # 资源加载 + 运行时对象构建
+    animation.js                 # 默认动画 / 表情挑选（两个 feature 共用）
+    assets.js                    # BASE_URL 资源 URL + 格式化
+  styles/
+    global.css                   # 全局样式
+model-library/                   # 唯一素材源，只读
+```
 
-1. **runtime 必须 4.1.x。** 本游戏 skel 是 Spine **4.1.11**。用 3.8 的 runtime（比如 anime-model-viewer 里那份 422KB 的 `spine-webgl.js`）解析会直接失败。用 npm 的 `@esotericsoftware/spine-webgl@4.1.56`，不要引入任何旧版单文件 runtime。
+**Feature 内部结构**：每个 feature 自包含，扩展时按需只添加用得到的子目录：
 
-2. **`drawSkeleton(skeleton, premultipliedAlpha)` 第二位必须传 `false`。** BD2 的 atlas 没有 `pma` 标记，贴图是非预乘的。传 `true` 时角色立绘**看起来是对的**，但 cutscene / interaction 这类大面积半透明叠加会被一块白板盖住——这个错极易带进上线版本。
+```
+src/features/<feature>/
+├── <Name>Page.jsx   # 页面入口 / 组合根
+├── components/      # 仅该 feature 使用的 UI
+├── config.js        # 仅该 feature 使用的配置
+├── hooks/           # 仅该 feature 使用的 hooks
+└── utils/           # 仅该 feature 使用的纯函数
+```
 
-3. **cutscene 的 skel 不带背景。** 背景是同名 ID 的独立 PNG，**两个可能的来源**，找的时候都要看：
+**架构规则（Architecture Rules）**
 
-   - `ui\skill_cutscene_background\` —— 大多数套在这里（约 50% 覆盖率）。
-   - `chibis\<角色>\<皮肤>\` —— 部分套在这里，命名是 `char067601_back1.png` / `_back1move.png` / `_back2.png`。**Iron_Monarch 就属于这种**，`ui\` 里一张都没有。
+- **单向依赖**：`lib/` → `features/` → `app/`。`lib/` 不得 import 任何 feature；`app/` 只负责分发与挂载。
+- **禁止跨 feature import**：`wallpaper/` 与 `viewer/` 互不 import。壁纸配置 `WALLPAPER` 只有 wallpaper feature 读，viewer 不得引用。
+- **就近放置（Colocation）**：只被一个 feature 用到的代码留在该 feature 内；被 ≥2 个 feature 复用才提升到 `lib/`。
+  目前 4 个 UI 组件全部是 viewer 专属，所以**没有** `src/components/` 共享目录；真出现共享 UI 时再建。
+- **共享层不带产品语义**：`lib/spine/` 不知道壁纸 / 查看器的存在，只通过 props 被驱动。
+- 新 feature 自己建目录、自带页面与配置，**不要**往 `app/` 里堆业务逻辑。
 
-   识别规则：
+## 4. 代码规范（Code Standards）
 
-   - `char061306back1.png` / `003401 back2.png` / `000303_back1.png` / `Char061305 back1-1.png` 四种写法混用 → 必须用正则匹配「6 位 ID + `back(\d+)` + 可选 `-(\d+)`」，不能按空格或下划线切分。
-   - **带 `-N` 后缀的是局部层/遮罩**（alpha 均值 4–17），单独用就是废图。只有不带后缀的 `backN` 是完整场景。
-   - **`*move` 变体是同一场景的低清版**（1024²），和 `-N` 后缀一样不要用。
-   - Angelica 那套：`back1` 右半部透明、`back3` 是剑的局部图，只有 `back2` 可用。Iron_Monarch 那套：`back1` 是 2048² 王座厅（可用），`back2` 是 1024² 仰视天花板（配 `cut_A`/`loop` 那条线，本方案不用）。
-
-4. **动画编排按素材的姿势线走，不要混用。** Iron_Monarch 有两条互斥的姿势线：
-
-   | 动画 | 时长 | 姿势 |
-   |---|---|---|
-   | `loop_2` | 4.00s | 站姿持剑（**主待机**） |
-   | `cut_B` | 3.33s | 站姿持剑（演出，与 `loop_2` 同姿势） |
-   | `loop` | 8.00s | 背身弯腰（另一条线） |
-   | `cut_A` | 3.43s | 背身弯腰 |
-
-   `loop` / `loop_2` **不是长短版本**，是两套姿势各自的循环，不能"长短交替避机械感"。本方案只用 `loop_2` + `cut_B`；`loop` 作为可选彩蛋（默认关闭），`cut_A` 不用——从站姿切到背身弯腰会像换了个人。
-
-   另外 `cut_B` 与 `loop_2` 动作差异极小，**点击演出几乎看不出来**，必须配镜头推近才有反馈（见设计文档 §6）。
-
-5. **多页图集是 `_2.png` … `_N.png` 独立文件**，不是打成一张大图。图片格式保持 PNG 直拷：`.atlas` 里的页名与磁盘文件天然一致，不需要改任何页名。
-
-6. **角色立绘另有一条坑**（本期不用，但换素材时会遇到）：只播 `idle` 会得到一张白脸，五官靠独立的 `AttachmentTimeline`，必须叠第二条轨道 `state.setAnimation(1, '_faceN', true)`。
-
-## 6. 资产流水线
-
-- **spine 素材主源在仓库内**：`model-library/<皮肤名>/`（用户手动放入，当前 `Iron_Monarch/` 一套，skel+atlas 与游戏源逐字节一致）。`prepare-model.mjs` 从这里读，**不要**直接依赖 F 盘路径——那是兜底来源，仅当 `model-library/` 缺某文件（比如背景图）时才回退。
-- **源资源只读。** `F:\live2d\BrownDust2\model-output` 是用户自己维护的解包产物，`model-library/` 里用户放入的文件同样只读不改。
-- **生成物不进 git。** `public/models/` 已写进 `.gitignore`。仓库里只放 `scripts/prepare-model.mjs`，任何人 clone 后跑一次就能重建。
-- **图片格式：PNG 直拷。**（2026-11-13 用户决定）不做 WebP 重编码、不需要 ffmpeg。源 PNG → 生成目录逐字节复制，`.atlas` 原样复制，页名与文件自动对齐。体积代价：Iron_Monarch 全套约 11.2MB（WebP 方案是 2.8MB）。若日后要压缩，参考 docs/asset-research.md 的 WebP 实测数据，并记得同步改 `.atlas` 每一页的页名行。
-- **背景文件不在 cutscene 目录里**：Iron_Monarch 的背景取自 `chibis/Wilhelmina/Iron_Monarch/char067601_back1.png`（2048²，原样直拷，不放大）。换素材时按 §5.3 的两条路径去找。
-- 每套素材的规格、体积、bounds 记录在 [docs/asset-research.md](docs/asset-research.md)，加新素材前先读它，不要重新全量扫描。
-
-## 7. Wallpaper Engine 约束
-
-- **WE 里没有鼠标焦点和键盘焦点。** 任何页面内设置面板、悬停下拉、点击按钮都点不到。所有用户可配置项走 `project.json` 的 `combo` / `slider` 属性 + `wallpaperPropertyListener.applyUserProperties`，解析集中在 `src/we/properties.js`，并**必须在没有 WE 宿主时回退到默认值**（浏览器 dev 下要能正常跑）。
-- **部署脚本不要用 Vite 的 `outDir` 直指 WE 目录。** 那里有 WE 编辑器写的 `preview.gif` 和用户改过的 `project.json`，`emptyOutDir` 会把它们吃掉。同步规则：`assets/` 整体替换，其余只覆盖同名产物，`project.json` 只在缺失时创建。
-- 帧率目标 30fps 就够（WE 挂机功耗敏感）。切到后台 / WE 暂停时应停掉 rAF 循环。
-
-## 8. 编码约定
-
+- **无 TypeScript**：纯 JS / JSX，不引入 `tsconfig`、不写类型声明。
 - **注释用英文，文档和界面文案用中文。**
-- 无 TypeScript：类型用 JSDoc 标注，不引入 `tsconfig`。
-- 类名 BEM，本仓库前缀 `bd2-`（wallkit 自己用 `wallkit-`，不要混）。
-- `choreography.js` 保持**纯函数 + 时间驱动、无副作用**，这样能直接在 node 里跑单测，不需要 DOM。
-- 组件不自己起 `setInterval` 轮询时间；时间由应用层统一驱动后传下来（这同时是 wallkit `Clock` 的契约：`now` 必须由使用方传入）。
-- 常量集中在 `stageConfig.js`（构图、镜头、背景参数），不要散落在组件里。
+- **文件命名（沿用现状，不要改）**：组件 `PascalCase.jsx`（如 `SpineStage.jsx`）；普通模块 `camelCase.js`
+  （如 `animation.js`）；目录小写单词（`features/wallpaper/`、`lib/spine/`）。
+  **不要**全量改成 kebab-case，也**不要**引入 `@/` 路径别名 —— 本项目一律用相对路径。
+- **样式**：集中在 `src/styles/global.css`，class 用页面前缀（`.stage-*` / `.wallpaper-*` / `.model-item-*` 等），
+  不用 CSS-in-JS、不用 Tailwind、不用组件库。
+- **纯函数与副作用隔离**：构图 / 变换计算放在 `features/wallpaper/config.js` 等无 DOM 依赖的模块里，
+  保证能直接在 Node 里 import 复算；WebGL 与 rAF 只出现在 `lib/spine/`。
+- 组件文件顶部写一段英文注释说明职责；改了行为就同步改注释。
 
-## 9. 执行规则
+## 5. 组件约定（Component Guidelines）
 
-- **不要自行启动 dev server / 不要主动 `npm run build`。** 验证留给用户。
-- 不要留下挂起的进程、服务或开放式前台命令。需要等待时用有界超时 + 轮询检查。
-- 某步卡住或超时就终止、看输出、换更小的检查，不要等用户来打断。
-- 报告完成前清理后台进程和临时依赖。
-- 除非用户明确要求，不要跑 Playwright 之类的浏览器自动化；用户会自己在 WE 里逐项验证。
-- Git：远程是 `git@github-miko:mikoberry/browndust2-model-viewer.git`（SSH 别名 `github-miko`），本仓库 local 配置必须是 `user.name=mikoberry` / `user.email=mikoberry@users.noreply.github.com`。全局默认身份是另一个账号，**不要用全局身份提交**。提交信息用英文 conventional commits（`feat:` / `fix:` / `docs:` / `chore:`）。
+- `app/App.jsx` **只做路由分发**，不放状态、布局或 WebGL 逻辑。
+- 两个页面**共用同一个** `SpineStage`；`fitRatio` / `interactive` / `showLoading` / `design` 是壁纸页专用的
+  可选 props，**默认值必须保持调试页行为**，不要写第二套 WebGL / 资源加载逻辑。
+- 组件靠 props + 回调通信，不因为「参数有点多」就引入全局 store；确实要共享时按 §3 提升到 `lib/`。
+- 时间由 `SpineStage` 的 rAF 循环回调（`onProgress` / `onStats`）驱动，**组件不自行起定时器轮询**。
+- **选中状态与 `onLoaded` 的三条耦合不要破坏**：
+  1. `SpineStage` 只在 asset 变化时上报模型信息 → `selectModel` 对同 id 必须幂等（否则清空面板后无人补报）；
+  2. 面板靠 `infoReady` 自愈；
+  3. `onLoaded` 带 `modelId`，上层据此丢弃切换模型时的迟到上报。
 
-## 10. 验证方式
+## 6. 状态管理（State Management）
 
-按成本从低到高，不要越级：
+- **只有 React 内置 state**：`useState` 管 UI 状态，`useRef` 管 rAF 循环中要读的可变值
+  （pan / zoom / bounds / drag）。没有全局 store，也没有服务端状态或表单状态 —— 本项目没有后端、
+  没有登录、没有表单提交，不要为此引入状态库或数据请求层。
+- `SpineStage` 把所有 props 镜像进 `liveRef.current`，让渲染循环按 asset 创建一次、不随每次 UI 重渲染重建。
+  改这里时保持「循环闭包读 ref，不读旧 props」。
+- **不要开 `StrictMode`**：dev 下双挂载会在同一个 canvas 上创建 / 销毁 / 重建 WebGL 上下文，
+  Spine 着色器会处于半释放状态。
 
-1. **语法与导入**：用相邻项目的 esbuild 校验打包，不额外安装依赖。
+## 7. 素材流水线 / 数据层（Asset Pipeline）
+
+本项目唯一的「数据层」是构建期扫描出的素材清单（虚拟模块 `virtual:model-library`），没有 HTTP API。
+
+- 目录为 `model-library/<角色>/<皮肤>/` 两级，扫描器递归任意深度；当前 7 套（Olivier 4 / Wilhelmina 3），全部 Spine 4.1.11。
+- 共享背景库 `model-library/skill_cutscene_background/` 约 1036 张 / 366MB，按文件名与模型 stem 里的 **6 位角色 ID** 关联。
+  命名混用 `char067601_back1` / `003401 back2` / `000303_back1` / `back 1`，必须用正则匹配，不能按空格或下划线切分。
+  `backN` 才是完整场景；`-N` / `_N` 分片、`*move` 低清版、`_L` / `_R` 局部层都不可用。
+- 每个 manifest 文件都带 `source`（相对 `model-library/` 的磁盘路径）与多段 `url`。dev 由插件中间件按 `/models/*` 直读源目录；
+  build 只 `emitFile` manifest 引用的文件，不会把 366MB 背景库整包打进 `dist/`。URL 段单独 encode，
+  `emitFile` 的 `fileName` 必须 `decodeURIComponent`（背景文件名含空格）。
+- `model-library/` 只读；源素材不做重编码，`.atlas` 里的页名与磁盘文件名天然一致。
+- `.gitignore` 排除 `/model-library/skill_cutscene_background/`：本地保留供扫描器读取，确实需要入库时 `git add -f`。
+  **新环境 clone 后没有背景库**，壁纸背景会缺失，需要用户自行放置。
+
+## 8. Spine 运行时约束（Runtime Constraints，实测，不要凭直觉改）
+
+1. **runtime 必须 4.1.x**：游戏 skel 由 Spine 4.1.11 导出，3.8 的 runtime 解析失败，不要引入旧版单文件 runtime。
+2. **`drawSkeleton(skeleton, false)`**：BD2 atlas 没有 `pma` 标记（非预乘 alpha）。传 `true` 时立绘看起来正常，
+   但 cutscene / interaction 这类大面积半透明叠加会被一块白板盖住。
+3. **多页图集是 `xxx_2.png` … `_N.png` 独立文件**，不是打成一张大图；页名必须与磁盘文件名一致。
+4. **角色立绘需在轨道 1 叠 `_faceN`**，只播 `idle` 会得到一张白脸（五官由独立的 `AttachmentTimeline` 提供）。
+5. **`loop` 与 `loop_2` 不是长短版本**，是两套互斥姿势线各自的循环。默认选 `loop_2`；动画名 `cut_A`/`cut_B`
+   与 `A_cut`/`B_cut` 两种混用，7 套模型都有 `loop_2`。
+
+## 9. 壁纸构图（Wallpaper Composition，改相机前必读）
+
+对应实现：`features/wallpaper/config.js`（配置 + 纯函数）与 `lib/spine/SpineStage.jsx` 的 `design` 分支。
+
+- `skel.width/height` 只是 setup pose 包围盒，**不是**设计分辨率。基准 = **对应背景图的原生像素尺寸**
+  （扫描器读 PNG IHDR 写入 manifest 的 `width`/`height`，构建期就确定）。
+- 背景 `<img>` 与 WebGL `<canvas>` 同为 `.wallpaper-design` 子元素，**共用唯一一个 CSS transform**；
+  屏幕尺寸 / 比例变化只改这一个 `scale`（`contain` / `cover`），容器内部相对几何恒定。
+- `SpineStage` 的 `design` 模式用**加载时冻结的 `setupBounds`**（实时姿态包围盒会让动画播放时构图漂移），
+  以 `k = canvas.width / design.width` 为唯一「设计→设备像素」因子反解相机；调试页不传 `design`，行为不变。
+- canvas 位图分辨率按 transform 后的实际显示尺寸渲染；**canvas 自身不能加 CSS transform**，否则 `displayScale` / `k` 失效。
+- 背景与模型可分别缩放 / 平移（`backdropTransform` / `modelTransform`），但**只允许设计坐标单位**：
+  倍率、设计像素、`'10%'`（相对设计画布宽 / 高）。屏幕 px / `vw` / `vh` / 视口百分比会破坏确定性。
+  `resolveLayerTransform()` 是唯一解析点；背景用 CSS `translate(dx,dy) scale(s)`（origin 50%），
+  模型用 `design.transform` 在相机里 `worldZoom / s` + `target += (dx,dy)*k`。**平移不被该层缩放放大**。
+- 改相机数学时必须保持「模型 / 画布归一化矩形与 scale、dpr、屏幕比例无关」。用纯 Node 复算验证：
+  `compositionRects()` / `normalizeRect()` 是这套计算的唯一来源，7 视口 × DPR 1/2 × contain/cover 下偏差应为浮点误差量级。
+
+## 10. 路由（Routing）
+
+- 路由零依赖（`src/app/router.js`，不引入 react-router）：判断路径**最后一段**为 `spine-viewer`，或 `#spine-viewer` / `?viewer`，
+  其余一律落到壁纸 —— 这让 `file://` 与子路径托管都能工作。`file://` 下返回壁纸时要补 `index.html` 文件名。
+- **`index.html` 里的尾斜杠规范化脚本不能删**：`base: './'` 下 `/spine-viewer/` 会让 `./assets/*` 解析到错目录。
+- 只有两个页面，不引入路由表 / 懒加载路由；新增 feature 时在 `app/App.jsx` 加分发分支即可。
+
+## 11. 错误处理（Error Handling）
+
+- **壁纸页**：刻意零 UI，只有加载失败或素材库为空时左下角显示一行纯文本，同时 `console.error`。
+  不要加 toast / 弹窗 / 重试按钮。
+- **调试页**：`onError` → 右下角 `error-toast`，可手动关闭；资源加载带 60s 超时与图集页缺失提示。
+- WebGL 上下文创建失败由 `SpineStage` 捕获并走 `onError`；`AssetManager.dispose()` 放在 effect cleanup，
+  切模型前释放图集纹理。
+- 没有远程错误上报，不要引入监控 SDK 或全局错误拦截器。
+
+## 12. 性能与构建产物（Performance & Build Output）
+
+- canvas 位图分辨率按 CSS transform 之后的**实际显示尺寸**渲染，`renderScale = min(dpr * displayScale, 3)`；
+  canvas 自身不能加 CSS transform，否则 `displayScale` / `k` 失效。
+- 每份 asset 只创建**一个** rAF 循环；姿态包围盒只在 `fitPendingRef` 时重算，不逐帧调 `getBoundsRect()`。
+- 调试包围盒 overlay 在隐藏时避免每帧写 DOM（防强制重排）。
+- build 只 emit manifest 引用的素材，`dist/` 不含 366MB 背景库；`base: './'` 保证 `file://` 与任意子路径可用。
+  不要改成绝对路径或加 CDN 部署假设。
+
+## 13. 验证方式（Verification）
+
+按成本从低到高，不要越级；**agent 不做渲染验证**：
+
+1. **语法与 import**：
    ```
-   node_modules/.bin/esbuild src/main.jsx --bundle --external:react --external:react-dom --loader:.css=css --format=esm --outfile=/tmp/check.js
+   node_modules/.bin/esbuild src/main.jsx --bundle --external:react --external:react-dom --external:@esotericsoftware/spine-webgl --external:virtual:model-library --loader:.css=css --format=esm --outfile=/tmp/check.js
    ```
-   （esbuild 不装在本地时，借用 `D:/code/js/anime-model-viewer/node_modules/.bin/esbuild`。）退出码 0 = 语法和所有 import 路径都解析成功。
-2. **纯函数**：`choreography.js`、`properties.js` 可直接用 node 动态 import 验证。
-3. **渲染**：无头 Chrome 截图（`--headless=new --enable-unsafe-swiftshader --use-angle=swiftshader`），**截完立即关闭**。这要求用户已经开了 dev server。
-4. 真正的验收只有一条：用户在 WE 里挂上去看。不要在报告里把"构建通过"说成"验证通过"。
+   退出码 0 = 语法与所有 import 路径解析成功。
+2. **纯 Node**：`npm run model:list`；构图数学校验直接 import `src/features/wallpaper/config.js` 的
+   `compositionRects()` / `normalizeRect()`。
+3. **构建**：`npm run build`（仅用户明确要求时），核对 `dist/` 只含 manifest 引用的素材。
+4. 实际画面由用户自己在浏览器 / 壁纸宿主里确认。
 
-## 11. 参考文档
+**不要**跑无头浏览器、截图、Playwright 或任何浏览器自动化；不要在报告里把「构建通过」说成「验证通过」。
 
-- [docs/asset-research.md](docs/asset-research.md) — 全部资源分类的实测数据（体积、页数、骨骼数、动画名、坑）
-- [docs/design-cutscene-wilhelmina.md](docs/design-cutscene-wilhelmina.md) — 本期壁纸的完整设计：构图、坐标系、动画编排、控件、WE 集成
-- [README.md](README.md) — 对外简介
+## 14. 开发流程与 Git（Development Workflow & Git）
+
+- **不要自行启动 dev server / 不要留后台进程、服务或开放式前台命令。**
+- 临时产物用完必须清理；某步卡住就终止、看输出、换更小的检查。
+- 远程 `git@github-miko:mikoberry/browndust2-model-viewer.git`；本仓库 local 配置必须是
+  `user.name=mikoberry` / `user.email=mikoberry@users.noreply.github.com`（**全局默认是另一个账号，别用**）。
+- 提交信息用英文 conventional commits（`feat:` / `fix:` / `docs:` / `chore:`）。
+- 用户默认只要**本地 commit，不主动 push**；提交大素材前先确认范围。
+
+## 15. 常见改动路径（Common Patterns）
+
+- **加模型**：把 `.skel` / `.json` + `.atlas` + 全部图集页 PNG 放进 `model-library/<角色>/<皮肤>/`，刷新即可；
+  用 `npm run model:list` 核对图集页是否齐全。不要改 `src/` 去硬编码模型列表。
+- **改壁纸**：只动 `src/features/wallpaper/config.js`；该文件不参与调试页。
+- **改调试 UI**：只动 `src/features/viewer/`；若某组件要复用到壁纸，先按 §3 提升到共享层。
+- **改相机 / 构图数学**：同时对照 `lib/spine/SpineStage.jsx` 的 `design` 分支与
+  `features/wallpaper/config.js` 的 `compositionRects()`，并用 §13 的纯 Node 复算确认归一化矩形不变。
+- **加 feature**：在 `src/features/` 下自建目录（页面 + 专属 `components/` / `config.js`），
+  在 `app/App.jsx` 增加分发分支；共享逻辑下沉到 `lib/`。
+
+## 16. 参考文档
+
+- [README.md](README.md) — 唯一对外文档：运行、路由、壁纸配置表、两层变换单位规则、目录结构。
+- 早期 WE / wallkit 方案的设计文档（`docs/asset-research.md`、`docs/design-cutscene-wilhelmina.md`）**已删除**，不要再引用。

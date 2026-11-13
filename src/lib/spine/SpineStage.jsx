@@ -54,7 +54,7 @@ export default function SpineStage(props) {
     // Fixed design canvas { width, height, model, transform? }. When present,
     // the camera uses the immutable setup bounds and one shared
     // design->screen transform. `transform` is the model layer's independent
-    // { scale, dx, dy } in DESIGN pixels, resolved by config/wallpaper.js.
+    // { scale, dx, dy } in DESIGN pixels, resolved by features/wallpaper/config.js.
     design = null,
   } = props
 

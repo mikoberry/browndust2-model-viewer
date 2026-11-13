@@ -3,12 +3,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { models, warnings } from 'virtual:model-library'
-import ModelSidebar from '../components/ModelSidebar.jsx'
-import Toolbar from '../components/Toolbar.jsx'
-import Inspector from '../components/Inspector.jsx'
-import Timeline from '../components/Timeline.jsx'
-import SpineStage from '../spine/SpineStage.jsx'
-import { pickDefaultAnimation, pickDefaultExpression } from '../lib/animation.js'
+import ModelSidebar from './components/ModelSidebar.jsx'
+import Toolbar from './components/Toolbar.jsx'
+import Inspector from './components/Inspector.jsx'
+import Timeline from './components/Timeline.jsx'
+import SpineStage from '../../lib/spine/SpineStage.jsx'
+import { pickDefaultAnimation, pickDefaultExpression } from '../../lib/animation.js'
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
 

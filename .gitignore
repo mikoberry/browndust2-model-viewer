@@ -4,7 +4,6 @@ dist/
 *.log
 
 # 构建 / 校验临时产物
-public/models/
 .tmp-*
 
 # 共享背景库：1036 张 / 366MB，体积过大不进 git；
@@ -13,6 +12,3 @@ public/models/
 
 # agent 工作区元数据
 .workbuddy/
-
-# 已弃用的候选素材，确认后删除
-/cutscene_char067902/

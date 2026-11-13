@@ -12,7 +12,7 @@ import {
   SkeletonBinary,
   SkeletonJson,
 } from '@esotericsoftware/spine-webgl'
-import { modelPrefix } from '../lib/assets.js'
+import { modelPrefix } from '../assets.js'
 
 const POLL_MS = 30
 const LOAD_TIMEOUT_MS = 60_000
