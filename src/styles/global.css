@@ -953,6 +953,20 @@ code {
   user-select: none;
 }
 
+/* Viewport-anchored layer for the WallKit control overlays. It is deliberately
+   NOT inside .wallpaper-design: the widgets must keep a fixed screen position
+   when the composition is scaled by `fit`. The layer itself ignores pointer
+   events — Clock's tilt and PointerFx read window-level pointer input — and it
+   sits above the artwork but below the settings handle / drawer.
+   WallKit stacks its own widgets inside this context (ambient 1 → spectrum 3 →
+   pointer 4 → clock / album 5). */
+.wallpaper-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
 /* The canvas needs an explicit cursor because `cursor: auto` would not inherit
    the page's, and the wallpaper must not advertise any interaction. */
 .wallpaper-page .stage-canvas,

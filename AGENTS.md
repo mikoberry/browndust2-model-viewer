@@ -8,8 +8,10 @@
 ## 1. 项目概览（Project Overview）
 
 《棕色尘埃2》（BrownDust 2）的 **Spine 模型查看器 + 全屏壁纸**。直接读取仓库里的 `model-library/`
-（skel / atlas / 图集页 PNG / 背景图），**不依赖 Wallpaper Engine、不用 wallkit、没有 `project.json`**，
-也**没有后端、HTTP API、数据库、登录或远程服务**。
+（skel / atlas / 图集页 PNG / 背景图），**没有后端、HTTP API、数据库、登录或远程服务**。
+壁纸页可以叠加 [WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 /
+指针特效），并可通过 `wallkitWE()` 拿到 Wallpaper Engine 的音频与媒体数据；这两者都是**可选**的，
+不装 WE 时页面仍是普通网页。
 
 | 项 | 本项目实际值 |
 | --- | --- |
@@ -17,8 +19,9 @@
 | UI | React 18.3 |
 | 构建 | Vite 5 + `@vitejs/plugin-react`，`base: './'` |
 | 渲染 | `@esotericsoftware/spine-webgl@4.1.56`（**必须在 4.1 线**） |
+| 控件浮层 | `wallkit`（GitHub git 引用，**源码直出、无构建步骤**，不要改成 npm 版本或本地 copy） |
 | 包管理器 | **npm**（锁文件 `package-lock.json`）。不要用 yarn / pnpm / bun |
-| 样式 | 单一 `src/styles/global.css`，原生 CSS，无 UI 组件库 |
+| 样式 | 单一 `src/styles/global.css`，原生 CSS，无 UI 组件库（wallkit 自带组件 CSS 由其自身 import） |
 | 路由 / 状态 | 零依赖自研两路由；只用 React 内置 state / ref，无路由库、无状态库 |
 | 测试 | 无测试框架；验证靠 esbuild + 纯 Node，见 §13 |
 
@@ -26,8 +29,8 @@
 
 | 路径 | 用途 |
 | --- | --- |
-| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，无侧栏 / 无文字 / 无交互（滚轮、拖拽、双击都不响应）；默认值在 `public/wallpaper.config.json`（运行期）与 `src/features/wallpaper/config.js`（内置兜底）。仅右下角有一个默认半透明的构图设置手柄（`S` 键同效），用于调缩放 / 偏移 |
-| `/spine-viewer` | **开发调试辅助页**：完整查看器 UI（侧栏 / 工具栏 / 检查器 / 时间轴 / 状态栏） |
+| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，无侧栏 / 无交互（滚轮、拖拽、双击都不响应）；默认值在 `public/wallpaper.config.json`（运行期）与 `src/features/wallpaper/config.js`（内置兜底）。chrome 只有右下角半透明构图手柄（`S` 键同效）与 `overlay` 配置开启的 WallKit 控件 |
+| `/spine-viewer` | **开发调试辅助页**：完整查看器 UI（侧栏 / 工具栏 / 检查器 / 时间轴 / 状态栏）。**不挂任何壁纸浮层** |
 
 旧 WE 方案留下的 `src/stage/`、`src/backdrop/`、`src/overlay/`、`src/we/`、`public/models/`、`project.json`、
 `docs/` 以及部署 / 预处理脚本**都已删除**，不要按旧文档去找或重建。
@@ -52,7 +55,7 @@ npm run preview        # 预览构建产物
 
 ```
 index.html                       # 挂载点；内联脚本规范化 /spine-viewer/ 尾斜杠
-vite.config.js                   # react() + modelLibraryPlugin()，base: './'
+vite.config.js                   # react() + modelLibraryPlugin() + wallkitWE()，base: './'
 public/
   wallpaper.config.json          # 运行期配置，原样复制到 dist/ 根；改完刷新即生效
 scripts/
@@ -69,6 +72,7 @@ src/
       config.js                  # 内置默认值 + mergeConfig/loadWallpaperConfig + 构图纯函数
       components/
         WallpaperSettings.jsx    # 构图设置抽屉（背景 / 模型的缩放与偏移），仅 wallpaper 使用
+        WallpaperOverlay.jsx     # WallKit 控件浮层（视口锚定），按 overlay 配置逐项显示
     viewer/                      # Feature：/spine-viewer 开发调试辅助页
       ViewerPage.jsx             # 状态 + 布局
       components/                # 只被 viewer 使用的 UI
@@ -133,6 +137,19 @@ src/features/<feature>/
   改字段或顺序时要保持这个等价性。不要给它加常驻按钮、toast 或自动保存。
 - **画面本身永不响应指针**：壁纸页没有拖拽 / 滚轮 / 双击，构图只能通过抽屉里的滑块或数字框改。
   不要重新引入「在画面上拖动图层」这类交互，它和「背景原生像素 = 设计画布」的构图模型冲突，容易只拖得动背景。
+  WallKit 的 `PointerFx` 是**纯装饰覆盖层**（不改构图、默认关闭），不属于这条限制。
+- **WallKit 控件浮层（`WallpaperOverlay.jsx`）的边界**：
+  1. 只放在 `.wallpaper-overlay` 里（`position: absolute; inset: 0; z-index: 5`，
+     在 `.wallpaper-page` 下、`.wallpaper-design` 外）——它们锚定**视口**，绝不进设计画布，
+     否则 `fit` 缩放会把控件一起放大 / 移动。层级必须在构图手柄（6）与抽屉（7）之下。
+  2. **全部由 `overlay` 配置驱动**，每个控件 `enabled` 独立；全关时组件返回 `null`，页面恢复成纯壁纸。
+     不要为控件加常驻 UI、不要在这里读写 localStorage。
+  3. 数据只从 `wallkit/we` 的 hooks 来（`useWallpaperAudio` / `useWallpaperBeat` / `useWallpaperMedia` /
+     `useWallpaperPaused`）。**禁止造假数据兜底**：没有 WE 宿主时频谱平、专辑卡不渲染，这是库的规定行为。
+     `useWallpaperAudio()` 返回**原地改写的固定引用**，不要把它塞进 state 或 clone，否则画面会冻在第一帧。
+  4. 数据订阅必须跟着控件走（`SpectrumWidget` / `AlbumWidget` / `BeatClock` 各自调用对应 hook），
+     否则只开时钟的壁纸也会付音频 rAF 的成本。
+  5. `Clock` 没有 `paused` prop：暂停 = 停止更新 `now`（见 `useNow`）。
 - 时间由 `SpineStage` 的 rAF 循环回调（`onProgress` / `onStats`）驱动，**组件不自行起定时器轮询**。
 - **选中状态与 `onLoaded` 的三条耦合不要破坏**：
   1. `SpineStage` 只在 asset 变化时上报模型信息 → `selectModel` 对同 id 必须幂等（否则清空面板后无人补报）；
@@ -182,6 +199,10 @@ src/features/<feature>/
 - 壁纸页在配置 settle 之前**不挂载 `SpineStage`**（否则会按内置 modelId 加载一次、再按文件里的重载一次）。
 - 新增设置的正确做法：先在 `WALLPAPER` 里给默认值 → JSON 里加同名键 → 在 `WallpaperPage` 里读 `config.xxx`。
   不要在组件里写 `?? 某个魔法数`，默认值只允许出现在 `WALLPAPER`。
+- `overlay` 段是 WallKit 控件浮层的唯一开关（`accent` + `clock` / `spectrum` / `albumArt` / `ambient` /
+  `pointer` 五组，各自 `enabled`）。改它只影响浮层，不影响构图；`theme` 按 WallKit 约定指**文字色**
+  （`light` = 浅色文字，配深色壁纸）。加新控件时同步三处：`WALLPAPER.overlay`、
+  `public/wallpaper.config.json`、`WallpaperOverlay.jsx`，并保持「复制配置」与文件的字节等价。
 
 ## 8. Spine 运行时约束（Runtime Constraints，实测，不要凭直觉改）
 
@@ -246,6 +267,11 @@ src/features/<feature>/
 - 调试包围盒 overlay 在隐藏时避免每帧写 DOM（防强制重排）。
 - build 只 emit manifest 引用的素材，`dist/` 不含 366MB 背景库；`base: './'` 保证 `file://` 与任意子路径可用。
   不要改成绝对路径或加 CDN 部署假设。
+- **`wallkit` 是源码直出的 git 依赖**（无构建步骤），所以 `vite.config.js` 里 `optimizeDeps.exclude: ['wallkit']`，
+  由 Vite / `@vitejs/plugin-react` 自己编译它的 JSX。去掉这行会让 dev 预打包去处理它的 CSS import。
+  升版本只改 `package.json` 的 commit sha（`github:mikoberry/wallkit#<sha>`），不要改成 npm 包或 vendor 副本。
+- `wallkitWE()` 只是往 `index.html` 的 `<head>` 顶部注入 classic script（audio / media / pause，`timeline` 默认关）。
+  它不改构图、不写 `project.json`；`dist/index.html` 里应能看到 `<!-- wallkit-we:* -->` 标记。
 
 ## 13. 验证方式（Verification）
 
@@ -253,9 +279,9 @@ src/features/<feature>/
 
 1. **语法与 import**：
    ```
-   node_modules/.bin/esbuild src/main.jsx --bundle --external:react --external:react-dom --external:@esotericsoftware/spine-webgl --external:virtual:model-library --loader:.css=css --format=esm --outfile=/tmp/check.js
+   node_modules/.bin/esbuild src/main.jsx --bundle --external:react --external:react-dom --external:@esotericsoftware/spine-webgl --external:virtual:model-library --external:wallkit --external:wallkit/* --loader:.css=css --format=esm --outfile=/tmp/check.js
    ```
-   退出码 0 = 语法与所有 import 路径解析成功。
+   退出码 0 = 语法与所有 import 路径解析成功（`wallkit` 本身由 Vite 编译，这里按外部依赖跳过）。
 2. **纯 Node**：`npm run model:list`；构图数学校验直接 import `src/features/wallpaper/config.js` 的
    `compositionRects()` / `normalizeRect()`；配置合并用 `mergeConfig()` 断言（空 override 等于默认值、
    嵌套部分覆盖、`_` 键被丢弃、`public/wallpaper.config.json` 的键与 `WALLPAPER` 一致）。
@@ -283,6 +309,9 @@ src/features/<feature>/
 - **改壁纸**：调默认构图改 `public/wallpaper.config.json`（运行期、打包后可改）；`src/features/wallpaper/config.js`
   的 `WALLPAPER` 只是兜底默认值，改了要同步 JSON。这些都不参与调试页。
 - **改调试 UI**：只动 `src/features/viewer/`；若某组件要复用到壁纸，先按 §3 提升到共享层。
+- **加 / 调控件浮层**：只动 `WallpaperOverlay.jsx` + `overlay` 配置两处；组件 API 与 WE 接线细节查
+  `node_modules/wallkit/README.md` 与 `node_modules/wallkit/docs/we-integration.md`（上游仓库
+  https://github.com/mikoberry/wallkit），不要凭记忆猜 prop。
 - **改相机 / 构图数学**：同时对照 `lib/spine/SpineStage.jsx` 的 `design` 分支与
   `features/wallpaper/config.js` 的 `compositionRects()`，并用 §13 的纯 Node 复算确认归一化矩形不变。
 - **加 feature**：在 `src/features/` 下自建目录（页面 + 专属 `components/` / `config.js`），

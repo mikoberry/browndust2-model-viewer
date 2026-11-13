@@ -1,13 +1,15 @@
 # browndust2-model-viewer
 
 《棕色尘埃2》（BrownDust 2）的 **Spine 壁纸 / 模型查看器**：React 18 + Vite 5 + `@esotericsoftware/spine-webgl@4.1.56`。
-直接读取仓库里的 `model-library/`，不依赖 Wallpaper Engine。
+直接读取仓库里的 `model-library/`，不依赖 Wallpaper Engine 也能跑；壁纸页可选叠加
+[WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 / 指针特效），
+接上 Wallpaper Engine 后频谱与专辑卡会拿到真实的音频 / 媒体数据。
 
 两个路由，用途完全分开：
 
 | 路径 | 用途 | 页面内容 |
 | --- | --- | --- |
-| `/`（以及其它所有路径） | **壁纸**：正式页面 | 全屏固定模型 + 对应背景；默认零 UI，仅右下角一个可忽略的构图设置手柄 |
+| `/`（以及其它所有路径） | **壁纸**：正式页面 | 全屏固定模型 + 对应背景；默认零 UI，仅右下角一个可忽略的构图设置手柄（另有配置控制的 WallKit 控件浮层） |
 | `/spine-viewer` | **开发调试辅助页** | 完整查看器：模型库、工具栏、动画 / 信息面板、时间轴、状态栏 |
 
 ### 构图设置抽屉（壁纸页）
@@ -83,6 +85,7 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 | `modelTransform` | 模型层独立 `{ scale, offsetX, offsetY }`，与背景层语义完全相同 |
 | `animation` / `expression` | `null` 自动挑（`loop_2` / 首个 `_faceN`）；字符串指定；`''` 关闭该轨道 |
 | `skin` / `speed` / `zoom` | 皮肤、倍速、固定构图之上的额外缩放 |
+| `overlay` | WallKit 控件浮层：`accent` 主题色 + `clock` / `spectrum` / `albumArt` / `ambient` / `pointer` 五组，各自 `enabled`，详见下文「控件浮层」 |
 
 ### 配置文件：打包后也能直接改
 
@@ -138,15 +141,97 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 ### 壁纸页其它说明
 
 - 壁纸页默认**没有任何 UI**：没有侧栏、工具栏、检查器、时间轴、状态栏、加载动画，也不响应滚轮 / 拖拽 / 双击；固定循环播放。
-- 唯一例外是右下角一个半透明的**构图设置手柄**（默认 `opacity: .25`，悬停显形）：点击或按 `S` 展开右侧抽屉，
+- 唯一的两类 chrome：右下角一个半透明的**构图设置手柄**（默认 `opacity: .25`，悬停显形；点击或按 `S` 展开右侧抽屉，
   调整背景 / 模型的缩放与水平、垂直偏移；`Esc` 或 × 关闭。改动只影响当前页面，**不会写回配置文件**——
-  调好后点「复制配置」，得到的就是一份完整的 `wallpaper.config.json`，覆盖同名文件（或粘进 `config.js` 的内置默认值）刷新即可。
+  调好后点「复制配置」，得到的就是一份完整的 `wallpaper.config.json`，覆盖同名文件（或粘进 `config.js` 的内置默认值）刷新即可），
+  以及 `overlay` 配置里开启的 **WallKit 控件浮层**（默认只开一个时钟）。
 - 只有加载失败或素材库为空时，左下角才出现一行纯文本错误（同时打到 console）。
 - 调试页「信息 → 文件列表」会显示每张背景的原生尺寸，方便核对基准。
 - 开发时可用 `/?model=<id 片段>` 临时换模型及其对应背景对比，不传参数就是配置里的固定组合。
 - 路由刻意不引入 react-router：只有两个页面，且 `base: './'` 让 `dist/` 可以直接通过 `file://`
   或任意子路径被壁纸引擎加载。判断规则是「路径最后一段是 `spine-viewer`（或 `#spine-viewer` / `?viewer`）」，
   其余一律落到壁纸；`index.html` 会把 `/spine-viewer/` 的尾斜杠规范化掉，避免相对资源路径错位。
+
+## 控件浮层（WallKit）
+
+壁纸页可以叠加 [WallKit](https://github.com/mikoberry/wallkit) 的控件：时钟、音频频谱、专辑卡、氛围粒子、
+指针特效。分工是**WallKit 只做展示**（纯 props、不感知背景），本项目提供背景层并把宿主数据喂给它。
+
+### 依赖与构建
+
+`wallkit` 通过 **GitHub git 引用**分发（不发布 npm），并且是**源码直出、没有构建步骤**：
+
+```json
+"wallkit": "github:mikoberry/wallkit#b395855633615af7d1d058b36ba072c8692f1069"
+```
+
+因此 `vite.config.js` 里加了 `optimizeDeps.exclude: ['wallkit']`，让 Vite / `@vitejs/plugin-react`
+自己编译它的 JSX，而不是让 esbuild 预打包去处理它的 CSS import。升级只改这一行的 commit sha。
+组件 CSS 由组件自身 import（`wallkit/styles` 提供 `--wallkit-*` 主题变量），不并入 `global.css`。
+
+### 五个控件
+
+| 控件 | 配置键 | 需要的数据 | 默认 |
+| --- | --- | --- | --- |
+| 时钟 | `overlay.clock` | 无（自己每秒 tick 一次） | **开**，`minimal` 布局、左下角 |
+| 音频频谱 | `overlay.spectrum` | WE 音频帧 | 关（开启后贴底满宽） |
+| 专辑卡 | `overlay.albumArt` | WE 媒体信息 | 关 |
+| 氛围粒子 | `overlay.ambient` | 无（飘雪 / 樱花 / 气泡） | 关 |
+| 指针特效 | `overlay.pointer` | 指针事件（自己监听 window） | 关 |
+
+全部由 `wallpaper.config.json` 的 `overlay` 段控制，逐项 `enabled`；全关时 `WallpaperOverlay` 直接返回 `null`，
+页面恢复成纯壁纸。改完刷新即生效，不需要重新构建：
+
+```json
+"overlay": {
+  "accent": "#a8c4ff",
+  "clock": { "enabled": true, "placement": "minimal", "theme": "light", "anchor": "bottom-left", "offsetX": 4, "offsetY": 4 },
+  "spectrum": { "enabled": true, "variant": "bars", "width": "100vw", "height": "14vh", "anchor": "bottom-center" },
+  "albumArt": { "enabled": true, "variant": "classic", "anchor": "top-left", "offsetX": 4, "offsetY": 4 },
+  "ambient": { "enabled": true, "variant": "sakura", "density": 100 },
+  "pointer": { "enabled": true, "trailVariant": "glow", "clickVariant": "ripple" }
+}
+```
+
+几条容易踩的约定：
+
+- **`theme` 指文字色**：`'light'` = 浅色文字，配**深色**壁纸；`'dark'` = 深色文字，配浅色壁纸。与本项目背景一致时用 `light`。
+- **`anchor` + `offsetX` / `offsetY`**：9 个锚点（四角 + 四边中点 + 居中），偏移从锚点**向内**计；数字是视口百分比，
+  字符串是任意 CSS 长度（`'100px'`）。`0` 恒等于贴边，从左下换到右下不用翻符号。
+- **`size` / `width` / `height`**：控件尺寸。频谱与专辑卡还接受 `width` / `height` 精确覆盖盒子
+  （上例是「贴底满宽、厚度固定」）。`variant` 见上游 README（时钟 10 种、频谱 9 种、专辑卡 6 种）。
+- **`accent`** 只作用于频谱 / 粒子 / 指针特效；时钟与专辑卡的主色来自各自 `theme`（专辑卡封面主色还取自曲目本身）。
+
+### Wallpaper Engine 数据桥接
+
+`vite.config.js` 里的 `wallkitWE()` 会把音频 / 媒体 / 暂停三段监听器以 **classic script** 注入 `index.html`
+的 `<head>` 最前面（必须早于模块入口，否则会丢首帧）。普通浏览器里这些全局函数不存在，脚本自动跳过——
+所以浏览器里**时钟照常走，频谱是平的、专辑卡不渲染**，这是库的规定行为，不会用假数据兜底。
+
+要在 WE 里真的出数据，还需要**使用方自己**提供 `project.json`（本项目不附带，库也不碰它）：
+
+```json
+{
+  "file": "index.html",
+  "general": { "supportsaudioprocessing": true },
+  "title": "BrownDust 2",
+  "type": "Web"
+}
+```
+
+- `supportsaudioprocessing` **必须嵌在 `general` 内**，写顶层会被静默忽略（症状：监听器注册成功但回调 0 次）。
+- `type` 必须是大写 `"Web"`。
+- 暂停由 `useWallpaperPaused()` 分发：时钟停止 tick、频谱 / 粒子 / 指针特效冻结（`Clock` 自己没有 `paused` prop）。
+
+### 与构图的边界
+
+- 浮层在 `.wallpaper-overlay` 里（`position: absolute; inset: 0; z-index: 5`），**在 `.wallpaper-design` 之外**，
+  锚定的是**视口**：改 `fit` 或缩放设计画布都不会移动 / 放大控件。
+- 层级：背景与模型 < 浮层（5）< 构图手柄（6）< 设置抽屉（7）。`AmbientFx` 在浮层内部压在最下面
+  （ambient 1 → 频谱 3 → 指针 4 → 时钟 / 专辑 5），雪从时钟背后穿过。
+- 浮层不参与构图计算，也不改变「画面永不响应指针」这条规则：`PointerFx` 只是装饰覆盖层，默认关闭。
+- WE 桌面壁纸默认不投递鼠标事件：想让指针特效应在实机看到，要在 WE 里为该壁纸开启鼠标交互。
+  背景里若已经叠了 WE 自带粒子层，就不要再开 `ambient`，两层不同步的雪比没有更难看。
 
 ## 添加模型
 
@@ -207,6 +292,8 @@ model-library/
   不依赖浏览器里 `Image.onload` 的异步时机。
 - 两层变换都由 `resolveLayerTransform()` 解析成设计坐标元组后分两路应用：背景走 CSS transform，
   模型走 `design.transform` 进相机；canvas 自身不加 CSS transform，否则 `k = 位图宽 / 设计宽` 会失效。
+- WallKit 浮层与构图**完全解耦**：它渲染在 `.wallpaper-design` 之外的独立层里，用视口锚点定位，
+  不读 `design` / `fit` / `scale`。数据 hooks 分散在各控件组件内，只开时钟时不会订阅音频帧。
 
 ## 目录
 
@@ -215,7 +302,7 @@ model-library/
 
 ```
 index.html                       # 挂载点；规范化 /spine-viewer/ 尾斜杠
-vite.config.js                   # react() + modelLibraryPlugin()，base: './'
+vite.config.js                   # modelLibraryPlugin() + react() + wallkitWE()，base: './'
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR）
   model-library-plugin.mjs       # 虚拟模块 + dev 中间件 + build 产物输出
@@ -230,6 +317,7 @@ src/
       config.js                  # 壁纸唯一配置 + 构图纯函数
       components/
         WallpaperSettings.jsx    # 构图设置抽屉（缩放 / 偏移，仅壁纸页使用）
+        WallpaperOverlay.jsx     # WallKit 控件浮层（视口锚定，按 overlay 配置逐项显示）
     viewer/                      # /spine-viewer 调试查看器
       ViewerPage.jsx             # 状态 + 布局
       components/                # 侧栏、工具栏、检查器、时间轴
@@ -243,4 +331,5 @@ model-library/                   # 唯一素材源，只读
 
 > `AGENTS.md` 是给 coding agent 的约束清单（feature-based 架构规则、Spine 技术坑、构图数学、
 > 执行规则、Git 约定），已与当前实现同步；使用方式与配置说明以本 README 为准。
-> 早期 Wallpaper Engine / wallkit 方案的设计文档已删除。
+> 早期自研 WE 外壳 / 部署脚本的设计文档已删除；控件浮层现在统一走 WallKit（上游文档见
+> `node_modules/wallkit/README.md`）。

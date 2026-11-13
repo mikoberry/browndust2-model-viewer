@@ -27,5 +27,68 @@
   "expression": null,
   "skin": "",
   "speed": 1,
-  "zoom": 1
+  "zoom": 1,
+  "overlay": {
+    "accent": "#a8c4ff",
+    "clock": {
+      "enabled": true,
+      "placement": "minimal",
+      "theme": "light",
+      "anchor": "bottom-left",
+      "offsetX": 4,
+      "offsetY": 4,
+      "size": 100,
+      "use24Hour": true,
+      "tilt": true,
+      "beat": true,
+      "labels": {
+        "locale": "zh-CN",
+        "aria": "当前时间与日期"
+      }
+    },
+    "spectrum": {
+      "enabled": false,
+      "variant": "bars",
+      "color": "",
+      "anchor": "bottom-center",
+      "width": "100vw",
+      "height": "14vh",
+      "offsetX": 0,
+      "offsetY": 0,
+      "size": 100,
+      "intensity": 100,
+      "curve": 1
+    },
+    "albumArt": {
+      "enabled": false,
+      "variant": "classic",
+      "theme": "light",
+      "color": "",
+      "anchor": "top-left",
+      "offsetX": 4,
+      "offsetY": 4,
+      "size": 100,
+      "labels": {
+        "aria": "正在播放"
+      }
+    },
+    "ambient": {
+      "enabled": false,
+      "variant": "snow",
+      "color": "",
+      "density": 100,
+      "size": 100,
+      "intensity": 100
+    },
+    "pointer": {
+      "enabled": false,
+      "trail": true,
+      "click": true,
+      "trailVariant": "glow",
+      "clickVariant": "ripple",
+      "color": "",
+      "size": 100,
+      "intensity": 100
+    }
+  }
 }

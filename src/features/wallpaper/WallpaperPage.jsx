@@ -7,10 +7,12 @@
 // reacts to screen size / aspect ratio; everything inside is resolution
 // independent.
 //
-// Chrome: none by default (plus a plain text line on failure). The composition
-// drawer stays hidden until the user clicks the bottom-right button or presses
-// `S`; it only mirrors the two layer adjustments so they can be tuned by eye and
-// copied into config.js.
+// Chrome: none by default (plus a plain text line on failure). WallKit control
+// overlays (clock / spectrum / album card / particles / pointer effects) are
+// opt-in through the `overlay` config section and anchored to the viewport, so
+// they are independent of the composition. The composition drawer stays hidden
+// until the user clicks the bottom-right button or presses `S`; it only mirrors
+// the two layer adjustments so they can be tuned by eye and copied into config.js.
 //
 // Defaults live in two layers: the built-in object in config.js, and the
 // external `wallpaper.config.json` that ships next to index.html. The file is
@@ -24,6 +26,7 @@ import SpineStage from '../../lib/spine/SpineStage.jsx'
 import { pickDefaultAnimation, pickDefaultExpression } from '../../lib/animation.js'
 import { assetUrl } from '../../lib/assets.js'
 import WallpaperSettings from './components/WallpaperSettings.jsx'
+import WallpaperOverlay from './components/WallpaperOverlay.jsx'
 import {
   WALLPAPER,
   loadWallpaperConfig,
@@ -226,6 +229,10 @@ export default function WallpaperPage() {
 
       {message && <p className="wallpaper-message">{message}</p>}
       {!model && <p className="wallpaper-message">model-library/ 里没有可识别的模型</p>}
+
+      {/* Viewport-anchored, so the composition scale never moves the widgets.
+          Renders nothing when every `overlay.*.enabled` is false. */}
+      {ready && <WallpaperOverlay config={config.overlay} />}
 
       {!settingsOpen && (
         <button

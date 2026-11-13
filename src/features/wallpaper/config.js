@@ -96,6 +96,82 @@ export const WALLPAPER = {
   speed: 1,
   // Extra multiplier on top of the fixed composition (>1 enlarges).
   zoom: 1,
+
+  // Floating control overlays (WallKit). These are NOT part of the fixed
+  // composition: they are anchored to the viewport, so scaling the design
+  // canvas never moves them. Every widget is opt-in — with all of them
+  // disabled the page is a bare wallpaper again.
+  //
+  //   accent — shared accent colour (#rrggbb), used by spectrum bars, particles
+  //            and pointer effects; omit it to keep the library default.
+  //   theme  — WallKit convention: 'light' = light text (dark artwork),
+  //            'dark' = dark text (light artwork).
+  //   anchor — 9 anchors (four corners + edge centres + centre); offsetX /
+  //            offsetY are measured INWARD from that anchor. A number is a
+  //            percentage of the viewport, a string is any CSS length.
+  //
+  // Audio spectrum and album card need the Wallpaper Engine bridge; in a plain
+  // browser they simply stay empty (no fallback data is invented).
+  overlay: {
+    accent: '#a8c4ff',
+    clock: {
+      enabled: true,
+      placement: 'minimal',
+      theme: 'light',
+      anchor: 'bottom-left',
+      offsetX: 4,
+      offsetY: 4,
+      size: 100,
+      use24Hour: true,
+      // Pointer-following tilt, and whether the card pumps with the bass.
+      tilt: true,
+      beat: true,
+      labels: { locale: 'zh-CN', aria: '当前时间与日期' },
+    },
+    spectrum: {
+      enabled: false,
+      variant: 'bars',
+      color: '',
+      anchor: 'bottom-center',
+      // Full-bleed strip: width from the viewport, fixed thickness.
+      width: '100vw',
+      height: '14vh',
+      offsetX: 0,
+      offsetY: 0,
+      size: 100,
+      intensity: 100,
+      curve: 1,
+    },
+    albumArt: {
+      enabled: false,
+      variant: 'classic',
+      theme: 'light',
+      color: '',
+      anchor: 'top-left',
+      offsetX: 4,
+      offsetY: 4,
+      size: 100,
+      labels: { aria: '正在播放' },
+    },
+    ambient: {
+      enabled: false,
+      variant: 'snow',
+      color: '',
+      density: 100,
+      size: 100,
+      intensity: 100,
+    },
+    pointer: {
+      enabled: false,
+      trail: true,
+      click: true,
+      trailVariant: 'glow',
+      clickVariant: 'ripple',
+      color: '',
+      size: 100,
+      intensity: 100,
+    },
+  },
 }
 
 // ---------------------------------------------------------------------------
