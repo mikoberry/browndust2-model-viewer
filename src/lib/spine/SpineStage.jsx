@@ -71,6 +71,14 @@ export default function SpineStage(props) {
     sequenceToken = 0,
     onSequenceDone,
     onSequenceStage,
+    // Click-to-play: when `clickAnimation` is a non-empty animation name, the
+    // wallpaper hands track 0 to it once on a click (via `onClick` -> parent
+    // bumping `clickToken`). It plays through ONCE (loop=false) and then the
+    // queued `animation` takes back over, so a click is a one-shot reaction
+    // that returns to the idle loop. Empty / missing = no click behaviour.
+    clickAnimation = '',
+    clickToken = 0,
+    onClick,
   } = props
 
   const canvasRef = useRef(null)
@@ -200,6 +208,22 @@ export default function SpineStage(props) {
     }
     fitPendingRef.current = true
   }, [asset, sequenceKey, sequenceToken])
+
+  // Click-to-play on track 0: a one-shot reaction. `setAnimation(..., false)`
+  // plays the clicked clip once, then the queued `animation` (track 0's resting
+  // loop) takes back over with no gap. Skipped while a sequence owns the track,
+  // so a click never interrupts the opening cutscene.
+  useEffect(() => {
+    if (!asset || !clickAnimation || clickToken <= 0) return
+    if (sequenceActiveRef.current) return
+    if (!asset.data.findAnimation(clickAnimation)) return
+    const { state } = asset
+    const rest = liveRef.current.animation
+    state.setAnimation(0, clickAnimation, false)
+    if (rest && rest !== clickAnimation && asset.data.findAnimation(rest)) {
+      state.addAnimation(0, rest, liveRef.current.loop !== false, 0)
+    }
+  }, [asset, clickAnimation, clickToken])
 
   // Track 1: BD2 character portraits keep facial features in _faceN
   // animations; without one the face renders as a blank white mask.
@@ -536,6 +560,7 @@ export default function SpineStage(props) {
         onPointerCancel={interactive ? stopDragging : undefined}
         onLostPointerCapture={interactive ? stopDragging : undefined}
         onDoubleClick={interactive ? () => onFit?.() : undefined}
+        onClick={onClick}
       />
       <div ref={boundsBoxRef} className="stage-bounds" aria-hidden="true" />
       {showLoading && (phase === 'idle' || phase === 'loading') && (

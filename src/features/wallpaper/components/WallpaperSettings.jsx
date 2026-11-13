@@ -28,7 +28,7 @@ import {
   saveRecordedConfig,
 } from '../config.js'
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
-import { ColorField, Group, SliderField, ToggleField } from './settings-fields.jsx'
+import { ChipField, ColorField, Group, SliderField, ToggleField } from './settings-fields.jsx'
 
 const SCALE_MIN = 0.25
 const SCALE_MAX = 3
@@ -157,37 +157,36 @@ function SequenceGroup({
   entrance,
   autoplay,
   activeClip,
-  inEntrance,
   onAutoplayChange,
   onReplay,
 }) {
   const list = Array.isArray(sequence) ? sequence : []
   const clips = entrance?.clips ?? {}
-  const blend = Number(entrance?.blend ?? 0)
   const scale = (layer) => `${Number(layer?.scale ?? 1).toFixed(2)}×`
   return (
     <Group title="入场动画">
-      <div className="ws-seq">
-        <span
-          className="ws-seq-list"
-          title="在 wallpaper.config.json 的 sequence 里修改（也可写 'auto' 自动识别）；留空则只播放单个循环动画"
-        >
-          {list.length ? list.join(' → ') : '未配置（直接播放循环动画）'}
-        </span>
-        <button type="button" className="ws-btn" onClick={onReplay} disabled={!list.length}>
-          重新播放
-        </button>
-      </div>
-      {list.length > 0 && (
+      {/* `autoplay` is not just a start-up flag: while it is on, the bare
+          wallpaper also shows a round play button above the settings gear,
+          because a cutscene is easy to miss and this drawer is hidden. It also
+          gates the sub-details below, so turning it off collapses them. */}
+      <ToggleField
+        label="启动时播放"
+        checked={autoplay}
+        onChange={onAutoplayChange}
+      />
+      {autoplay && (
         <>
-          {/* `autoplay` is not just a start-up flag: while it is on, the bare
-              wallpaper also shows a round play button above the settings gear,
-              because a cutscene is easy to miss and this drawer is hidden. */}
-          <ToggleField
-            label="启动时播放"
-            checked={autoplay}
-            onChange={onAutoplayChange}
-          />
+          <div className="ws-seq">
+            <span
+              className="ws-seq-list"
+              title="在 wallpaper.config.json 的 sequence 里修改（也可写 'auto' 自动识别）；留空则只播放单个循环动画"
+            >
+              {list.length ? list.join(' → ') : '未配置（直接播放循环动画）'}
+            </span>
+            <button type="button" className="ws-btn" onClick={onReplay} disabled={!list.length}>
+              重新播放
+            </button>
+          </div>
           <ul className="ws-clips">
             {list.map((name) => {
               const clip = clips[name]
@@ -209,11 +208,40 @@ function SequenceGroup({
         {autoplay
           ? '勾选「启动时播放」：加载完成后自动放一遍，右下角设置按钮上方会出现播放按钮，随时可重放。'
           : '不自动播放：打开就是上面的「构图」，设置按钮上方不显示播放按钮（这里的「重新播放」仍可用）。'}
-        每段都有各自的背景 / 缩放 / 位置，播放时按顺序拼起来，段间过渡 {blend.toFixed(1)}s。
-        最后一段开始后入场就结束：两层用 {blend.toFixed(1)}s 渐变回上面的「构图」，动画交回 `animation` 循环。
-        {inEntrance ? ' 正在播放入场。' : ''} 这些数值在 <code>/spine-viewer</code> 的「构图」面板里调；
-        本页的改动要点「记录配置」才会保存到下次启动。
       </p>
+    </Group>
+  )
+}
+
+// Click-to-play: a one-shot reaction. The switch gates whether a click on the
+// model does anything; the animation is picked from the model's own clips.
+// Facial `_faceN` tracks and idle loops (`loop` / `loop_2`) are filtered out —
+// only the `cut_*` reaction clips are offered. Off by default because the host
+// has to deliver mouse events at all (Wallpaper Engine: turn on mouse
+// interaction for the wallpaper).
+function ClickAnimationGroup({ clickAnimation, animations, onChange, onReset }) {
+  const name = clickAnimation?.name ?? ''
+  const enabled = clickAnimation?.enabled === true
+  // Reaction clips only: drop the _faceN portrait tracks and the idle loops.
+  const options = (animations ?? [])
+    .map((item) => item?.name ?? item)
+    .filter((item) => typeof item === 'string' && item && !/^_face\d+$/i.test(item) && !/^loop(_\d+)?$/i.test(item))
+    .map((item) => ({ value: item, label: item }))
+  return (
+    <Group
+      title="点击触发动画"
+      onReset={onReset}
+      note="开启后，点击人物会播放一次所选动画（如 cut_B），播完自动回到循环动画。需要宿主能投递鼠标事件（WE 里要开「鼠标交互」）。"
+    >
+      <ToggleField label="点击人物时播放动画" checked={enabled} onChange={(value) => onChange({ enabled: value })} />
+      {enabled && (
+        <ChipField
+          label="点击后播放的动画"
+          value={name}
+          options={options}
+          onChange={(value) => onChange({ name: value })}
+        />
+      )}
     </Group>
   )
 }
@@ -239,7 +267,7 @@ function AccentField({ value, onChange }) {
 // overwritten by what the drawer is showing right now. Key order follows the
 // built-in object, so the clipboard content is diff-stable against the shipped
 // file.
-function configPayload(config, spec, overlay, autoplay) {
+function configPayload(config, spec, overlay, autoplay, clickAnimation) {
   const layer = (item) => ({
     scale: round2(item.scale),
     offsetX: Math.round(item.offsetX),
@@ -262,6 +290,10 @@ function configPayload(config, spec, overlay, autoplay) {
       ...(config.entrance ?? {}),
       autoplay: autoplay !== false,
     },
+    clickAnimation: {
+      enabled: clickAnimation?.enabled === true,
+      name: clickAnimation?.name ?? '',
+    },
     overlay,
   }
 }
@@ -281,9 +313,11 @@ export default function WallpaperSettings({
   entrance,
   autoplay,
   activeClip,
-  inEntrance,
   source,
+  clickAnimation,
+  animations,
   onChange,
+  onClickChange,
   onOverlayChange,
   onAccentChange,
   onAutoplayChange,
@@ -320,7 +354,7 @@ export default function WallpaperSettings({
   // The same text also goes to the clipboard, for the case where the tune
   // should become the new factory default of a build.
   const handleRecord = async () => {
-    const payload = configPayload(config, spec, overlay, autoplay)
+    const payload = configPayload(config, spec, overlay, autoplay, clickAnimation)
     const text = `${JSON.stringify(payload, null, 2)}\n`
     const at = new Date()
     const stored = saveRecordedConfig(payload, at.toISOString())
@@ -450,15 +484,15 @@ export default function WallpaperSettings({
               entrance={entrance}
               autoplay={autoplay}
               activeClip={activeClip}
-              inEntrance={inEntrance}
               onAutoplayChange={onAutoplayChange}
               onReplay={onReplaySequence}
             />
-            <p className="ws-note">
-              偏移单位为设计画布像素（与 {CONFIG_FILE} 一致），平移不会被缩放放大。
-              1× 时背景正好等于画布，拖出去的部分会露出模糊补边；想铺满整屏就先放大再拖。
-              控件的位置在各自的 tab 里调，用的是视口百分比，与这里的画布坐标无关。
-            </p>
+            <ClickAnimationGroup
+              clickAnimation={clickAnimation}
+              animations={animations}
+              onChange={onClickChange}
+              onReset={() => onReset('clickAnimation')}
+            />
             {enabledWidgets.length === 0 && (
               <p className="ws-note">当前没有任何控件浮层开启；需要的话在对应 tab 里打开。</p>
             )}

@@ -78,13 +78,25 @@ function ClockWidget({ spec, paused }) {
 // `useWallpaperAudio()` hands back one stable, in-place rewritten buffer, which
 // `Spectrum` reads inside its own draw loop: 60 Hz audio costs no re-renders
 // here. Passing it through state or cloning it would freeze the graph.
-function SpectrumWidget({ spec, paused }) {
+//
+// `colorHex` is resolved here instead of leaving an empty string for WallKit to
+// fill from `--wallkit-accent`: WallKit reads that token once on mount and never
+// re-reads it, so an accent change while the widget "follows the theme colour"
+// (empty `color`) would never repaint. Falling back to `accent` keeps the
+// widget live under the shared theme swatch.
+//
+// Sizing follows WallKit's two mutually-exclusive models: `size` scales the base
+// box (the default control), while an explicit `width`/`height` override it —
+// e.g. `width="100vw" height="14vh"` spans the bottom edge, and a radial style
+// uses `width="46vh" height="46vh"` for a fixed circular diameter. We pass the
+// configured values through untouched; `''` simply means "let `size` decide".
+function SpectrumWidget({ spec, accent, paused }) {
   const bars = useWallpaperAudio()
   return (
     <Spectrum
       bars={bars}
       variant={spec.variant}
-      colorHex={spec.color || undefined}
+      colorHex={spec.color || accent || undefined}
       size={spec.size}
       width={spec.width || undefined}
       height={spec.height || undefined}
@@ -98,7 +110,7 @@ function SpectrumWidget({ spec, paused }) {
   )
 }
 
-function AlbumWidget({ spec, paused }) {
+function AlbumWidget({ spec, accent, paused }) {
   const track = useWallpaperMedia(paused)
   const bars = useWallpaperAudio()
   return (
@@ -107,7 +119,7 @@ function AlbumWidget({ spec, paused }) {
       bars={bars}
       variant={spec.variant}
       theme={spec.theme}
-      colorHex={spec.color || undefined}
+      colorHex={spec.color || accent || undefined}
       size={spec.size}
       anchor={spec.anchor}
       offsetX={spec.offsetX}
@@ -155,9 +167,9 @@ export default function WallpaperOverlay({ config }) {
           paused={paused}
         />
       )}
-      {spectrum?.enabled && <SpectrumWidget spec={spectrum} paused={paused} />}
+      {spectrum?.enabled && <SpectrumWidget spec={spectrum} accent={accent} paused={paused} />}
       {clock?.enabled && <ClockWidget spec={clock} paused={paused} />}
-      {albumArt?.enabled && <AlbumWidget spec={albumArt} paused={paused} />}
+      {albumArt?.enabled && <AlbumWidget spec={albumArt} accent={accent} paused={paused} />}
     </div>
   )
 }

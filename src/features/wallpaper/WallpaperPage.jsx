@@ -112,6 +112,21 @@ export default function WallpaperPage() {
   const [overlayTweaks, setOverlayTweaks] = useState(configOverlay)
   useEffect(() => setOverlayTweaks(configOverlay), [configOverlay])
 
+  // Click-to-play: edited live in the composition drawer, same rule as the
+  // layer tweaks (config wins until touched, nothing persisted until 记录配置).
+  // `enabled` gates whether the click is wired at all; `name` is the one-shot
+  // animation played when the model is clicked.
+  const configClickAnimation = config.clickAnimation ?? { enabled: false, name: '' }
+  const [clickTweak, setClickTweak] = useState(configClickAnimation)
+  useEffect(() => setClickTweak(configClickAnimation), [configClickAnimation])
+  // Bumped on every click to make SpineStage replay the one-shot clip. The
+  // actual animation name rides alongside as `clickAnimation` (config-derived),
+  // so a click never re-renders the WebGL stage — only the token changes.
+  const [clickToken, setClickToken] = useState(0)
+  const handleStageClick = useCallback(() => {
+    if (clickTweak.enabled && clickTweak.name) setClickToken((token) => token + 1)
+  }, [clickTweak])
+
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   // Model state reported by the stage. Declared up here because the entrance
@@ -233,6 +248,10 @@ export default function WallpaperPage() {
     setTweaks((prev) => ({ ...prev, [layer]: { ...prev[layer], ...patch } }))
   }, [])
 
+  const updateClick = useCallback((patch) => {
+    setClickTweak((prev) => ({ ...prev, ...patch }))
+  }, [])
+
   // `key` is an overlay widget key ('clock' / 'spectrum' / …); the accent is a
   // scalar and gets its own setter.
   const updateOverlay = useCallback((key, patch) => {
@@ -249,6 +268,8 @@ export default function WallpaperPage() {
   configTweaksRef.current = configTweaks
   const configOverlayRef = useRef(configOverlay)
   configOverlayRef.current = configOverlay
+  const configClickRef = useRef(configClickAnimation)
+  configClickRef.current = configClickAnimation
 
   const resetTweaks = useCallback((target) => {
     const base = configTweaksRef.current
@@ -256,11 +277,16 @@ export default function WallpaperPage() {
     if (target === 'all') {
       setTweaks({ ...base })
       setOverlayTweaks({ ...overlayBase })
+      setClickTweak({ ...configClickRef.current })
       setAutoplayOverride(null)
       return
     }
     if (target === 'backdrop' || target === 'model' || target === 'parallax') {
       setTweaks((prev) => ({ ...prev, [target]: { ...base[target] } }))
+      return
+    }
+    if (target === 'clickAnimation') {
+      setClickTweak({ ...configClickRef.current })
       return
     }
     // Any other target is an overlay widget key.
@@ -382,6 +408,9 @@ export default function WallpaperPage() {
               interactive={false}
               showLoading={false}
               design={stageDesign}
+              clickAnimation={clickTweak.enabled ? clickTweak.name : ''}
+              clickToken={clickToken}
+              onClick={handleStageClick}
               onLoaded={handleLoaded}
               onError={handleError}
             />
@@ -443,9 +472,11 @@ export default function WallpaperPage() {
           entrance={entrance}
           autoplay={autoplay}
           activeClip={activeClip}
-          inEntrance={inEntrance}
           source={loaded?.source ?? 'builtin'}
+          clickAnimation={clickTweak}
+          animations={info?.animations ?? []}
           onChange={updateTweaks}
+          onClickChange={updateClick}
           onOverlayChange={updateOverlay}
           onAccentChange={updateAccent}
           onAutoplayChange={setAutoplayOverride}

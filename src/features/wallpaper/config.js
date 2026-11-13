@@ -154,6 +154,17 @@ export const WALLPAPER = {
   // names (cut_A/cut_B/…, then loop_2) — handy when you keep switching models.
   sequence: ['cut_A', 'cut_B', 'loop_2'],
 
+  // Click-to-play: while `enabled`, clicking the model plays `name` ONCE (a
+  // one-shot reaction like a poke / cut_B jab) and then hands track 0 back to
+  // `animation` (the idle loop). `name` must be one of the model's animations,
+  // e.g. 'cut_B'; an unknown name is ignored. This only matters when the host
+  // delivers mouse events (Wallpaper Engine: enable "mouse interaction"), so it
+  // is off by default.
+  clickAnimation: {
+    enabled: false,
+    name: 'cut_B',
+  },
+
   // Framing used WHILE each clip of the sequence above plays. Every clip keeps
   // its OWN backdrop / scale / offset, because a game cutscene is a chain of
   // separate shots: cut_A may be a wide establishing frame, cut_B a close-up on
@@ -225,9 +236,12 @@ export const WALLPAPER = {
       variant: 'bars',
       color: '',
       anchor: 'bottom-center',
-      // Full-bleed strip: width from the viewport, fixed thickness.
-      width: '100vw',
-      height: '14vh',
+      // Size is the default control (`size` drives the box scale). Set an exact
+      // `width` / `height` (e.g. '100vw' / '14vh' for a full-bleed strip) to
+      // override `size`; radial styles (ring/ringwave/ripples/aurora) always
+      // ignore them and use `size` to stay square.
+      width: '',
+      height: '',
       offsetX: 0,
       offsetY: 0,
       size: 100,

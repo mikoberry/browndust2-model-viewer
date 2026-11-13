@@ -6,7 +6,7 @@
 // Option lists come from wallkit itself wherever it exports them, so a new
 // variant in the library shows up here without a second source of truth.
 
-import { Group, AnchorPicker, ChipField, ColorField, LengthField, SliderField, ToggleField } from './settings-fields.jsx'
+import { Group, AnchorPicker, ChipField, ColorField, SliderField, ToggleField } from './settings-fields.jsx'
 
 // Option lists are rendered as button chips (never a <select>), so labels are
 // kept short; the library's own identifier is in the button's `title`/tooltip.
@@ -41,6 +41,38 @@ const SPECTRUM_VARIANTS = [
   { value: 'ripples', label: '涟漪' },
   { value: 'aurora', label: '极光' },
 ]
+
+// Radial styles take their diameter from the SHORTER side of the box (they
+// force a square in CSS), so the panel only adds a hint that width == height
+// keeps them circular.
+const SPECTRUM_RADIAL = ['ring', 'ringwave', 'ripples', 'aurora']
+
+// Default box per variant, following wallkit's own playground (layout.jsx):
+// linear styles fill the bottom edge, radial styles keep a square so their
+// circle is not squashed. Values are plain numbers: width is in `vw`, height is
+// in `vh` (so 100 == full width / full height). Switching a style fills these in
+// so the width/height sliders always show a concrete number.
+const SPECTRUM_DIMENSIONS = {
+  bars: { width: 100, height: 14 },
+  mirror: { width: 100, height: 14 },
+  curve: { width: 100, height: 14 },
+  pill: { width: 100, height: 14 },
+  dots: { width: 100, height: 14 },
+  ring: { width: 46, height: 46 },
+  ringwave: { width: 46, height: 46 },
+  ripples: { width: 46, height: 46 },
+  aurora: { width: 46, height: 46 },
+}
+
+// Parse a stored length back into the slider's number for the given unit. The
+// panel only ever writes `vw` for width and `vh` for height, so any other value
+// (a legacy unit, or an empty string) falls back to 0 rather than breaking the
+// slider.
+const lenOf = (value, unit) => {
+  const re = new RegExp(`^(-?\\d+(?:\\.\\d+)?)${unit}$`, 'i')
+  const match = re.exec(String(value ?? '').trim())
+  return match ? Number(match[1]) : 0
+}
 
 const ALBUM_VARIANTS = [
   { value: 'classic', label: '经典' },
@@ -194,6 +226,7 @@ function ClockPanel({ spec, onChange, onReset }) {
 }
 
 function SpectrumPanel({ spec, accent, onChange, onReset }) {
+  const radial = SPECTRUM_RADIAL.includes(spec.variant)
   return (
     <>
       <Group title="显示" onReset={onReset}>
@@ -209,7 +242,14 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
           label="样式"
           value={spec.variant}
           options={SPECTRUM_VARIANTS}
-          onChange={(variant) => onChange({ variant })}
+          onChange={(variant) => {
+            const dims = SPECTRUM_DIMENSIONS[variant]
+            onChange(
+              dims
+                ? { variant, width: `${dims.width}vw`, height: `${dims.height}vh` }
+                : { variant }
+            )
+          }}
         />
         <div className="ws-pair">
           <ColorField
@@ -229,9 +269,28 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
           />
         </div>
         <div className="ws-pair">
-          <LengthField label="宽度" value={spec.width ?? ''} onChange={(width) => onChange({ width })} />
-          <LengthField label="高度" value={spec.height ?? ''} step={1} onChange={(height) => onChange({ height })} />
+          <SliderField
+            label="宽度"
+            value={lenOf(spec.width, 'vw')}
+            min={0}
+            max={100}
+            step={1}
+            onChange={(width) => onChange({ width: `${width}vw` })}
+          />
+          <SliderField
+            label="高度"
+            value={lenOf(spec.height, 'vh')}
+            min={0}
+            max={100}
+            step={1}
+            onChange={(height) => onChange({ height: `${height}vh` })}
+          />
         </div>
+        {radial ? (
+          <p className="ws-note">环形类样式按「宽高中较小的一边」取直径，想要正圆就把宽、高设成相等（如都是 46）。</p>
+        ) : (
+          <p className="ws-note">宽度、高度填了会覆盖上面的「尺寸」；例如 100 / 14 铺满底边。</p>
+        )}
       </Group>
       <Group title="位置">
         <PlacementFields spec={spec} onChange={onChange} />

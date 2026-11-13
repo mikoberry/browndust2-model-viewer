@@ -35,6 +35,10 @@
     "cut_B",
     "loop_2"
   ],
+  "clickAnimation": {
+    "enabled": false,
+    "name": "cut_B"
+  },
   "entrance": {
     "autoplay": true,
     "blend": 0.9,
