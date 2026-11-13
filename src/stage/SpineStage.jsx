@@ -22,7 +22,11 @@ import {
 // Visible world height = canvasHeight * zoom, so pinning the figure's bounds
 // height to figureHeight * viewport height gives:
 //   zoom = bounds.h / (viewportH * figureHeight)
-// Pinning the bounds center to (anchorX * W, anchorY * H) gives the position.
+// Screen position of world point p: screenY = H/2 + (camY - p) / zoom
+// (world y grows upward, screen y grows downward). Pinning the bounds bottom
+// to anchorY * viewportH and the bounds center to anchorX * viewportW:
+//   camX = centerX - (anchorX - 0.5) * viewportW * zoom
+//   camY = bottomY + (anchorY - 0.5) * viewportH * zoom
 function cameraFor(viewportW, viewportH, figureHeight) {
   const b = MODEL.idleBounds
   const zoom = b.h / (viewportH * figureHeight)
@@ -31,7 +35,7 @@ function cameraFor(viewportW, viewportH, figureHeight) {
   return {
     zoom,
     x: centerX - (FRAMING.anchorX - 0.5) * viewportW * zoom,
-    y: bottomY - (FRAMING.anchorY - 0.5) * viewportH * zoom,
+    y: bottomY + (FRAMING.anchorY - 0.5) * viewportH * zoom,
   }
 }
 
@@ -84,10 +88,9 @@ export default function SpineStage({ state, paused, parallax, onFinished, onClic
     }
     return () => {
       if (renderer) renderer.dispose()
-      if (ctxRef.current) {
-        ctxRef.current.dispose()
-        ctxRef.current = null
-      }
+      // ManagedWebGLRenderingContext has no dispose method (verified in
+      // spine-webgl 4.1.56) — its canvas listeners die with the canvas.
+      ctxRef.current = null
       runtimeRef.current = null
       setContext(null)
     }
@@ -95,12 +98,12 @@ export default function SpineStage({ state, paused, parallax, onFinished, onClic
 
   // Switch spine tracks whenever the choreography state changes.
   useEffect(() => {
-    if (!asset) return
+    if (!asset) return undefined
     const animName = ANIMS[state]
-    if (!animName || !asset.data.findAnimation(animName)) return
-    const trackEntry = asset.state.setAnimation(0, animName, state === 'idle')
+    if (!animName || !asset.data.findAnimation(animName)) return undefined
+    asset.state.setAnimation(0, animName, state === 'idle')
     finishedRef.current = false
-    return trackEntry // eslint-disable-line consistent-return
+    return undefined
   }, [asset, state])
 
   // Pointer parallax: normalize to -1..1 around the screen center.
