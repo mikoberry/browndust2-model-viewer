@@ -321,7 +321,8 @@ src/features/<feature>/
   `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用 `WE_PROJECT` 覆盖；
   它会写仓库外的文件，**只在用户明确要求时执行**。
 - 只清 `assets/` / `models/` / `index.html` 三项，其它文件（`preview.gif`、WE 自己生成的快照等）必须保留。
-- `wallpaper.config.json` **已存在就不覆盖**（部署目录里的就地调参优先），同步用 `WE_FORCE_CONFIG=1`；
+- `wallpaper.config.json` **和其他文件一样直接覆盖**（部署目录是 `dist/` 的镜像）。想留下在 WE 里调好的值，
+  用抽屉的「复制配置」拿回仓库，别指望部署目录里那份能存活；
   不要为了「一致性」改成每次覆盖。
 - `project.json` 由脚本生成：`file: index.html`、`type: "Web"`（大写）、
   `general.supportsaudioprocessing: true`（**必须在 `general` 内**）。`preview` 只在目标目录里真有图片时才登记。

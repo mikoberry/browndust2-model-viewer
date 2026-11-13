@@ -8,10 +8,9 @@
 //   npm run build:we                  # build + deploy to the default folder
 //   WE_PROJECT=D:/somewhere npm run deploy:we    # deploy an existing dist/
 //
-// Overridable: WE_PROJECT (target folder), WE_TITLE (project title),
-// WE_FORCE_CONFIG=1 (also overwrite the deployed wallpaper.config.json).
+// Overridable: WE_PROJECT (target folder), WE_TITLE (project title).
 
-import { cp, mkdir, readdir, rm, stat, writeFile, readFile } from 'node:fs/promises'
+import { cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,13 +25,14 @@ const DEFAULT_TARGET =
 // removed chunk or model never lingers in the deployed folder.
 const MANAGED = ['assets', 'models', 'index.html']
 
-// Shipped as a runtime setting: whoever tunes the wallpaper in place edits the
-// deployed copy, so it is only written when missing (unless WE_FORCE_CONFIG).
+// Shipped as a runtime setting but deployed like everything else: the folder is a
+// mirror of dist/, so tuning done in the deployed copy is overwritten on the next
+// deploy. Tune in the repo (`public/wallpaper.config.json`) or use the drawer's
+// "复制配置" to carry a tweak back.
 const RUNTIME_ONLY = 'wallpaper.config.json'
 
 const target = path.resolve(process.env.WE_PROJECT || DEFAULT_TARGET)
 const title = process.env.WE_TITLE || 'BrownDust 2'
-const forceConfig = process.env.WE_FORCE_CONFIG === '1'
 
 function fail(message) {
   console.error(`✗ ${message}`)
@@ -87,27 +87,9 @@ async function main() {
     }
   }
 
-  const configPath = path.join(target, RUNTIME_ONLY)
-  let keepConfig = existsSync(configPath) && !forceConfig
-  // Keeping the deployed config is the point (in-place tuning wins), but silence
-  // is how you end up staring at a wallpaper that "did not change": say loudly
-  // when the preserved copy is not what the repo just built.
-  if (keepConfig) {
-    const [kept, built] = await Promise.all([
-      readFile(configPath, 'utf8').catch(() => null),
-      readFile(path.join(DIST, RUNTIME_ONLY), 'utf8').catch(() => null),
-    ])
-    if (kept !== null && built !== null && kept !== built) {
-      console.warn(
-        `! 目标目录里已有一份不同的 ${RUNTIME_ONLY}，按约定保留没覆盖。\n` +
-          '  想用仓库里的新配置：加 WE_FORCE_CONFIG=1 再跑一次。',
-      )
-    }
-  }
   let copied = 0
 
   for (const entry of await readdir(DIST)) {
-    if (entry === RUNTIME_ONLY && keepConfig) continue
     await cp(path.join(DIST, entry), path.join(target, entry), {
       recursive: true,
       force: true,
@@ -155,10 +137,8 @@ async function main() {
   const size = await dirSize(target)
   console.log(`✓ 已部署到 ${target}`)
   console.log(`  入口 index.html，project.json (type: Web, 音频处理已开启)，覆盖 ${copied} 项`)
+  console.log('  wallpaper.config.json 已随构建覆盖')
   console.log(`  ${size.files} 个文件 / ${mb(size.total)}`)
-  if (keepConfig) {
-    console.log(`  保留了已有的 ${RUNTIME_ONLY}（要覆盖请设 WE_FORCE_CONFIG=1）`)
-  }
   if (!previewName) {
     console.log('  提示：放一张 preview.gif / .jpg / .png 到该目录可作缩略图，重新部署会保留')
   }

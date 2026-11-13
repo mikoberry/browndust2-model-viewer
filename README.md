@@ -83,17 +83,14 @@ npm run deploy:we    # 只复制现有 dist/，不重新构建
 
 目标目录默认是
 `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，
-可以用环境变量覆盖：`WE_PROJECT=D:/somewhere npm run deploy:we`（`WE_TITLE` 改工程标题，
-`WE_FORCE_CONFIG=1` 连 `wallpaper.config.json` 一起覆盖）。
+可以用环境变量覆盖：`WE_PROJECT=D:/somewhere npm run deploy:we`（`WE_TITLE` 改工程标题）。
 
 脚本做的事情，顺序固定：
 
 1. 清掉目标目录里 **由构建产出** 的三项（`assets/`、`models/`、`index.html`），其它文件一概不动；
-2. 把 `dist/` 整个复制过去；`wallpaper.config.json` **只在目标目录里不存在时才写**，
-   这样你在 WE 目录里就地调的参数不会被下一次打包抹掉（要同步就设 `WE_FORCE_CONFIG=1`）。
-   两份内容不一致时脚本会打一行 `! 目标目录里已有一份不同的 wallpaper.config.json` 警告——
-   **看到这行就说明 wallpaper 的画面参数不会变**，想让仓库里的配置生效就加 `WE_FORCE_CONFIG=1` 重跑，
-   或者干脆直接改目标目录里那份（它才是运行期真正被读的）；
+2. 把 `dist/` 整个复制过去，**包括 `wallpaper.config.json`**：部署目录是 `dist/` 的镜像，
+   每次部署都会覆盖。所以调参要在仓库里改 `public/wallpaper.config.json`（或在抽屉里调好后点「复制配置」
+   粘回去），不要直接改部署目录那份——它下次就没了；
 3. 生成 `project.json`：`file: index.html`、`type: "Web"`、
    `general.supportsaudioprocessing: true`（频谱 / 专辑卡要用），
    目录里若有 `preview.gif|jpg|png` 会自动登记为缩略图——放一张进去再部署即可；
