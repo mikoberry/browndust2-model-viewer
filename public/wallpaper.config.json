@@ -25,7 +25,7 @@
   },
   "parallax": {
     "enabled": true,
-    "backdrop": 2,
+    "backdrop": 1.5,
     "model": 3
   },
   "animation": null,
@@ -93,7 +93,7 @@
       "enabled": true,
       "placement": "minimal",
       "theme": "light",
-      "anchor": "bottom-left",
+      "anchor": "top-left",
       "offsetX": 4,
       "offsetY": 4,
       "size": 150,
@@ -112,7 +112,7 @@
       "color": "",
       "anchor": "bottom-center",
       "width": "100vw",
-      "height": "35vh",
+      "height": "20vh",
       "offsetX": 0,
       "offsetY": 0,
       "size": 100,
@@ -120,14 +120,14 @@
       "curve": 1
     },
     "albumArt": {
-      "enabled": false,
+      "enabled": true,
       "variant": "classic",
       "theme": "light",
       "color": "",
-      "anchor": "top-left",
+      "anchor": "top-right",
       "offsetX": 4,
       "offsetY": 4,
-      "size": 100,
+      "size": 55,
       "labels": {
         "aria": "正在播放"
       }
@@ -142,10 +142,10 @@
     },
     "pointer": {
       "enabled": true,
-      "trail": true,
+      "trail": false,
       "click": true,
-      "trailVariant": "ribbon",
-      "clickVariant": "sparks",
+      "trailVariant": "glow",
+      "clickVariant": "ripple",
       "color": "",
       "size": 150,
       "intensity": 100

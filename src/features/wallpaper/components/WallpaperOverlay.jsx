@@ -168,8 +168,8 @@ export default function WallpaperOverlay({ config }) {
         />
       )}
       {spectrum?.enabled && <SpectrumWidget spec={spectrum} accent={accent} paused={paused} />}
-      {clock?.enabled && <ClockWidget spec={clock} paused={paused} />}
       {albumArt?.enabled && <AlbumWidget spec={albumArt} accent={accent} paused={paused} />}
+      {clock?.enabled && <ClockWidget spec={clock} paused={paused} />}
     </div>
   )
 }

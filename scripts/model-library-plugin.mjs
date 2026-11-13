@@ -109,8 +109,28 @@ export function modelLibraryPlugin() {
       server.watcher.on('change', onChange)
     },
     generateBundle() {
+      // `MODEL_ONLY=<model id>` limits the emitted assets to ONE model (plus the
+      // backdrops linked to it), so a wallpaper release ships just the model the
+      // home page shows instead of the whole library. Without it every model is
+      // emitted as before. The id is matched the same way the home page resolves
+      // it (exact, then partial, then the first model).
+      const onlyId = process.env.MODEL_ONLY?.trim()
+      const allModels = scanModelLibrary(libraryDir).models
+      const targets = onlyId
+        ? allModels.filter(
+            (m) => m.id === onlyId || m.id.includes(onlyId),
+          )
+        : allModels
+      if (onlyId && targets.length === 0) {
+        this.warn(
+          `MODEL_ONLY="${onlyId}" 未匹配到任何模型，已回退为打包全部模型。可用 id：\n` +
+            allModels.map((m) => `  ${m.id}`).join('\n'),
+        )
+        targets.push(...allModels)
+      }
+
       const emitted = new Set()
-      for (const model of scanModelLibrary(libraryDir).models) {
+      for (const model of targets) {
         for (const file of modelFiles(model)) {
           if (emitted.has(file.url)) continue
           emitted.add(file.url)

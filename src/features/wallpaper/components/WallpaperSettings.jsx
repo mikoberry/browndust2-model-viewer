@@ -261,6 +261,61 @@ function AccentField({ value, onChange }) {
   )
 }
 
+// Test-only tab: nuke the browser storage so a wallpaper can be exercised from a
+// clean slate. Two-step confirm (no `confirm()` in Wallpaper Engine's CEF host).
+// Clearing localStorage drops the recorded config snapshot, so a reload then
+// falls back to the shipped `wallpaper.config.json`.
+function OtherPanel() {
+  const [confirmKey, setConfirmKey] = useState('')
+  const timerRef = useRef(0)
+
+  useEffect(
+    () => () => {
+      window.clearTimeout(timerRef.current)
+    },
+    [],
+  )
+
+  const arm = (key) => {
+    setConfirmKey(key)
+    window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => setConfirmKey(''), 5000)
+  }
+
+  const clearAndReload = (key) => {
+    window.clearTimeout(timerRef.current)
+    try {
+      if (key === 'local') window.localStorage.clear()
+      else window.sessionStorage.clear()
+    } catch {
+      // Storage can be unavailable on some WE origins; clearing is best-effort.
+    }
+    setConfirmKey('')
+    window.location.reload()
+  }
+
+  return (
+    <Group title="清除存储" note="用于测试：清空后刷新页面，回到壁纸自带的默认配置。">
+      <div className="ws-actions">
+        <button
+          type="button"
+          className={`ws-btn${confirmKey === 'local' ? ' is-danger' : ''}`}
+          onClick={() => (confirmKey === 'local' ? clearAndReload('local') : arm('local'))}
+        >
+          {confirmKey === 'local' ? '确认清除？' : '清除 localStorage'}
+        </button>
+        <button
+          type="button"
+          className={`ws-btn${confirmKey === 'session' ? ' is-danger' : ''}`}
+          onClick={() => (confirmKey === 'session' ? clearAndReload('session') : arm('session'))}
+        >
+          {confirmKey === 'session' ? '确认清除？' : '清除 sessionStorage'}
+        </button>
+      </div>
+    </Group>
+  )
+}
+
 // Full config document, ready to become the user's snapshot (and, pasted back,
 // to replace wallpaper.config.json): every key of the live config, with the two
 // layer transforms, the entrance autoplay switch and the overlay block
@@ -298,7 +353,7 @@ function configPayload(config, spec, overlay, autoplay, clickAnimation) {
   }
 }
 
-const TABS = [{ key: 'composition', label: '构图' }, ...OVERLAY_TABS]
+const TABS = [{ key: 'composition', label: '构图' }, ...OVERLAY_TABS, { key: 'other', label: '其他' }]
 
 const pad = (value) => String(value).padStart(2, '0')
 const clockLabel = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
@@ -497,6 +552,8 @@ export default function WallpaperSettings({
               <p className="ws-note">当前没有任何控件浮层开启；需要的话在对应 tab 里打开。</p>
             )}
           </>
+        ) : tab === 'other' ? (
+          <OtherPanel />
         ) : (
           <OverlaySettings tab={tab} overlay={overlay} onChange={onOverlayChange} onReset={onReset} />
         )}
