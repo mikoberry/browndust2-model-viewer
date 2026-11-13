@@ -1528,9 +1528,31 @@ code {
 
 .wallpaper-settings .ws-foot {
   display: flex;
-  gap: calc(8px * var(--ui-scale));
+  flex-direction: column;
+  gap: calc(6px * var(--ui-scale));
   padding: calc(10px * var(--ui-scale)) calc(14px * var(--ui-scale)) calc(12px * var(--ui-scale));
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.wallpaper-settings .ws-actions {
+  display: flex;
+  gap: calc(8px * var(--ui-scale));
+}
+
+/* Always present (so the drawer does not jump) and doubles as the hint for what
+   the record button does. */
+.wallpaper-settings .ws-status {
+  margin: 0;
+  min-height: calc(14px * var(--ui-scale));
+  color: rgba(255, 255, 255, 0.42);
+  font-size: calc(10.5px * var(--ui-scale));
+  line-height: calc(14px * var(--ui-scale));
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.wallpaper-settings .ws-status.is-flash {
+  color: #b9b6ff;
 }
 
 .wallpaper-settings .ws-btn {

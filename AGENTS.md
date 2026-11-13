@@ -140,14 +140,18 @@ src/features/<feature>/
 - 组件靠 props + 回调通信，不因为「参数有点多」就引入全局 store；确实要共享时按 §3 提升到 `lib/`。
 - **壁纸页的 chrome 只能是「按需呼出」**：`WallpaperSettings` 默认收起（`visibility: hidden`，不占 Tab 焦点），
   由右下角手柄或 `S` 键打开、`Esc` / × 关闭。抽屉用 tab 分组：`构图`（背景 / 模型两层）+ 五个控件各一个 tab，
-  顶部是共用主题色（`overlay.accent`）。它的编辑只改页面内存状态，**绝不写回 `config.js`，也不持久化**；
-  唯一出口是「复制配置」：输出**完整配置文件内容**（`_readme` + 全部字段，两层 transform 与 `overlay` 都用面板当前值），
-  未调整时与 `public/wallpaper.config.json` **逐字节相同**（键顺序沿用 `WALLPAPER`，`JSON.stringify(..., 2)` + 换行）。
+  顶部是共用主题色（`overlay.accent`）。它的编辑只改页面内存状态，**绝不写回 `config.js`**；
+  唯一出口是「记录配置」：生成**完整配置文件内容**（`_readme` + 全部字段，两层 transform 与 `overlay` 都用面板当前值），
+  写进 `localStorage['wallpaper.config.record']`（`{ at: ISO, text }`）**并**复制到剪贴板（clipboard API 失败时回退
+  `execCommand`，两者都失败也要把状态如实显示成「记录失败 / 复制失败」）。
+  未调整时这份文本与 `public/wallpaper.config.json` **逐字节相同**（键顺序沿用 `WALLPAPER`，`JSON.stringify(..., 2)` + 换行）。
+  **记录只写不读**：启动 / 打开抽屉时不得从 localStorage 恢复任何值（文件仍是唯一真源），只允许读 `at` 显示「上次记录 hh:mm:ss」。
+  storage 在 WE 的 `file://` 宿主里可能被拒（`setItem` 抛错），必须 try/catch 且不因此中断复制。
   改字段或顺序时要保持这个等价性；面板控件只能**原值透传**，不要在 UI 层做单位换算或格式化后写回
   （唯一例外是两层 transform 的 `round2` / `Math.round`，它们对未调整的值是恒等变换）。
   不要给它加常驻按钮、toast 或自动保存。
 - **控件面板不许出现第二份默认值**：`OverlaySettings` 只读 `overlay` 里的当前值，缺字段时用 `?? 常量` 只用于
-  渲染（如 `beatIntensity ?? 100`），写回时不要顺手补键，否则「复制配置」就不再与文件等价。
+  渲染（如 `beatIntensity ?? 100`），写回时不要顺手补键，否则「记录配置」的内容就不再与文件等价。
   枚举列表（频谱 / 专辑 / 氛围 / 指针的 variant）优先从 wallkit 的导出取；只有 Clock 的 10 个 `placement`
   需要在本仓库硬编码（库未导出）。
 - **壁纸页禁止任何依赖 OS 弹窗的控件**：WE 的 CEF 宿主里 `<select>` 的下拉、`input type="color"` 的系统配色框、
@@ -244,7 +248,7 @@ src/features/<feature>/
 - `overlay` 段是 WallKit 控件浮层的唯一开关（`accent` + `clock` / `spectrum` / `albumArt` / `ambient` /
   `pointer` 五组，各自 `enabled`）。改它只影响浮层，不影响构图；`theme` 按 WallKit 约定指**文字色**
   （`light` = 浅色文字，配深色壁纸）。加新控件时同步三处：`WALLPAPER.overlay`、
-  `public/wallpaper.config.json`、`WallpaperOverlay.jsx`，并保持「复制配置」与文件的字节等价。
+  `public/wallpaper.config.json`、`WallpaperOverlay.jsx`，并保持「记录配置」内容与文件的字节等价。
 
 ## 8. Spine 运行时约束（Runtime Constraints，实测，不要凭直觉改）
 
@@ -322,7 +326,7 @@ src/features/<feature>/
   它会写仓库外的文件，**只在用户明确要求时执行**。
 - 只清 `assets/` / `models/` / `index.html` 三项，其它文件（`preview.gif`、WE 自己生成的快照等）必须保留。
 - `wallpaper.config.json` **和其他文件一样直接覆盖**（部署目录是 `dist/` 的镜像）。想留下在 WE 里调好的值，
-  用抽屉的「复制配置」拿回仓库，别指望部署目录里那份能存活；
+  用抽屉的「记录配置」拿回仓库，别指望部署目录里那份能存活；
   不要为了「一致性」改成每次覆盖。
 - `project.json` 由脚本生成：`file: index.html`、`type: "Web"`（大写）、
   `general.supportsaudioprocessing: true`（**必须在 `general` 内**）。`preview` 只在目标目录里真有图片时才登记。
@@ -341,7 +345,7 @@ src/features/<feature>/
    `compositionRects()` / `normalizeRect()`；配置合并用 `mergeConfig()` 断言（空 override 等于默认值、
    嵌套部分覆盖、`_` 键被丢弃、`public/wallpaper.config.json` 的键与 `WALLPAPER` 一致）。
    该文件顶层**不能**依赖 `import.meta.env` / `document`（否则 Node 无法 import），只在函数体内用 `document`。
-   抽屉的「复制配置」也要断言：未调整面板时，生成内容与 `public/wallpaper.config.json` **逐字节相同**。
+   抽屉的「记录配置」也要断言：未调整面板时，生成内容与 `public/wallpaper.config.json` **逐字节相同**。
 3. **构建**：`npm run build`（仅用户明确要求时），核对 `dist/` 只含 manifest 引用的素材，
    且 `dist/wallpaper.config.json` 存在、文件名无 hash。
 4. **取色面板**：`src/features/wallpaper/color.js` 可在 Node 里直接 import，断言 `hsvToHex(hexToHsv(x)) === x`

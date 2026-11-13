@@ -10,9 +10,12 @@
 //
 // The wallpaper itself must stay a chrome-free image, so this drawer is closed
 // by default and opened by the bottom-right button or the `S` key. Edits never
-// write back to config.js and are never persisted: the only exit is "复制配置",
-// which emits the COMPLETE config file — byte-identical to
-// public/wallpaper.config.json when nothing was touched.
+// write back to config.js. The exit is "记录配置": it snapshots the COMPLETE
+// config file (byte-identical to public/wallpaper.config.json when nothing was
+// touched) into localStorage and puts the same text on the clipboard, so a
+// tuned setup survives the wallpaper being reloaded or the host restarting.
+// The snapshot is never read back automatically — the file stays the single
+// source of truth.
 
 import { useEffect, useRef, useState } from 'react'
 import { CONFIG_FILE, CONFIG_README } from '../config.js'
@@ -113,6 +116,15 @@ function configJson(config, spec, overlay) {
 
 const TABS = [{ key: 'composition', label: '构图' }, ...OVERLAY_TABS]
 
+// localStorage slot holding the last snapshot: `{ at: ISO string, text: string }`.
+// A Wallpaper Engine web project usually runs on a file:// / localhost origin
+// where storage may be blocked, so every access is guarded and the snapshot is
+// still copied even when storing fails.
+const RECORD_KEY = 'wallpaper.config.record'
+
+const pad = (value) => String(value).padStart(2, '0')
+const clockLabel = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+
 export default function WallpaperSettings({
   open,
   design,
@@ -126,19 +138,41 @@ export default function WallpaperSettings({
   onReset,
   onClose,
 }) {
-  const [copied, setCopied] = useState(false)
+  const [flash, setFlash] = useState('')
+  const [lastAt, setLastAt] = useState('')
   const [tab, setTab] = useState('composition')
   const timerRef = useRef(0)
 
   useEffect(() => () => window.clearTimeout(timerRef.current), [])
 
-  // Copying is the whole point of the drawer: tune by eye, replace the file.
-  const handleCopy = async () => {
+  // Show when the previous snapshot was taken, so "记录" is not a black box.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(RECORD_KEY)
+      const at = raw ? JSON.parse(raw).at : ''
+      if (at) setLastAt(clockLabel(new Date(at)))
+    } catch {
+      setLastAt('')
+    }
+  }, [])
+
+  // Recording is the whole point of the drawer: tune by eye, keep a snapshot,
+  // then replace the file with what is on the clipboard.
+  const handleRecord = async () => {
     const text = configJson(config, spec, overlay)
-    let ok = false
+    const at = new Date()
+    let stored = false
+    try {
+      window.localStorage.setItem(RECORD_KEY, JSON.stringify({ at: at.toISOString(), text }))
+      stored = true
+    } catch {
+      stored = false
+    }
+
+    let copied = false
     try {
       await navigator.clipboard.writeText(text)
-      ok = true
+      copied = true
     } catch {
       const area = document.createElement('textarea')
       area.value = text
@@ -147,15 +181,18 @@ export default function WallpaperSettings({
       document.body.appendChild(area)
       area.select()
       try {
-        ok = document.execCommand('copy')
+        copied = document.execCommand('copy')
       } catch {
-        ok = false
+        copied = false
       }
       document.body.removeChild(area)
     }
-    setCopied(ok)
+
+    if (stored) setLastAt(clockLabel(at))
+    const parts = [stored ? '已记录' : '记录失败', copied ? '已复制' : '复制失败']
+    setFlash(`${parts.join(' · ')}（${clockLabel(at)}）`)
     window.clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => setCopied(false), 1600)
+    timerRef.current = window.setTimeout(() => setFlash(''), 4000)
   }
 
   const enabledWidgets = TABS.filter((item) => item.key !== 'composition' && overlay?.[item.key]?.enabled)
@@ -231,12 +268,17 @@ export default function WallpaperSettings({
       </div>
 
       <div className="ws-foot">
-        <button type="button" className="ws-btn" onClick={() => onReset('all')}>
-          全部重置
-        </button>
-        <button type="button" className="ws-btn is-primary" onClick={handleCopy}>
-          {copied ? '已复制配置' : '复制配置'}
-        </button>
+        <div className="ws-actions">
+          <button type="button" className="ws-btn" onClick={() => onReset('all')}>
+            全部重置
+          </button>
+          <button type="button" className="ws-btn is-primary" onClick={handleRecord}>
+            记录配置
+          </button>
+        </div>
+        <p className={`ws-status${flash ? ' is-flash' : ''}`} aria-live="polite">
+          {flash || (lastAt ? `上次记录 ${lastAt} · 写入浏览器存储并复制到剪贴板` : '记录到浏览器存储，并复制到剪贴板')}
+        </p>
       </div>
     </aside>
   )
