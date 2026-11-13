@@ -42,11 +42,13 @@ npm install            # 安装依赖（Node 18+）
 npm run dev            # Vite dev server —— 由用户自己启动，agent 不要起
 npm run model:list     # 纯 Node 扫描 model-library/，输出模型 / 图集页 / 关联背景
 npm run build          # 生产构建到 dist/ —— 只在用户明确要求时执行
+npm run build:we       # 构建 + 部署到本机 WE 工程目录（会写仓库外的文件，按需执行）
+npm run deploy:we      # 只复制现有 dist/，不重新构建
 npm run preview        # 预览构建产物
 ```
 
 没有 `test` / `lint` / `format` / `generate` 脚本，也不要为本项目引入无关的脚手架或代码生成器。
-`prepare:model` / `deploy:wallpaper` 已不存在：素材不复制进 `public/`，也不需要部署脚本。
+`prepare:model` 已不存在：素材不复制进 `public/`，由插件在 dev/build 两路直接供给。
 
 ## 3. 项目结构（Project Structure）
 
@@ -61,6 +63,7 @@ public/
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR 尺寸）
   model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile
+  deploy-weproject.mjs           # 把 dist/ 复制成 WE 工程文件夹并生成 project.json
 src/
   main.jsx                       # Vite 入口（index.html 引用 /src/main.jsx，位置不要动）
   app/                           # 应用层：路由分发 + 路由实现
@@ -286,6 +289,18 @@ src/features/<feature>/
   升版本只改 `package.json` 的 commit sha（`github:mikoberry/wallkit#<sha>`），不要改成 npm 包或 vendor 副本。
 - `wallkitWE()` 只是往 `index.html` 的 `<head>` 顶部注入 classic script（audio / media / pause，`timeline` 默认关）。
   它不改构图、不写 `project.json`；`dist/index.html` 里应能看到 `<!-- wallkit-we:* -->` 标记。
+
+### WE 部署（`npm run build:we`）
+
+- `scripts/deploy-weproject.mjs` 默认目标
+  `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用 `WE_PROJECT` 覆盖；
+  它会写仓库外的文件，**只在用户明确要求时执行**。
+- 只清 `assets/` / `models/` / `index.html` 三项，其它文件（`preview.gif`、WE 自己生成的快照等）必须保留。
+- `wallpaper.config.json` **已存在就不覆盖**（部署目录里的就地调参优先），同步用 `WE_FORCE_CONFIG=1`；
+  不要为了「一致性」改成每次覆盖。
+- `project.json` 由脚本生成：`file: index.html`、`type: "Web"`（大写）、
+  `general.supportsaudioprocessing: true`（**必须在 `general` 内**）。`preview` 只在目标目录里真有图片时才登记。
+- 目标路径防护：段数 < 3 或等于仓库根时直接拒绝，避免误删。改这段时别放宽。
 
 ## 13. 验证方式（Verification）
 

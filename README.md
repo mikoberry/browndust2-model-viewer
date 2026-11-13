@@ -41,12 +41,43 @@ tab 上带小圆点表示该控件当前已开启。
 npm install
 npm run dev          # 根地址 = 壁纸；地址后加 /spine-viewer 进调试页
 npm run build        # 产出 dist/
+npm run build:we     # 打包 + 部署到 Wallpaper Engine 项目目录（见下节）
 npm run preview      # 预览构建产物
 npm run model:list   # 命令行查看 model-library 扫描结果
 ```
 
 开发时直接访问 `http://localhost:5173/spine-viewer`。调试页标题右侧有「← 壁纸首页」可跳回；
 壁纸页刻意不放任何跳转入口，需要手动改地址栏。
+
+## 部署到 Wallpaper Engine
+
+```bash
+npm run build:we     # = vite build + scripts/deploy-weproject.mjs
+npm run deploy:we    # 只复制现有 dist/，不重新构建
+```
+
+目标目录默认是
+`F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，
+可以用环境变量覆盖：`WE_PROJECT=D:/somewhere npm run deploy:we`（`WE_TITLE` 改工程标题，
+`WE_FORCE_CONFIG=1` 连 `wallpaper.config.json` 一起覆盖）。
+
+脚本做的事情，顺序固定：
+
+1. 清掉目标目录里 **由构建产出** 的三项（`assets/`、`models/`、`index.html`），其它文件一概不动；
+2. 把 `dist/` 整个复制过去；`wallpaper.config.json` **只在目标目录里不存在时才写**，
+   这样你在 WE 目录里就地调的参数不会被下一次打包抹掉（要同步就设 `WE_FORCE_CONFIG=1`）；
+3. 生成 `project.json`：`file: index.html`、`type: "Web"`、
+   `general.supportsaudioprocessing: true`（频谱 / 专辑卡要用），
+   目录里若有 `preview.gif|jpg|png` 会自动登记为缩略图——放一张进去再部署即可；
+4. 打印文件数与体积。
+
+部署完在 Wallpaper Engine 里「打开壁纸」选该目录就能预览（它是普通 `web` 工程，不是场景工程）。
+`supportsaudioprocessing` 只能在 `general` 内部；`type` 用大写 `Web`。这两条写错的表现是
+「监听器注册了但一次回调都没有」，症状很容易误判成组件问题。
+
+注意：如果 WE 以 `file://` 打开页面，`fetch('wallpaper.config.json')` 会被拦掉并**退回内置默认值**
+（console 有一条 warning，抽屉标题下显示橙色「内置默认值」）。要确认配置真的生效，
+可以直接在 WE 调试控制台看这个值是不是 `file`：`fetch('./wallpaper.config.json').then(r => r.ok)`。
 
 ## 壁纸（根路由）：对应背景 + 固定构图
 
@@ -218,7 +249,8 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 的 `<head>` 最前面（必须早于模块入口，否则会丢首帧）。普通浏览器里这些全局函数不存在，脚本自动跳过——
 所以浏览器里**时钟照常走，频谱是平的、专辑卡不渲染**，这是库的规定行为，不会用假数据兜底。
 
-要在 WE 里真的出数据，还需要**使用方自己**提供 `project.json`（本项目不附带，库也不碰它）：
+要在 WE 里真的出数据，需要一份 `project.json`——**`npm run build:we` 会自动生成**（见「部署到 Wallpaper Engine」）。
+形状与生成的值一致：
 
 ```json
 {
@@ -316,6 +348,7 @@ vite.config.js                   # modelLibraryPlugin() + react() + wallkitWE()�
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR）
   model-library-plugin.mjs       # 虚拟模块 + dev 中间件 + build 产物输出
+  deploy-weproject.mjs           # 把 dist/ 复制成 WE 工程（生成 project.json）
 src/
   main.jsx                       # Vite 入口
   app/
