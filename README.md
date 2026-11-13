@@ -90,7 +90,10 @@ npm run deploy:we    # 只复制现有 dist/，不重新构建
 
 1. 清掉目标目录里 **由构建产出** 的三项（`assets/`、`models/`、`index.html`），其它文件一概不动；
 2. 把 `dist/` 整个复制过去；`wallpaper.config.json` **只在目标目录里不存在时才写**，
-   这样你在 WE 目录里就地调的参数不会被下一次打包抹掉（要同步就设 `WE_FORCE_CONFIG=1`）；
+   这样你在 WE 目录里就地调的参数不会被下一次打包抹掉（要同步就设 `WE_FORCE_CONFIG=1`）。
+   两份内容不一致时脚本会打一行 `! 目标目录里已有一份不同的 wallpaper.config.json` 警告——
+   **看到这行就说明 wallpaper 的画面参数不会变**，想让仓库里的配置生效就加 `WE_FORCE_CONFIG=1` 重跑，
+   或者干脆直接改目标目录里那份（它才是运行期真正被读的）；
 3. 生成 `project.json`：`file: index.html`、`type: "Web"`、
    `general.supportsaudioprocessing: true`（频谱 / 专辑卡要用），
    目录里若有 `preview.gif|jpg|png` 会自动登记为缩略图——放一张进去再部署即可；

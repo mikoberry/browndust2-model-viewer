@@ -14,7 +14,7 @@
     "alignY": 0.5
   },
   "backdropTransform": {
-    "scale": 1.8,
+    "scale": 1.85,
     "offsetX": 0,
     "offsetY": 0
   },
@@ -48,12 +48,12 @@
       "beatCurve": 1
     },
     "spectrum": {
-      "enabled": false,
+      "enabled": true,
       "variant": "curve",
       "color": "",
       "anchor": "bottom-center",
       "width": "100vw",
-      "height": "14vh",
+      "height": "35vh",
       "offsetX": 0,
       "offsetY": 0,
       "size": 100,
@@ -82,13 +82,13 @@
       "intensity": 100
     },
     "pointer": {
-      "enabled": false,
+      "enabled": true,
       "trail": true,
       "click": true,
-      "trailVariant": "glow",
-      "clickVariant": "ripple",
+      "trailVariant": "ribbon",
+      "clickVariant": "sparks",
       "color": "",
-      "size": 100,
+      "size": 150,
       "intensity": 100
     }
   }

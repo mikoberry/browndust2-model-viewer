@@ -88,7 +88,22 @@ async function main() {
   }
 
   const configPath = path.join(target, RUNTIME_ONLY)
-  const keepConfig = existsSync(configPath) && !forceConfig
+  let keepConfig = existsSync(configPath) && !forceConfig
+  // Keeping the deployed config is the point (in-place tuning wins), but silence
+  // is how you end up staring at a wallpaper that "did not change": say loudly
+  // when the preserved copy is not what the repo just built.
+  if (keepConfig) {
+    const [kept, built] = await Promise.all([
+      readFile(configPath, 'utf8').catch(() => null),
+      readFile(path.join(DIST, RUNTIME_ONLY), 'utf8').catch(() => null),
+    ])
+    if (kept !== null && built !== null && kept !== built) {
+      console.warn(
+        `! 目标目录里已有一份不同的 ${RUNTIME_ONLY}，按约定保留没覆盖。\n` +
+          '  想用仓库里的新配置：加 WE_FORCE_CONFIG=1 再跑一次。',
+      )
+    }
+  }
   let copied = 0
 
   for (const entry of await readdir(DIST)) {
