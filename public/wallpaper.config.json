@@ -14,12 +14,12 @@
     "alignY": 0.5
   },
   "backdropTransform": {
-    "scale": 1.7,
+    "scale": 1.8,
     "offsetX": 0,
     "offsetY": 0
   },
   "modelTransform": {
-    "scale": 1.7,
+    "scale": 2,
     "offsetX": 0,
     "offsetY": 0
   },
@@ -37,18 +37,19 @@
       "anchor": "bottom-left",
       "offsetX": 4,
       "offsetY": 4,
-      "size": 100,
+      "size": 150,
       "use24Hour": true,
       "tilt": true,
       "beat": true,
       "labels": {
         "locale": "zh-CN",
         "aria": "当前时间与日期"
-      }
+      },
+      "beatCurve": 1
     },
     "spectrum": {
       "enabled": false,
-      "variant": "bars",
+      "variant": "curve",
       "color": "",
       "anchor": "bottom-center",
       "width": "100vw",

@@ -6,7 +6,7 @@
 // Option lists come from wallkit itself wherever it exports them, so a new
 // variant in the library shows up here without a second source of truth.
 
-import { Group, AnchorPicker, ChipField, ColorField, SliderField, TextField, ToggleField } from './settings-fields.jsx'
+import { Group, AnchorPicker, ChipField, ColorField, LengthField, SliderField, ToggleField } from './settings-fields.jsx'
 
 // Option lists are rendered as button chips (never a <select>), so labels are
 // kept short; the library's own identifier is in the button's `title`/tooltip.
@@ -229,18 +229,8 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
           />
         </div>
         <div className="ws-pair">
-          <TextField
-            label="宽度"
-            value={spec.width ?? ''}
-            placeholder="留空 = 由尺寸决定"
-            onChange={(width) => onChange({ width })}
-          />
-          <TextField
-            label="高度"
-            value={spec.height ?? ''}
-            placeholder="留空 = 由尺寸决定"
-            onChange={(height) => onChange({ height })}
-          />
+          <LengthField label="宽度" value={spec.width ?? ''} onChange={(width) => onChange({ width })} />
+          <LengthField label="高度" value={spec.height ?? ''} step={1} onChange={(height) => onChange({ height })} />
         </div>
       </Group>
       <Group title="位置">

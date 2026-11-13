@@ -13,6 +13,12 @@ const clamp01 = (value) => Math.min(1, Math.max(0, value))
 
 const round2 = (value) => Math.round(value * 100) / 100
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
+
+// One press of `+` / `-` moves by exactly one `step`, snapped to the step grid so
+// repeated presses cannot drift into 0.30000000000000004.
+const nudge = (value, step, direction) => round2(round2(value / step) * step + direction * step)
+
 const ANCHOR_LABELS = {
   'top-left': '左上',
   'top-center': '上中',
@@ -44,16 +50,34 @@ export function Group({ title, note, onReset, children }) {
   )
 }
 
-// Slider + number box, kept in sync. `readout` is optional: without it the raw
-// value is shown with `suffix`.
+// Slider flanked by two stepper buttons. `readout` is optional: without it the
+// raw value is shown with `suffix`.
+//
+// There is no number input on purpose: Wallpaper Engine never gives the wallpaper
+// window a real keyboard focus, so typing into a field is impossible there. Every
+// value that needs a precise nudge gets a `-` / `+` button instead.
 export function SliderField({ label, readout, min, max, step, value, onChange, suffix = '' }) {
+  const bump = (direction) => {
+    const next = clamp(nudge(value, step, direction), min, max)
+    if (next !== value) onChange(next)
+  }
+
   return (
     <div className="ws-field">
       <div className="ws-field-head">
         <span className="ws-field-label">{label}</span>
-        <span className="ws-field-readout">{readout ?? `${value}${suffix}`}</span>
+        <span className="ws-field-value">{readout ?? `${value}${suffix}`}</span>
       </div>
       <div className="ws-field-controls">
+        <button
+          type="button"
+          className="ws-step"
+          aria-label={`${label}减少`}
+          title={`-${step}${suffix}`}
+          onClick={() => bump(-1)}
+        >
+          -
+        </button>
         <input
           className="ws-range"
           type="range"
@@ -61,40 +85,74 @@ export function SliderField({ label, readout, min, max, step, value, onChange, s
           max={max}
           step={step}
           value={value}
+          aria-label={label}
           onChange={(event) => onChange(Number(event.target.value))}
         />
-        <input
-          className="ws-number"
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={round2(value)}
-          onChange={(event) => {
-            const next = Number(event.target.value)
-            if (Number.isFinite(next)) onChange(next)
-          }}
-        />
+        <button
+          type="button"
+          className="ws-step"
+          aria-label={`${label}增加`}
+          title={`+${step}${suffix}`}
+          onClick={() => bump(1)}
+        >
+          +
+        </button>
       </div>
     </div>
   )
 }
 
-export function TextField({ label, value, placeholder, onChange }) {
+// A CSS length (`100vw`, `14vh`, `640px`) driven by the same +/- steppers. The
+// unit is read off the current value and written back untouched, so a config that
+// says `100vw` never turns into `100px`; an empty value means "let the widget
+// decide" and is restored by the 自动 button.
+const LENGTH = /^(-?\d+(?:\.\d+)?)([a-z%]*)$/i
+
+export function LengthField({ label, value, step = 2, onChange }) {
+  const text = String(value ?? '').trim()
+  const parsed = LENGTH.exec(text)
+  const bump = (direction) => {
+    if (!parsed) return
+    const next = clamp(nudge(Number(parsed[1]), step, direction), 0, 10000)
+    onChange(`${next}${parsed[2]}`)
+  }
+
   return (
     <div className="ws-field">
       <div className="ws-field-head">
         <span className="ws-field-label">{label}</span>
+        {text ? (
+          <button type="button" className="ws-reset" onClick={() => onChange('')}>
+            自动
+          </button>
+        ) : (
+          <span className="ws-field-readout">由尺寸决定</span>
+        )}
       </div>
       <div className="ws-field-controls">
-        <input
-          className="ws-text"
-          type="text"
-          value={value}
-          placeholder={placeholder}
-          spellCheck={false}
-          onChange={(event) => onChange(event.target.value)}
-        />
+        <button
+          type="button"
+          className="ws-step"
+          aria-label={`${label}减少`}
+          title={`-${step}`}
+          disabled={!parsed}
+          onClick={() => bump(-1)}
+        >
+          -
+        </button>
+        <span className="ws-step-value" title={text || '由尺寸决定'}>
+          {text || '自动'}
+        </span>
+        <button
+          type="button"
+          className="ws-step"
+          aria-label={`${label}增加`}
+          title={`+${step}`}
+          disabled={!parsed}
+          onClick={() => bump(1)}
+        >
+          +
+        </button>
       </div>
     </div>
   )
@@ -118,7 +176,7 @@ export function ToggleField({ label, note, checked, onChange }) {
 // Plain buttons, NOT a native <select>: Wallpaper Engine renders the wallpaper
 // in a CEF host where the dropdown list is an OS-level popup, and opening one
 // takes the whole wallpaper window down. Nothing inside the drawer may rely on
-// a popup — buttons, checkboxes and text fields only.
+// a popup — buttons and checkboxes only.
 export function ChipField({ label, value, options, onChange }) {
   const known = options.some((option) => option.value === value)
   return (
@@ -217,8 +275,10 @@ function ColorPickerPanel({ hsv, onChange }) {
   )
 }
 
-// `#rrggbb` field. An empty value means "inherit": the swatch then previews
-// `fallback` and the text shows it as a placeholder.
+// `#rrggbb` field. An empty value means "inherit": the swatch and the hex readout
+// then preview `fallback`. The hex itself is a readout, not an input — WE has no
+// keyboard, so the value can only be changed through the picker (or the config
+// file).
 export function ColorField({ label, value, fallback, onChange, allowInherit = true }) {
   const [open, setOpen] = useState(false)
   const resolved = HEX.test(value || '') ? value : HEX.test(fallback || '') ? fallback : '#a8c4ff'
@@ -262,14 +322,9 @@ export function ColorField({ label, value, fallback, onChange, allowInherit = tr
           title="展开取色面板"
           onClick={() => setOpen((next) => !next)}
         />
-        <input
-          className="ws-text"
-          type="text"
-          value={value}
-          placeholder={fallback || '#a8c4ff'}
-          spellCheck={false}
-          onChange={(event) => onChange(event.target.value.trim())}
-        />
+        <span className="ws-hex" title="十六进制值（在配置文件里修改）">
+          {value || resolved}
+        </span>
       </div>
       {open && <ColorPickerPanel hsv={hsv} onChange={commit} />}
     </div>

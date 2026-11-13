@@ -1349,6 +1349,15 @@ code {
   font-variant-numeric: tabular-nums;
 }
 
+/* The live value of a slider / stepper. Brighter than a hint readout: it is the
+   only place the number is shown, now that the number box is gone. */
+.wallpaper-settings .ws-field-value {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: calc(12px * var(--ui-scale));
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
 .wallpaper-settings .ws-field-controls {
   display: flex;
   align-items: center;
@@ -1362,44 +1371,69 @@ code {
   accent-color: #8b88ff;
 }
 
-.wallpaper-settings .ws-number {
-  width: calc(56px * var(--ui-scale));
+/* `-` / `+` steppers. There is no text or number input anywhere in the drawer:
+   Wallpaper Engine never hands the wallpaper window a keyboard, so a field you
+   can only see but not type into is worse than two buttons you can click. */
+.wallpaper-settings .ws-step {
+  flex: 0 0 auto;
+  width: calc(24px * var(--ui-scale));
   height: calc(26px * var(--ui-scale));
-  padding: 0 calc(6px * var(--ui-scale));
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: calc(6px * var(--ui-scale));
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
-  font-size: calc(11px * var(--ui-scale));
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: calc(13px * var(--ui-scale));
+  line-height: 1;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
-.wallpaper-settings .ws-number:focus {
-  border-color: #8b88ff;
-  background: rgba(255, 255, 255, 0.1);
-  outline: none;
+.wallpaper-settings .ws-step:hover:not(:disabled) {
+  border-color: rgba(139, 136, 255, 0.65);
+  background: rgba(139, 136, 255, 0.22);
+  color: #fff;
 }
 
-.wallpaper-settings .ws-text {
+.wallpaper-settings .ws-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Read-only value sitting between a pair of steppers (CSS lengths). */
+.wallpaper-settings .ws-step-value {
   flex: 1;
   min-width: 0;
   height: calc(26px * var(--ui-scale));
   padding: 0 calc(8px * var(--ui-scale));
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: calc(6px * var(--ui-scale));
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.82);
   font-size: calc(11px * var(--ui-scale));
+  line-height: calc(24px * var(--ui-scale));
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.wallpaper-settings .ws-text::placeholder {
-  color: rgba(255, 255, 255, 0.28);
-}
-
-.wallpaper-settings .ws-text:focus {
-  border-color: #8b88ff;
-  background: rgba(255, 255, 255, 0.1);
-  outline: none;
+/* Hex readout next to the colour swatch (the value itself is edited in the
+   picker, never typed). */
+.wallpaper-settings .ws-hex {
+  flex: 1;
+  min-width: 0;
+  height: calc(26px * var(--ui-scale));
+  padding: 0 calc(8px * var(--ui-scale));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: calc(6px * var(--ui-scale));
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: calc(11px * var(--ui-scale));
+  line-height: calc(24px * var(--ui-scale));
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 /* Option chips replace <select> everywhere in this drawer. */

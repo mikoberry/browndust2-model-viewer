@@ -78,7 +78,7 @@ src/
         WallpaperSettings.jsx    # 壁纸设置抽屉：主题色 + 「构图 / 时钟 / 频谱 / 专辑卡 / 氛围 / 指针」tab
         SettingsBoundary.jsx     # 抽屉的错误边界（面板崩了只隐藏面板，壁纸继续跑）
         OverlaySettings.jsx      # 每个控件 tab 的字段面板（启用 / 尺寸 / 位置 / 颜色 / 专有属性）
-        settings-fields.jsx      # 抽屉共用表单控件（滑块 / 数字 / 文本 / 颜色 / 开关 / 选项按钮组 / 3×3 锚点）
+        settings-fields.jsx      # 共用表单控件（滑块 + 步进 / CSS 长度步进 / 颜色 / 开关 / 按钮组 / 3×3 锚点）
         WallpaperOverlay.jsx     # WallKit 控件浮层（视口锚定），按 overlay 配置逐项显示
     viewer/                      # Feature：/spine-viewer 开发调试辅助页
       ViewerPage.jsx             # 状态 + 布局
@@ -153,9 +153,12 @@ src/features/<feature>/
 - **壁纸页禁止任何依赖 OS 弹窗的控件**：WE 的 CEF 宿主里 `<select>` 的下拉、`input type="color"` 的系统配色框、
   `alert` / `confirm` / `prompt`、`<dialog>` / `window.open` 都会让壁纸窗口崩掉（不是渲染错，是进程没了）。
   枚举一律用 `ChipField`（一排 `.ws-chip` 按钮，`title` 里带库的原始值），颜色用 `ColorField`
-  （色块按钮 + 十六进制输入，点开是页面内自绘的 HSV 面板：`color.js` 的换算 + CSS 渐变 + pointer capture，
+  （色块按钮 + 十六进制读数，点开是页面内自绘的 HSV 面板：`color.js` 的换算 + CSS 渐变 + pointer capture，
   没有 canvas、没有系统对话框）。加新字段时别退回原生 select / color input。
   `src/features/viewer/` 是浏览器里的调试页，不受此限制。
+- **抽屉里不许有 `input[type=text|number]`**：WE 不给壁纸窗口键盘焦点，能看见却敲不进去的框等于坏控件。
+  数值 = 读数 + `-` / `+` 按钮（`SliderField` 的按钮走该字段的 `step`，`LengthField` 保留配置里的单位、
+  「自动」清空）。新增可调数值时用这两个，不要为了「能直接输入」把文本框加回来。
 - `SettingsBoundary` 包在抽屉外面：面板渲染抛错只隐藏面板并 `console.error`，壁纸继续运行，
   关闭抽屉后再开会重试。**不要**为了「方便调试」把它去掉——WE 里一次未捕获异常就是黑屏。
 - **壁纸 chrome 的长度必须分辨率无关**：抽屉 / 手柄 / 失败提示里的每一个字号、内边距、控件高度、圆角、
@@ -169,7 +172,7 @@ src/features/<feature>/
   两列排（`.ws-pair`；位置行用 `.ws-pair.is-position`：3×3 锚点在左跨两行，右侧竖排水平 / 垂直两个偏移滑块）。
   加字段时先找能并排的伙伴，
   别把 `.ws-body` 的滚动当功能用；抽屉宽度 `440px`（再乘 `--ui-scale`），改宽度要回头看每个 tab 是否仍不滚。
-- **画面本身永不响应指针**：壁纸页没有拖拽 / 滚轮 / 双击，构图只能通过抽屉里的滑块或数字框改。
+- **画面本身永不响应指针**：壁纸页没有拖拽 / 滚轮 / 双击，构图只能通过抽屉里的滑块 / 步进按钮改。
   不要重新引入「在画面上拖动图层」这类交互，它和「背景原生像素 = 设计画布」的构图模型冲突，容易只拖得动背景。
   WallKit 的 `PointerFx` 是**纯装饰覆盖层**（不改构图、默认关闭），不属于这条限制。
 - **WallKit 控件浮层（`WallpaperOverlay.jsx`）的边界**：
