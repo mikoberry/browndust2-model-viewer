@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BrownDust 2 — Wilhelmina Iron_Monarch</title>
+    <script>
+      // User properties can arrive before any ES module runs (WE calls
+      // applyUserProperties early in page load), so the raw values are stashed
+      // here in a classic script. src/we/properties.js reads and normalizes
+      // them once React mounts and subscribes to later updates via this event.
+      window.__bd2UserProps = {}
+      window.wallpaperPropertyListener = {
+        applyUserProperties: function (properties) {
+          var out = window.__bd2UserProps
+          for (var key in properties) {
+            if (Object.prototype.hasOwnProperty.call(properties, key)) {
+              out[key] = properties[key].value
+            }
+          }
+          window.dispatchEvent(new CustomEvent('bd2-props', { detail: out }))
+        },
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

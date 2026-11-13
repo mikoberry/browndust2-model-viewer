@@ -1,0 +1,91 @@
+/* Wallpaper root layout: three stacked layers — backdrop image, WebGL canvas,
+   control overlay. Pointer events pass through everything except nothing:
+   WE has no focus anyway, clicks land on the canvas for the perform trigger. */
+
+:root {
+  --bd2-accent: #8a7042;
+  --bd2-fallback-bg: #14161c;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bd2-fallback-bg);
+}
+
+.bd2-wallpaper {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+/* --- backdrop (background layer) ------------------------------------------ */
+
+.bd2-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.bd2-backdrop__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.bd2-backdrop__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 42%,
+    transparent 55%,
+    rgba(10, 12, 18, 0.55) 100%
+  );
+  opacity: 0.4;
+}
+
+.bd2-backdrop__grain {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.02;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* --- stage ----------------------------------------------------------------- */
+
+.bd2-stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.bd2-stage-error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #d8dce6;
+  font: 14px/1.6 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+/* --- overlay (wallkit control layer) --------------------------------------- */
+
+.bd2-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}

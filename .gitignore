@@ -2,3 +2,12 @@ node_modules/
 dist/
 .DS_Store
 *.log
+
+# 素材生成物：由 scripts/prepare-model.mjs 从源资源重建，不进版本控制
+public/models/
+
+# agent 工作区元数据
+.workbuddy/
+
+# 已弃用的候选素材，确认后删除
+/cutscene_char067902/
