@@ -1383,6 +1383,17 @@ code {
   }
 }
 
+/* Transparent full-viewport catcher behind the open settings drawer: clicking
+   anywhere outside the drawer closes it. Deliberately NOT dimmed — the
+   wallpaper stays fully visible; the layer exists only to intercept clicks
+   (the drawer itself sits above at z 7, so its own clicks pass through). */
+.wallpaper-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  background: transparent;
+}
+
 .wallpaper-settings {
   position: fixed;
   top: calc(16px * var(--ui-scale));

@@ -657,6 +657,18 @@ export default function WallpaperPage() {
         </div>
       )}
 
+      {/* Full-viewport click catcher, JUST below the drawer (z 6 < 7): any
+          click outside the drawer lands here and closes it, while clicks
+          inside the drawer never reach it. The tools column is unmounted while
+          the drawer is open, so nothing else competes for the click. */}
+      {settingsOpen && (
+        <div
+          className="wallpaper-scrim"
+          onClick={() => setSettingsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       <SettingsBoundary open={settingsOpen}>
         <WallpaperSettings
           open={settingsOpen}
