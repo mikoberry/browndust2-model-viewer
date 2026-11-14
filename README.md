@@ -86,7 +86,7 @@ src/
     wallpaper/        # 根路由正式壁纸（WallpaperPage + 设置抽屉 + WallKit 浮层）
     viewer/           # /spine-viewer 调试查看器
   lib/
-    spine/            # 共享 Spine 引擎（SpineStage / useSpineAsset）
+    spine/            # 共享 Spine 引擎（SpineStage / useSpineAsset / clipLayers）
     composition.js    # 设计画布构图数学（唯一来源，可纯 Node 复算）
     backdrops.js      # 背景挑选
     animation.js      # 默认动画 / 表情挑选 + 入场序列识别

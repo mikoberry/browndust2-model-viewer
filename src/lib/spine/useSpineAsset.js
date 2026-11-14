@@ -13,19 +13,26 @@ import {
   SkeletonJson,
 } from '@esotericsoftware/spine-webgl'
 import { modelPrefix } from '../assets.js'
+import { mergeClipLayers } from './clipLayers.js'
 
 const POLL_MS = 30
 const LOAD_TIMEOUT_MS = 60_000
 
 export function readAssetInfo(asset) {
   const { data } = asset
+  // Multi-part shots were folded into their base animation at load time; the
+  // sub-clips stay in `data` (configs may still name them) but are not listed,
+  // because on their own they only draw part of the scene.
+  const layersOf = new Map((asset.clipLayers ?? []).map((entry) => [entry.base, entry.layers]))
   // Use the immutable setup-pose bounds captured at load time, not the live
   // animated pose (getBoundsRect changes as the animation plays).
   const setup = asset.setupBounds
   return {
     modelId: asset.modelId,
     version: data.version ?? '未知',
-    animations: data.animations.map((a) => ({ name: a.name, duration: a.duration })),
+    animations: data.animations
+      .filter((a) => !a.clipLayerOf)
+      .map((a) => ({ name: a.name, duration: a.duration, layers: layersOf.get(a.name) ?? [] })),
     skins: data.skins.map((s) => s.name),
     bones: data.bones.length,
     slots: data.slots.length,
@@ -95,6 +102,11 @@ export function useSpineAsset(context, model) {
             ? new SkeletonJson(loader).readSkeletonData(skeletonSource)
             : new SkeletonBinary(loader).readSkeletonData(skeletonSource)
 
+        // Some BD2 cuts ship as a body clip plus additive prop / effect clips
+        // (`cut_A` + `cut_A_water`, `loop` + `loop_bowl`). Fold them into one
+        // animation before anything can select a half-empty shot.
+        const clipLayers = mergeClipLayers(data)
+
         const skeleton = new Skeleton(data)
         skeleton.setToSetupPose()
         skeleton.updateWorldTransform()
@@ -112,7 +124,7 @@ export function useSpineAsset(context, model) {
         stateData.defaultMix = 0.2
         const state = new AnimationState(stateData)
 
-        setAsset({ data, skeleton, state, stateData, manager, modelId: model.id, setupBounds })
+        setAsset({ data, skeleton, state, stateData, manager, clipLayers, modelId: model.id, setupBounds })
         setPhase('ready')
       } catch (err) {
         fail(`骨骼解析失败：${err instanceof Error ? err.message : String(err)}`)

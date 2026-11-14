@@ -105,8 +105,16 @@ export default function Inspector({
                   key={item.name}
                   className={`anim-item ${item.name === animation ? 'is-active' : ''}`}
                   onClick={() => onAnimationChange(item.name)}
+                  title={
+                    item.layers?.length
+                      ? `已合并叠加层：${item.layers.join('、')}`
+                      : undefined
+                  }
                 >
                   <span className="anim-name">{item.name}</span>
+                  {item.layers?.length > 0 && (
+                    <span className="anim-layers">+{item.layers.length} 层</span>
+                  )}
                   <span className="anim-duration">{formatSeconds(item.duration)}</span>
                 </button>
               ))}

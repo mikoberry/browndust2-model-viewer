@@ -96,6 +96,7 @@ src/
     spine/                       # 共享 Spine WebGL 引擎
       SpineStage.jsx             # 渲染循环 / 相机 / 指针交互 / 入场队列
       useSpineAsset.js           # 资源加载 + 运行时对象构建
+      clipLayers.js              # 把"分层/变体"动画折进主动画（纯函数，可纯 Node 复算）
     composition.js               # 设计画布几何（唯一来源，无 DOM，可纯 Node 复算）
     backdrops.js                 # 背景挑选（'auto' 规则，两个 feature 共用）
     animation.js                 # 默认动画 / 表情挑选 + 入场序列识别（两个 feature 共用）
@@ -334,6 +335,31 @@ src/features/<feature>/
   （抽屉「入场动画 → 重新播放」），**不要**用重载 asset / 重挂组件的方式重播。
   序列每段之间的过渡沿用 `AnimationStateData.defaultMix`（0.2s）；名字因模型而异，配置里改（`sequence: "auto"` 会走
   `lib/animation.js` 的 `pickEntranceSequence()` 按动画名识别），代码里不要针对某个皮肤硬编码。
+- **分层 / 变体动画（`lib/spine/clipLayers.js`）**：BD2 有相当一部分 cutscene 把一镜拆成
+  `<镜头>_<道具或特效>` 的兄弟动画——`cut_A_water` 只驱动水花那 6 根骨，`cut_A_bowl` 只画手和碗。**单独播主动画
+  看起来就是缺东西**，所以加载后 `mergeClipLayers(data)` 会把这一类折进主动画，名字仍叫主动画，
+  `sequence` / 点击 / 进度 / seek 全都不用改。判定必须保守（同长度、后缀非 `_数字`、叠加层骨骼数
+  ≤ 主动画 60% 或骨骼集合完全相同）。同一主动画下有多个兄弟动画时，判断"叠加"还是"二选一"要**看骨骼重合**，
+  不能看 timeline 里的 key 冲突：BD2 每条 clip 都写全 slot 的附件快照，key 撞车毫无意义。已折入的层动过同一批
+  骨骼（重合 ≥ 60%）才说明它是这个特效的另一种演法（`cut_B_snake` / `cut_B_sword` / `cut_B_water`、四只可选宠物、
+  三声音效），此时只折第一个、其余留在列表里可选；骨骼互不相交的就是独立部件（`cut_A_dragon` + `cut_A_tail` +
+  `cut_A_waterdrop` 全折）。
+  被折掉的子动画打上 `clipLayerOf` 标记，`readAssetInfo()` 不再列出它们（但 `findAnimation` 仍能找到，
+  老配置里写全名不会炸）。
+  **附件时间轴必须并集，不能覆盖**（踩过坑）：BD2 的 `AttachmentTimeline` 是"全量快照"，clip 不画的 slot 在 0 秒
+  统一写 `null`。按"后写覆盖"折 `cut_A_bowl` 会把人物、脸、头发全部 null 掉，画面只剩一只手端碗——所以
+  `foldAttachmentTimeline()` 里真实附件名才接管，`null` 不覆盖主动画已有的名字，两边都 `null` 才隐藏。
+  反向同理：叠加层对某 slot **完全没写**说明它靠自己的 setup pose 渲染（`A_water`），这类主动画里的"全 null
+  时间轴"要删掉，让 setup 接管——只要**有一个**被折入的层没写这个 slot 就删（Glacia 的 `loop` 就是：base 把
+  龙特效置 null，`loop_dragon` 没写、靠 setup 显示，不删就少 32 个部件）；只有当所有折入层都明确写了 null
+  才保留隐藏。但只统计被折入的层——被跳过的替代品（`A_cut_w2`）会把 `A_cut_w1` 那套道具置 null，
+  让它参与就会把 w1 的衣服剥光。还有一层坑：同形状有多份 slot 副本共用 setup 附件
+  （`A_arm_r4_bbb` / `A_arm_r4_fff` 都是 `A_arm_r4`），各 clip 只用一份，叠加层换了另一份时原那份必须保持隐藏，
+  否则同一个部件画两遍（判定：setup 附件被本层另一个 slot 画出）。
+  **不要**改成"多轨同时播放"：轨道 1 属于表情，而且 track 0 的 sequence/click 逻辑全都要跟着改。
+  改这里必须用真 skel **跑播放**断言可见集合（只比 timeline 数量看不出来）：`cut_A` 折完可见 slot 应等于
+  base ∪ layer 再减去被替代的副本；`Sweet_Temptation` 是 135 + 57 - 2 = 190，脸/脖子/马尾/碗同时在，围裙按
+  base 的 setup 保留，`loop_2` 不被卷入，连跑两次 timeline 数不变。
 - **入场构图（`entrance.clips`，按段）**：入场不是「一组构图」，而是**每段一组**——BD2 的 `cut_A` / `cut_B` /
   `loop_2` 是三个独立镜头，背景、缩放、位置都可能不同。`entrance.clips` 以**动画名**为键（不是数组下标：
   名字来自 skel，顺序来自 `sequence`），每项是 `{ backdrop, backdropTransform, modelTransform }`；
@@ -449,7 +475,15 @@ src/features/<feature>/
    「`autoplay` 缺省 / 非 `false` → `true`」。面板的「复制完整配置」也要断言与
    `public/wallpaper.config.json` **逐字节相同**（`entrance` 块里键序必须是 `autoplay` → `blend` → `clips`
    → 段名 → `backdrop` → 两个 transform）。
-8. 实际画面（入场接缝、渐变手感、构图观感）由用户自己在浏览器 / 壁纸宿主里确认。
+8. **分层动画合并**：`mergeClipLayers(data)` / `detectClipLayers(list)` 是纯函数，可拿真 skel 跑（用
+   `SkeletonBinary` + 桩 attachment loader 在 Node 里解析）。**必须跑播放比可见集合**，只数 timeline 看不出
+   附件被 null 掉：`new Skeleton` + `AnimationState` 播到 2s，取 `drawOrder` 里有 attachment 的 slot 名。
+   `Liatris/Sweet_Temptation` 折完 `cut_A` 应看到 190 个（base 135 + bowl 57 - 2 个被替代的副本），
+   脸（`A_face_nomarl`）、脖子、马尾（`A_Ponytail17`）、碗（`A_bowl_back` / `A_Whippe1`）同时在，
+   `A_arm_r4_fff` 可见而 `A_arm_r4_bbb` 不可见，slot 95/96/102/110/111 的 deform 还在；
+   `Wilhelmina` 的 `A_water` 必须可见（base 写 null、层沉默 → setup 接管）；`loop_2` 不被卷入；
+   `_idle`（不同长度）与 `_数字` 后缀一对都不能折；连跑两次 timeline 数不变。
+9. 实际画面（入场接缝、渐变手感、构图观感）由用户自己在浏览器 / 壁纸宿主里确认。
 
 **不要**跑无头浏览器、截图、Playwright 或任何浏览器自动化；不要在报告里把「构建通过」说成「验证通过」。
 

@@ -727,6 +727,8 @@ code {
 }
 
 .anim-name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -744,6 +746,17 @@ code {
   color: var(--muted);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
+}
+
+/* Marks a shot whose additive prop / effect layer was folded into it. */
+.anim-layers {
+  flex: none;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .hint {
