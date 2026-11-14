@@ -603,20 +603,22 @@ function PointerPanel({ spec, spotlight, accent, onChange, onSpotlightChange, on
             />
           </Group>
           <Group title={t('spotlight.lightGroup')}>
-            <ColorField
-              label={t('spotlight.darkColor')}
-              value={spotlight.darkColor ?? ''}
-              fallback={SPOTLIGHT_DARK_DEFAULT}
-              allowInherit={false}
-              onChange={(darkColor) => onSpotlightChange({ darkColor })}
-            />
-            <ColorField
-              label={t('spotlight.lightColor')}
-              value={spotlight.lightColor ?? ''}
-              fallback={SPOTLIGHT_LIGHT_DEFAULT}
-              allowInherit={false}
-              onChange={(lightColor) => onSpotlightChange({ lightColor })}
-            />
+            <div className="ws-pair">
+              <ColorField
+                label={t('spotlight.darkColor')}
+                value={spotlight.darkColor ?? ''}
+                fallback={SPOTLIGHT_DARK_DEFAULT}
+                allowInherit={false}
+                onChange={(darkColor) => onSpotlightChange({ darkColor })}
+              />
+              <ColorField
+                label={t('spotlight.lightColor')}
+                value={spotlight.lightColor ?? ''}
+                fallback={SPOTLIGHT_LIGHT_DEFAULT}
+                allowInherit={false}
+                onChange={(lightColor) => onSpotlightChange({ lightColor })}
+              />
+            </div>
             <SliderField
               label={t('spotlight.smoothing')}
               value={spotlight.smoothing ?? SPOTLIGHT_SMOOTHING_DEFAULT}
