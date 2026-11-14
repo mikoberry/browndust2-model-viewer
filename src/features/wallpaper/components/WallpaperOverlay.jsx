@@ -76,6 +76,11 @@ function ClockWidget({ spec, accent, paused }) {
     offsetX: spec.offsetX,
     offsetY: spec.offsetY,
     tilt: spec.tilt,
+    // Beat response. Forwarded from the config here — they used to be missing,
+    // so the drawer's two sliders moved but the card kept pumping at wallkit's
+    // own defaults (100 / 0.62). `undefined` still means "wallkit default".
+    beatIntensity: spec.beatIntensity,
+    beatCurve: spec.beatCurve,
   }
   // Localize the clock's date/weekday text. `locale` drives Intl formatting
   // (month name, AM/PM), while `weekday` supplies the weekday word WallKit

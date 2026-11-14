@@ -62,15 +62,22 @@ const SPECTRUM_VARIANTS = [
   { value: 'aurora', label: () => t('spectrum.aurora') },
 ]
 
-// Radial styles paint their circle inside the box, so the box has to be square
+// Radial styles place their circle inside the box, so the box has to be square
 // in PIXELS — that is why both axes use `vh` for them instead of `vw` / `vh`.
-const SPECTRUM_RADIAL = ['ring', 'ringwave', 'ripples', 'aurora']
+//
+// `aurora` is NOT one of them even though wallkit's own CSS default box is
+// square (it groups it with the ring styles): the renderer walks the columns
+// across the full box width and grows a glow up from the bottom edge, i.e. it is
+// a wide curtain. A square box just throws away width and stretches the bands,
+// so it is sized like the other linear styles.
+const SPECTRUM_RADIAL = ['ring', 'ringwave', 'ripples']
 
 // The box each style is designed around, in wallkit's own units: width in `vw`,
 // height in `vh` (so 100 == full viewport width / height). Linear styles are a
-// strip along an edge, radial styles a square. These are the numbers the size
-// controls fall back to and the ones written when the style is switched, so the
-// sliders always show a concrete value.
+// strip along an edge (aurora included: its glow needs more height than a bar
+// strip, hence the taller default), radial styles a square. These are the
+// numbers the size controls fall back to and the ones written when the style is
+// switched, so the sliders always show a concrete value.
 //
 // `size` is NOT exposed: wallkit lets an explicit width / height override the
 // `size` scale entirely, and since the panel always writes both axes the slider
@@ -81,10 +88,10 @@ const SPECTRUM_BOX = {
   curve: { width: 100, height: 14 },
   pill: { width: 100, height: 14 },
   dots: { width: 100, height: 14 },
+  aurora: { width: 100, height: 26 },
   ring: { width: 46, height: 46 },
   ringwave: { width: 46, height: 46 },
   ripples: { width: 46, height: 46 },
-  aurora: { width: 46, height: 46 },
 }
 
 const spectrumBox = (variant) => SPECTRUM_BOX[variant] ?? SPECTRUM_BOX.bars
@@ -289,7 +296,10 @@ function ClockPanel({ spec, accent, onChange, onReset }) {
                 />
                 <SliderField
                   label={t('clock.beatCurve')}
-                  value={spec.beatCurve ?? 0.62}
+                  // 1 = linear (user default), not wallkit's 0.62: the built-in
+                  // config pins the same value, so the readout and the card
+                  // always agree.
+                  value={spec.beatCurve ?? 1}
                   min={0.2}
                   max={2}
                   step={0.01}
