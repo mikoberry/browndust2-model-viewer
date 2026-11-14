@@ -1,0 +1,167 @@
+{
+  "_readme": [
+    "人物配置库（纯手工维护，代码不读这个文件）。",
+    "用法：壁纸页调好一个人物后，抽屉里点「记录配置」会把完整配置复制到剪贴板，",
+    "粘贴到下面 presets 里，用该人物的 modelId（如 'Wilhelmina/Iron_Monarch/cutscene_char067601'）做键。",
+    "换人物时：把想要的人物整块复制，覆盖到 wallpaper.config.json 的同名位置，刷新即生效。",
+    "注意：如果之前点过「记录配置」，localStorage 快照会盖过文件——先在抽屉里点一次「恢复首次默认」再刷新。",
+    "每个条目就是一份完整的 wallpaper.config.json 内容，可原样复制回去用。"
+  ],
+  "presets": {
+    "Wilhelmina/Iron_Monarch/cutscene_char067601": {
+      "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
+      "modelId": "Wilhelmina/Iron_Monarch/cutscene_char067601",
+      "backdrop": "auto",
+      "design": null,
+      "fit": "contain",
+      "letterbox": "#101319",
+      "bleed": true,
+      "overscan": 1.5,
+      "model": {
+        "heightRatio": 1,
+        "widthRatio": 1,
+        "alignX": 0.5,
+        "alignY": 0.5
+      },
+      "backdropTransform": {
+        "scale": 1.85,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "modelTransform": {
+        "scale": 2,
+        "offsetX": 204,
+        "offsetY": 0
+      },
+      "parallax": {
+        "enabled": true,
+        "backdrop": 1.5,
+        "model": 3
+      },
+      "animation": null,
+      "expression": null,
+      "sequence": [
+        "cut_A",
+        "cut_B",
+        "loop_2"
+      ],
+      "clickAnimation": {
+        "enabled": false,
+        "name": "cut_B"
+      },
+      "entrance": {
+        "autoplay": true,
+        "blend": 0.9,
+        "clips": {
+          "cut_A": {
+            "backdrop": "char067601_back2.png",
+            "backdropTransform": {
+              "scale": 1.8,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.8,
+              "offsetX": 0,
+              "offsetY": 0
+            }
+          },
+          "cut_B": {
+            "backdrop": "",
+            "backdropTransform": {
+              "scale": 2.5,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 2.5,
+              "offsetX": 204,
+              "offsetY": 0
+            }
+          },
+          "loop_2": {
+            "backdrop": "char067601_back1.png",
+            "backdropTransform": {
+              "scale": 2.5,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 2.5,
+              "offsetX": 204,
+              "offsetY": 0
+            }
+          }
+        }
+      },
+      "skin": "",
+      "speed": 1,
+      "zoom": 1,
+      "overlay": {
+        "accent": "#699cd8",
+        "clock": {
+          "enabled": true,
+          "placement": "minimal",
+          "color": "#04356e",
+          "anchor": "top-left",
+          "offsetX": 4,
+          "offsetY": 4,
+          "size": 150,
+          "use24Hour": true,
+          "tilt": true,
+          "beat": true,
+          "labels": {
+            "locale": "zh-CN",
+            "aria": "当前时间与日期"
+          },
+          "beatCurve": 1,
+          "beatIntensity": 200
+        },
+        "spectrum": {
+          "enabled": true,
+          "variant": "curve",
+          "color": "",
+          "anchor": "bottom-center",
+          "width": "100vw",
+          "height": "25vh",
+          "offsetX": 0,
+          "offsetY": 0,
+          "size": 100,
+          "intensity": 100,
+          "curve": 1
+        },
+        "albumArt": {
+          "enabled": true,
+          "variant": "classic",
+          "color": "",
+          "textColor": "#eff6fd",
+          "anchor": "top-right",
+          "offsetX": 4,
+          "offsetY": 4,
+          "size": 70,
+          "labels": {
+            "aria": "正在播放"
+          }
+        },
+        "ambient": {
+          "enabled": false,
+          "variant": "snow",
+          "color": "",
+          "density": 100,
+          "size": 100,
+          "intensity": 100
+        },
+        "pointer": {
+          "enabled": true,
+          "trail": false,
+          "click": true,
+          "trailVariant": "glow",
+          "clickVariant": "ripple",
+          "color": "",
+          "size": 200,
+          "intensity": 160
+        }
+      }
+    }
+  }
+}
