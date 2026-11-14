@@ -28,7 +28,7 @@ import {
   saveRecordedConfig,
 } from '../config.js'
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
-import { ChipField, ColorField, Group, SliderField, ToggleField } from './settings-fields.jsx'
+import { ChipField, ColorField, DrawerOpenContext, Group, SliderField, ToggleField } from './settings-fields.jsx'
 import LocaleSwitcher from './LocaleSwitcher.jsx'
 import { t, useLocale } from '../../../lib/i18n.js'
 
@@ -462,7 +462,10 @@ export default function WallpaperSettings({
 
   const enabledWidgets = TABS.filter((item) => item.key !== 'composition' && overlay?.[item.key]?.enabled)
 
-  return (
+  // `open` is published to the fields: the inline colour pickers keep their
+  // expanded state locally, and the drawer only slides away instead of being
+  // unmounted, so they have to be told to collapse when it closes.
+  const drawer = (
     <aside className={`wallpaper-settings${open ? ' is-open' : ''}`} aria-hidden={!open}>
       <div className="ws-head">
         <div>
@@ -575,4 +578,6 @@ export default function WallpaperSettings({
       </div>
     </aside>
   )
+
+  return <DrawerOpenContext.Provider value={open}>{drawer}</DrawerOpenContext.Provider>
 }

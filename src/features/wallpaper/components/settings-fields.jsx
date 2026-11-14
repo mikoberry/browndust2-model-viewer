@@ -5,10 +5,17 @@
 // Keep these dumb — the drawer is the only consumer, and the "copy config" exit
 // relies on values passing through untouched when the user does not edit them.
 
-import { useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { ANCHORS } from 'wallkit/core'
 import { HEX, hexToHsv, hsvToHex } from '../color.js'
 import { t } from '../../../lib/i18n.js'
+
+// The drawer is never unmounted (it slides out with a transform), so any local
+// "expanded" state — the colour pickers below — would still be open the next
+// time it slides back in. The drawer publishes its open flag here and the
+// pickers collapse whenever it turns false, which keeps a reopened drawer at
+// its default, fully collapsed state.
+export const DrawerOpenContext = createContext(true)
 
 const clamp01 = (value) => Math.min(1, Math.max(0, value))
 
@@ -285,6 +292,7 @@ function ColorPickerPanel({ hsv, onChange }) {
 // keyboard, so the value can only be changed through the picker (or the config
 // file).
 export function ColorField({ label, value, fallback, onChange, allowInherit = true }) {
+  const drawerOpen = useContext(DrawerOpenContext)
   const [open, setOpen] = useState(false)
   const resolved = HEX.test(value || '') ? value : HEX.test(fallback || '') ? fallback : '#a8c4ff'
   // HSV is kept locally so dragging through black / grey does not lose the hue
@@ -295,6 +303,12 @@ export function ColorField({ label, value, fallback, onChange, allowInherit = tr
     const next = hexToHsv(resolved)
     setHsv((prev) => (hsvToHex(prev) === hsvToHex(next) ? prev : next))
   }, [resolved])
+
+  // Closing the drawer folds every expanded picker back up, so reopening it
+  // never shows a panel the user left behind.
+  useEffect(() => {
+    if (!drawerOpen) setOpen(false)
+  }, [drawerOpen])
 
   const commit = (next) => {
     setHsv(next)
