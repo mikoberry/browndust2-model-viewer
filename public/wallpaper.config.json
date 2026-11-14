@@ -60,14 +60,14 @@
       "cut_B": {
         "backdrop": "char021201_back4-upscal4x.png",
         "backdropTransform": {
-          "scale": 1.58,
-          "offsetX": 0,
-          "offsetY": 0
+          "scale": 2.16,
+          "offsetX": 77,
+          "offsetY": 130
         },
         "modelTransform": {
-          "scale": 1,
-          "offsetX": -102,
-          "offsetY": 43
+          "scale": 1.24,
+          "offsetX": 0,
+          "offsetY": 259
         }
       }
     }
