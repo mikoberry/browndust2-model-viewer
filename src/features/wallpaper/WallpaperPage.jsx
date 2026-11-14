@@ -350,7 +350,7 @@ export default function WallpaperPage() {
 
   return (
     <div className="wallpaper-page" style={{ backgroundColor: config.letterbox }}>
-      {config.bleed && backdropUrl && (
+      {ready && config.bleed && backdropUrl && (
         <div
           className="wallpaper-bleed"
           style={{ backgroundImage: `url("${backdropUrl}")` }}
@@ -369,7 +369,11 @@ export default function WallpaperPage() {
           transform: `scale(${scale})`,
         }}
       >
-        {backdropUrl && (
+        {/* Gated on `ready` like the stage: before the config settles this
+            would otherwise paint the BUILT-IN model's backdrop (a square,
+            untransformed frame) for a moment before switching to the real
+            configuration. */}
+        {ready && backdropUrl && (
           <img
             className="wallpaper-backdrop"
             src={backdropUrl}
