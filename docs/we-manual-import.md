@@ -38,7 +38,7 @@ npm run build:home -- --embed
 
 拿目录路径的方法：WE 菜单「编辑 → 在资源管理器中打开」。
 
-## 3. 把面板文案写进那份 project.json
+## 3. 把 title / description / 面板文案写进那份 project.json
 
 ### 3.1 推荐：跑生成器合并
 
@@ -95,7 +95,7 @@ npm run project:gen -- --target "F:/SteamLibrary/steamapps/common/wallpaper_engi
     }
   },
   "supportsaudioprocessing": true
-}
+},
 ```
 
 以上是 `BD2-test\project.json` 里 `general` 的**完整内容**（2026-11-14 快照，未省略）——**以此文件为准**，
@@ -106,6 +106,8 @@ npm run project:gen -- --target "F:/SteamLibrary/steamapps/common/wallpaper_engi
 ```bash
 node -e "const j=require('F:/SteamLibrary/steamapps/common/wallpaper_engine/projects/myprojects/BD2-test/project.json');console.log(JSON.stringify({general:j.general},null,2).split('\n').slice(1,-1).join('\n'))"
 ```
+
+`general` 之外还有顶层的 `title` / `description`，见下面 §3.3。
 
 四条铁律：
 
@@ -119,7 +121,33 @@ node -e "const j=require('F:/SteamLibrary/steamapps/common/wallpaper_engine/proj
 4. **注意 JSON 语法**：`general` 后面要跟逗号（它后面还有 `title` / `type` 等键），字符串里的
    `\"` 转义一个都不能丢，`value: false` 行末尾同理。
 
-### 3.3 不建议完全手写
+### 3.3 顶层的 `title` / `description` 也要一起补
+
+`general` 只管「壁纸属性」面板；Workshop 页面上显示的**标题和简介是顶层的两个兄弟键**，不在 `general` 里，
+手动导入后同样要补。下面是 `BD2-test\project.json` 的实际值（2026-11-14 快照，未省略）：
+
+```json
+
+  "description": "《棕色尘埃 2》角色动态壁纸：Spine 立绘 + 对应场景背景，可叠加时钟、音频频谱、专辑卡、氛围粒子与指针特效。\n\nBrownDust 2 live wallpaper: Spine character art over its matching scene, with optional clock, audio spectrum, album card, ambient particles and pointer effects.\n\n",
+
+```
+
+几点：
+
+- `description` 是**一个字符串**，段落之间用 `\n\n` 分隔（不是数组，也不是 `<br>`）。`project.config.js`
+  里写成数组只是为了好读，生成时会 join 成这一整串。
+- 这里的链接在 Workshop 页面上**可以点击**（该页按 HTML 渲染，和属性面板的限制不同），所以首页 / 源码地址放这里，
+  而不是塞进面板文案。
+- `title` / `description` 与 `general` 是**同级键**，粘贴时别塞进 `general` 内部；它们在文件里通常排在
+  `general` 后面。
+- 改完照样跑 §4 的 `JSON.parse` 校验，再跑 `npm run project:check -- --target "<目录>"` 看有没有漏。
+- 重新导出这段快照（和 §3.2 一样，改过配置后用它替换上面的 JSON）：
+
+  ```bash
+  node -e "const j=require('F:/SteamLibrary/steamapps/common/wallpaper_engine/projects/myprojects/BD2-test/project.json');console.log(JSON.stringify({title:j.title,description:j.description},null,2))"
+  ```
+
+### 3.4 不建议完全手写
 
 面板文案是 HTML 字符串，`index` / `order` / `type` / `value` 四个字段缺一个都可能「界面上看不到但
 不报错」。要调文案就改仓库里的 `project.config.js` 再跑第 3.1 步，比手写可靠。
