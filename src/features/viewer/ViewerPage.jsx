@@ -8,7 +8,7 @@ import Toolbar from './components/Toolbar.jsx'
 import Inspector from './components/Inspector.jsx'
 import Timeline from './components/Timeline.jsx'
 import CompositionStage from './components/CompositionStage.jsx'
-import { ANIM_AUTO, ANIM_OFF, animToOption } from './components/CompositionPanel.jsx'
+import { ANIM_AUTO, ANIM_OFF, DEFAULT_DESIGN, animToOption } from './components/CompositionPanel.jsx'
 import SpineStage from '../../lib/spine/SpineStage.jsx'
 import { pickDefaultAnimation, pickDefaultExpression, pickEntranceSequence } from '../../lib/animation.js'
 import { assetUrl } from '../../lib/assets.js'
@@ -34,6 +34,11 @@ const COMPOSE_DEFAULTS = {
   // its own); the full chain then only runs from 「播放完整入场」.
   solo: false,
   backdrop: 'auto',
+  // Design canvas override: { width, height } pins a scene resolution (the
+  // default is 1080p, matching the wallpaper's built-in `design`); null = follow
+  // the chosen backdrop's native pixel size. Mirrors the `design` key of
+  // wallpaper.config.json.
+  design: DEFAULT_DESIGN,
   backdropTransform: { scale: 1, offsetX: 0, offsetY: 0 },
   modelTransform: { scale: 1, offsetX: 0, offsetY: 0 },
   entrance: {
@@ -182,6 +187,11 @@ export default function ViewerPage({ onGoWallpaper }) {
         setCompose((prev) => ({
           ...prev,
           backdrop: typeof raw.backdrop === 'string' ? raw.backdrop : prev.backdrop,
+          // `design` may be null (follow the image) or { width, height }.
+          design:
+            toFinite(raw.design?.width, 0) > 0 && toFinite(raw.design?.height, 0) > 0
+              ? { width: toFinite(raw.design.width, 0), height: toFinite(raw.design.height, 0) }
+              : null,
           backdropTransform: mergeLayer(prev.backdropTransform, raw.backdropTransform),
           modelTransform: mergeLayer(prev.modelTransform, raw.modelTransform),
           animation: animToOption(raw.animation),
@@ -280,14 +290,19 @@ export default function ViewerPage({ onGoWallpaper }) {
       (compose.follow && stageClip ? stageClip : compose.clip || playingSequence[0] || '')
   const clipSpec = previewClip ? compose.entrance.clips[previewClip] ?? null : null
 
-  // The design canvas always follows the GLOBAL pick, exactly like the wallpaper:
-  // a clip may draw a different image but must not change the canvas, or every
-  // design-pixel number in the config would mean something else.
+  // The design canvas follows the GLOBAL pick by default; a clip may draw a
+  // different image but must not change the canvas, or every design-pixel
+  // number in the config would mean something else. The panel may also PIN the
+  // canvas to a scene resolution (compose.design), which wins over the image —
+  // exactly like the wallpaper's `design` key.
   const composeBackdrop = useMemo(
     () => pickBackdrop(selected, compose.backdrop),
     [selected, compose.backdrop],
   )
-  const composeDesign = useMemo(() => resolveDesign(composeBackdrop, null), [composeBackdrop])
+  const composeDesign = useMemo(
+    () => resolveDesign(composeBackdrop, compose.design),
+    [composeBackdrop, compose.design],
+  )
   // The image actually drawn, which for a clip can be its own backdrop.
   const previewBackdrop = useMemo(
     () =>

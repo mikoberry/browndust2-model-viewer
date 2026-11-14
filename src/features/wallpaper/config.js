@@ -73,10 +73,12 @@ const BUILTIN_WALLPAPER = {
   // automatically switches to that character's own wallpaper.
   backdrop: 'auto',
 
-  // Fixed design canvas in pixels. null = use the chosen backdrop's NATIVE
-  // pixel size (the scanner records it), which is the most faithful baseline.
-  // Set e.g. { width: 2048, height: 2048 } to force one baseline for all models.
-  design: null,
+  // Fixed design canvas in pixels. Default = 1920×1080, so a new wallpaper is
+  // composed for a real screen shape regardless of the artwork's own resolution
+  // (BD2 backdrops are often 1:1 squares). null = use the chosen backdrop's
+  // NATIVE pixel size instead, which is the most faithful baseline and never
+  // crops the image.
+  design: { width: 1920, height: 1080 },
 
   // How the design canvas maps to the screen. Both layers use the SAME scale.
   //   'contain' -> whole composition always visible, letterbox on other ratios
@@ -252,6 +254,11 @@ const BUILTIN_WALLPAPER = {
       // Pointer-following tilt, and whether the card pumps with the bass.
       tilt: true,
       beat: true,
+      // Beat response, forwarded to wallkit's `Clock`. `beatIntensity` is a
+      // percent (100 = unchanged); `beatCurve` is the response exponent, and 1
+      // (linear) is this project's default — wallkit's own default is 0.62.
+      beatIntensity: 100,
+      beatCurve: 1,
       labels: { locale: 'zh-CN', aria: '当前时间与日期' },
     },
     spectrum: {
@@ -263,8 +270,10 @@ const BUILTIN_WALLPAPER = {
       // height of its height (`'100vw'` / `'14vh'` = a strip along the bottom
       // edge). Both axes together ARE the size of a spectrum — wallkit lets
       // them override its `size` scale, so the drawer edits these two and not
-      // `size`. Radial styles (ring / ringwave / ripples / aurora) need a
-      // square, so they use the same `vh` value on both axes (e.g. 46 / 46).
+      // `size`. Radial styles (ring / ringwave / ripples) need a square, so they
+      // use the same `vh` value on both axes (e.g. 46 / 46). `aurora` is a wide
+      // curtain — its columns span the box width — so it stays linear (the
+      // drawer's default for it is 100vw × 26vh).
       width: '100vw',
       height: '14vh',
       offsetX: 0,

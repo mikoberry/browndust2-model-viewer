@@ -34,6 +34,21 @@ const OFFSET_LIMIT = 200
 
 const NEUTRAL = { scale: 1, offsetX: 0, offsetY: 0 }
 
+// Scene resolutions the design canvas can be pinned to (user request). 1080p is
+// the DEFAULT — a wallpaper is judged on a real screen shape, not on the
+// artwork's own pixel size. "跟随背景" (= null) keeps the backdrop's native size,
+// which never crops the image.
+export const DESIGN_PRESETS = [
+  { label: '1920×1080', width: 1920, height: 1080 },
+  { label: '2560×1440', width: 2560, height: 1440 },
+  { label: '1080×1920', width: 1080, height: 1920 },
+  { label: '1440×2560', width: 1440, height: 2560 },
+]
+
+// Kept identical to the built-in `design` in features/wallpaper/config.js, and
+// to the shipped value in public/wallpaper.config.json.
+export const DEFAULT_DESIGN = { width: DESIGN_PRESETS[0].width, height: DESIGN_PRESETS[0].height }
+
 // The config file expresses "which animation plays after the entrance" as null
 // (auto-pick) and '' (disable the track); a <select> cannot hold those values,
 // so the panel maps them to two sentinel strings.
@@ -177,6 +192,10 @@ function buildConfigText(fileConfig, state) {
   const payload = {
     ...(fileConfig ?? {}),
     backdrop: state.backdrop,
+    // null = follow the backdrop's native size (the shipped default).
+    design: state.design
+      ? { width: Math.round(state.design.width), height: Math.round(state.design.height) }
+      : null,
     backdropTransform: layer(state.backdropTransform),
     modelTransform: layer(state.modelTransform),
     animation: optionToAnim(state.animation),
@@ -282,13 +301,42 @@ export default function CompositionPanel({
               {Math.round(design.width)} × {Math.round(design.height)}
             </span>
           </div>
+          <div className="seg-row seg-wrap" role="group" aria-label="设计画布尺寸">
+            <button
+              type="button"
+              className={`btn${!state.design ? ' is-on' : ''}`}
+              onClick={() => onPatch({ design: null })}
+              title="画布 = 背景图的原生像素尺寸（默认，最忠实）"
+            >
+              跟随背景
+            </button>
+            {DESIGN_PRESETS.map((preset) => {
+              const on =
+                Number(state.design?.width) === preset.width && Number(state.design?.height) === preset.height
+              return (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className={`btn${on ? ' is-on' : ''}`}
+                  onClick={() => onPatch({ design: { width: preset.width, height: preset.height } })}
+                  title={`强制 ${preset.label} 的画布，与背景图尺寸无关`}
+                >
+                  {preset.label}
+                </button>
+              )
+            })}
+          </div>
           <BackdropSelect
-            label="全局背景（决定设计画布）"
+            label="全局背景"
             value={state.backdrop}
             options={options}
             onChange={(backdrop) => onPatch({ backdrop })}
           />
-          <p className="hint">设计画布的尺寸跟着这张图走；某一段换背景只会换图，不会改画布。</p>
+          <p className="hint">
+            {state.design
+              ? '已固定画布尺寸：图片按 cover 居中缩放到画布（不变形，但比例不符的部分会被裁掉）。所有偏移量的单位是画布像素，换尺寸后已调的数值会被重新解释。'
+              : '画布尺寸跟着这张图的原生像素走；某一段换背景只会换图，不会改画布。想按屏幕比例出图就选一个预设。'}
+          </p>
 
           <div className="section-head">
             <h3>调哪一层构图</h3>
