@@ -41,9 +41,36 @@
     "name": ""
   },
   "entrance": {
-    "autoplay": false,
+    "autoplay": true,
     "blend": 0.9,
-    "clips": {}
+    "clips": {
+      "cut_A": {
+        "backdrop": "char021201_back1.png",
+        "backdropTransform": {
+          "scale": 1.05,
+          "offsetX": 0,
+          "offsetY": 0
+        },
+        "modelTransform": {
+          "scale": 1.29,
+          "offsetX": 0,
+          "offsetY": 0
+        }
+      },
+      "cut_B": {
+        "backdrop": "char021201_back4-upscal4x.png",
+        "backdropTransform": {
+          "scale": 1.58,
+          "offsetX": 0,
+          "offsetY": 0
+        },
+        "modelTransform": {
+          "scale": 1,
+          "offsetX": -102,
+          "offsetY": 43
+        }
+      }
+    }
   },
   "skin": "",
   "speed": 1,
