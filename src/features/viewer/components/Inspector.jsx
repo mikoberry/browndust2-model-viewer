@@ -224,7 +224,7 @@ export default function Inspector({
                     否则大面积半透明叠加会被白板盖住。
                   </p>
                   <p>
-                    背景按文件名里的 6 位角色 ID 从 <code>skill_cutscene_background/</code> 自动关联；
+                    背景按文件名里的 6 位角色 ID 从 <code>backdrops/&lt;id&gt;/</code> 自动关联；
                     带 <code>-N</code> / <code>_N</code> 的是局部遮罩，<code>*move</code> 是低清版，
                     都不适合当完整场景底图，下拉里归到「不推荐」。
                   </p>

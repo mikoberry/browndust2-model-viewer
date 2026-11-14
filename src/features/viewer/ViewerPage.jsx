@@ -108,7 +108,7 @@ function EmptyLibrary() {
       <p>
         <code>model-library/</code> 里还没有可识别的模型。
       </p>
-      <pre>{`model-library/\n  <角色>/\n    <皮肤>/\n      xxx.skel     (或 xxx.json)\n      xxx.atlas\n      xxx.png      (图集页，可为 _2.png / _3.png …)\n  skill_cutscene_background/   (可选共享背景库)`}</pre>
+      <pre>{`model-library/\n  <角色>/\n    <皮肤>/\n      xxx.skel     (或 xxx.json)\n      xxx.atlas\n      xxx.png      (图集页，可为 _2.png / _3.png …)\n  backdrops/\n    <6 位角色 ID>/ (可选背景图，按文件名自动关联)`}</pre>
       <p className="muted">放入素材后刷新页面即可，不需要复制到 public/。</p>
     </div>
   )

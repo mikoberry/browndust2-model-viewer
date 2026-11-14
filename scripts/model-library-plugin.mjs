@@ -135,7 +135,7 @@ export function modelLibraryPlugin() {
           if (emitted.has(file.url)) continue
           emitted.add(file.url)
           // `source` is the path relative to model-library/, so it also works
-          // for backdrops that live in the shared skill_cutscene_background/.
+          // for backdrops that live in backdrops/<6-digit id>/.
           const abs = path.resolve(libraryDir, file.source)
           if (!fs.existsSync(abs)) continue
           this.emitFile({

@@ -4,7 +4,7 @@
 //
 // Layout is free-form and recursive. The current library uses
 //   model-library/<character>/<skin>/  -> *.skel / *.atlas / page PNGs
-//   model-library/skill_cutscene_background/ -> shared backdrop PNGs
+//   model-library/backdrops/<6-digit id>/ -> shared backdrop PNGs
 // A "model" is a skeleton file (.skel binary or .json) paired with an .atlas.
 // Atlas pages are read from the atlas page-name lines (BD2 uses separate
 // _2.png ... _N.png files instead of one packed sheet).
@@ -12,6 +12,9 @@
 // Backdrops are matched by the 6-digit character id found in both the model
 // stem and the backdrop filename, because the shared library mixes four
 // naming styles (char067601_back1 / 003401 back2 / 000303_back1 / back 1).
+// Directory layout is irrelevant to the match: this walks the whole library
+// recursively and only ever looks at filenames, so buckets can be renamed or
+// nested freely.
 
 import fs from 'node:fs'
 import path from 'node:path'

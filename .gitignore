@@ -6,9 +6,37 @@ dist/
 # 构建 / 校验临时产物
 .tmp-*
 
-# 共享背景库：1036 张 / 366MB，体积过大不进 git；
-# 本地保留供扫描器读取，确实需要入库时用 git add -f
-/model-library/skill_cutscene_background/
+# 背景图库 model-library/backdrops/<6 位角色 ID>/
+# 只有本地已有模型（model-library/<角色>/<皮肤>/*.skel）的角色才纳入 git，
+# 其余桶与 _misc/ 只留在本地给扫描器读。新增角色后在这里补一行 negate，
+# 当前白名单可以用 `npm run backdrops:ids` 打印出来核对。
+/model-library/backdrops/*
+!/model-library/backdrops/001001/
+!/model-library/backdrops/001002/
+!/model-library/backdrops/001004/
+!/model-library/backdrops/001006/
+!/model-library/backdrops/001092/
+!/model-library/backdrops/001201/
+!/model-library/backdrops/001206/
+!/model-library/backdrops/001207/
+!/model-library/backdrops/001297/
+!/model-library/backdrops/003601/
+!/model-library/backdrops/003602/
+!/model-library/backdrops/003603/
+!/model-library/backdrops/003604/
+!/model-library/backdrops/021201/
+!/model-library/backdrops/021291/
+!/model-library/backdrops/021301/
+!/model-library/backdrops/021391/
+!/model-library/backdrops/066902/
+!/model-library/backdrops/066906/
+!/model-library/backdrops/066907/
+!/model-library/backdrops/067301/
+!/model-library/backdrops/067302/
+!/model-library/backdrops/067303/
+!/model-library/backdrops/067601/
+!/model-library/backdrops/067603/
+!/model-library/backdrops/067604/
 
 # agent 工作区元数据
 .workbuddy/

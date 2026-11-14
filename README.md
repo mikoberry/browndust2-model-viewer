@@ -68,11 +68,15 @@ model-library/
       cutscene_char067601.skel     # 或 .json
       cutscene_char067601.atlas
       cutscene_char067601.png      # 多页图集是 xxx_2.png … 独立文件
-  skill_cutscene_background/       # 可选：共享背景图库（按 6 位角色 ID 自动关联）
+  backdrops/
+    067601/                        # 按 6 位角色 ID 分桶，文件名里的 ID 即关联键
+      char067601_back1.png
+    _misc/                         # 文件名没有 6 位 ID 的散图
 ```
 
 - dev 由 Vite 插件按 `/models/<磁盘相对路径>` 直接读源文件；build 只输出 manifest 引用到的文件。
-- 共享背景库不进 git（`.gitignore` 排除），本地保留供扫描器读取。
+- `backdrops/` 只有「本地有模型的角色」那批桶入库（见 `.gitignore`），其余桶和 `_misc/` 仅本地保留；
+  新增角色后用 `npm run backdrops:ids` 打印白名单再补 negate 行。
 
 ## 目录
 

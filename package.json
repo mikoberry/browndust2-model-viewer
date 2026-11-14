@@ -11,7 +11,8 @@
     "build:we": "node scripts/build-home.mjs && node scripts/deploy-weproject.mjs",
     "deploy:we": "node scripts/deploy-weproject.mjs",
     "preview": "vite preview",
-    "model:list": "node scripts/scan-model-library.mjs"
+    "model:list": "node scripts/scan-model-library.mjs",
+    "backdrops:ids": "node scripts/migrate-backdrops.mjs --ids"
   },
   "dependencies": {
     "@esotericsoftware/spine-webgl": "4.1.56",
