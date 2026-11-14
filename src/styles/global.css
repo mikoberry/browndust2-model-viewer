@@ -446,7 +446,29 @@ code {
 }
 
 .stage-frame.is-locked {
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 16px 46px rgba(0, 0, 0, 0.26);
+  /* Obvious outline so the tuned ratio is visible at a glance (user request):
+     the accent colour reads as chrome, not as part of the artwork. */
+  border: 2px solid var(--accent);
+  box-shadow: 0 16px 46px rgba(0, 0, 0, 0.26);
+}
+
+/* Ratio badge on the frame's top-left corner. pointer-events: none keeps the
+   stage's interactions untouched; overflow: hidden on the frame clips nothing
+   because the badge sits inside. */
+.stage-frame-ratio {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 0 0 6px 0;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* ---------- composition preview (viewer 构图 tab) ----------

@@ -28,6 +28,12 @@ export default function SpineStage(props) {
   const {
     model,
     animation,
+    // Seconds to skip at the head of the looping `animation` (track 0 only).
+    // Some BD2 idle loops bake the character's slide-in into their first frames;
+    // trimming starts past it. The runtime loops [animationStart, animationEnd)
+    // and `setAnimation` resets trackTime to 0, so a fresh entry simply begins
+    // at the trim point. Sequence clips play as authored — only `animation`.
+    animationStart = 0,
     expression,
     skin,
     playing,
@@ -159,14 +165,39 @@ export default function SpineStage(props) {
   // live track entry, so a caller gets exactly one call per shot.
   const sequenceStageRef = useRef('')
 
+  // Clamp `animationStart` onto a track-0 entry. The spine runtime computes a
+  // looping entry's pose time as `trackTime % (end - start) + start`, so once
+  // `animationStart` is set the entry plays and loops past the trimmed head.
+  const applyAnimationStart = (entry) => {
+    if (!entry) return
+    const raw = Number(liveRef.current.animationStart) || 0
+    const duration = entry.animation?.duration ?? 0
+    const start = raw > 0 && duration > raw ? raw : 0
+    if (entry.animationStart !== start || entry.animationEnd !== duration) {
+      entry.animationStart = start
+      entry.animationEnd = duration
+    }
+  }
+
   // Track 0: the selected body animation. Skipped while a sequence owns the
   // track — the sequence effect below has already queued what should play.
   useEffect(() => {
     if (!asset || sequenceActiveRef.current) return
     if (!animation || !asset.data.findAnimation(animation)) return
     asset.state.setAnimation(0, animation, liveRef.current.loop)
+    applyAnimationStart(asset.state.getCurrent(0))
     fitPendingRef.current = true
   }, [asset, animation])
+
+  // The trim is edited live (composition panel / config reload): re-apply it to
+  // the current entry and rewind, so what you see starts at the new trim point.
+  useEffect(() => {
+    if (!asset) return
+    const entry = asset.state.getCurrent(0)
+    if (!entry || sequenceActiveRef.current) return
+    applyAnimationStart(entry)
+    entry.trackTime = 0
+  }, [asset, animationStart])
 
   // Track 0, sequence mode: every entry plays once and the LAST one loops.
   // `setAnimation` also drops anything still queued on track 0, so a replay
@@ -184,10 +215,15 @@ export default function SpineStage(props) {
       sequenceStageRef.current = ''
       sequenceLengthRef.current = 0
       if (!wasSequence) return
-      // Sequence removed at runtime: fall back to the plain animation.
+      // Sequence removed at runtime: fall back to the plain animation. When the
+      // rAF handoff (sequence tail -> `animation`) already switched to it a
+      // frame earlier, do NOT setAnimation again — that would restart the clip
+      // at frame 0 with a visible jump.
       const fallback = liveRef.current.animation
-      if (fallback && asset.data.findAnimation(fallback)) {
+      const current = asset.state.getCurrent(0)?.animation?.name ?? ''
+      if (fallback && asset.data.findAnimation(fallback) && current !== fallback) {
         asset.state.setAnimation(0, fallback, liveRef.current.loop)
+        applyAnimationStart(asset.state.getCurrent(0))
         fitPendingRef.current = true
       }
       return
@@ -221,7 +257,10 @@ export default function SpineStage(props) {
     const rest = liveRef.current.animation
     state.setAnimation(0, clickAnimation, false)
     if (rest && rest !== clickAnimation && asset.data.findAnimation(rest)) {
-      state.addAnimation(0, rest, liveRef.current.loop !== false, 0)
+      // The queued resting loop inherits the trim, so it resumes past the
+      // slide-in; the clicked one-shot plays as authored.
+      const entry = state.addAnimation(0, rest, liveRef.current.loop !== false, 0)
+      applyAnimationStart(entry)
     }
   }, [asset, clickAnimation, clickToken])
 
@@ -362,6 +401,7 @@ export default function SpineStage(props) {
             const rest = live.animation
             if (rest && rest !== sequenceTailRef.current && state.data.skeletonData.findAnimation(rest)) {
               state.setAnimation(0, rest, live.loop !== false)
+              applyAnimationStart(state.getCurrent(0))
               fitPendingRef.current = true
             }
           }

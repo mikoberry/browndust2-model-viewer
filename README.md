@@ -36,6 +36,13 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 
 配置优先级：内置默认值 < `wallpaper.config.json` < 用户「记录配置」。
 
+### 按人物保存配置（人物配置库）
+
+`wallpaper.presets.json`（仓库根目录，不进 dist）是手工维护的**人物配置库**（代码不读它）：给每个人物调好构图后，
+抽屉里点「记录配置」，把剪贴板里的完整配置粘贴到该文件的 `presets` 下，用人物的 `modelId` 做键。
+换人物时把想要的人物整块复制、覆盖到 `wallpaper.config.json` 刷新即可；若之前点过「记录配置」，
+先在抽屉里点一次「恢复首次默认」（清掉 localStorage 快照）再刷新，文件才会生效。
+
 ## 部署到 Wallpaper Engine
 
 ```bash

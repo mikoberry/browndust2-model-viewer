@@ -8,6 +8,7 @@ import Toolbar from './components/Toolbar.jsx'
 import Inspector from './components/Inspector.jsx'
 import Timeline from './components/Timeline.jsx'
 import CompositionStage from './components/CompositionStage.jsx'
+import { ANIM_AUTO, ANIM_OFF, animToOption } from './components/CompositionPanel.jsx'
 import SpineStage from '../../lib/spine/SpineStage.jsx'
 import { pickDefaultAnimation, pickDefaultExpression, pickEntranceSequence } from '../../lib/animation.js'
 import { assetUrl } from '../../lib/assets.js'
@@ -22,7 +23,8 @@ const COMPOSE_DEFAULTS = {
   on: false,
   // 'entrance' = framing used while the entrance sequence plays (one entry per
   // clip: cut_A / cut_B / loop_2 …), 'composed' = the wallpaper's resting framing.
-  layer: 'entrance',
+  // Composed first: it is what the panel opens on (user preference).
+  layer: 'composed',
   // Which half of the active framing the sliders edit.
   layerKey: 'model',
   // Clip being tuned by hand. `follow` = mirror the clip actually on screen.
@@ -42,6 +44,13 @@ const COMPOSE_DEFAULTS = {
     clips: {},
   },
   sequence: '',
+  // Pinned loop animation / expression, in the panel's sentinel encoding
+  // (ANIM_AUTO = config null, ANIM_OFF = config '').
+  animation: ANIM_AUTO,
+  expression: ANIM_AUTO,
+  // Seconds skipped at the head of the loop animation (config animationStart).
+  animationStart: 0,
+  clickAnimation: { enabled: false, name: '' },
 }
 
 const NEUTRAL_LAYER = { scale: 1, offsetX: 0, offsetY: 0 }
@@ -134,10 +143,17 @@ export default function ViewerPage({ onGoWallpaper }) {
   const seekTokenRef = useRef(0)
   const selectedIdRef = useRef(selectedId)
   selectedIdRef.current = selectedId
+  // Latest model info for callbacks that must stay referentially stable but
+  // still see fresh values (model load vs config fetch race). fileConfigRef
+  // lives below, next to its state declaration.
+  const infoRef = useRef(null)
+  infoRef.current = info
 
   // ---- composition preview -----------------------------------------------
   const [compose, setCompose] = useState(COMPOSE_DEFAULTS)
   const [fileConfig, setFileConfig] = useState(null)
+  const fileConfigRef = useRef(null)
+  fileConfigRef.current = fileConfig
   const [composeToken, setComposeToken] = useState(0)
   const [composeFlash, setComposeFlash] = useState('')
   const flashTimerRef = useRef(0)
@@ -153,11 +169,28 @@ export default function ViewerPage({ onGoWallpaper }) {
       .then((raw) => {
         if (!alive || !raw) return
         setFileConfig(raw)
+        // The model usually loads after this fetch, but a cached asset can win
+        // the race. If one is already on screen and it is the config's model,
+        // re-apply the config's animation picks so the stage plays what the
+        // panel shows (handleLoaded had no config to read at that point).
+        const current = infoRef.current
+        if (current && raw.modelId === current.modelId) {
+          const names = new Set(current.animations.map((item) => item.name))
+          if (typeof raw.animation === 'string' && names.has(raw.animation)) setAnimation(raw.animation)
+          if (typeof raw.expression === 'string' && names.has(raw.expression)) setExpression(raw.expression)
+        }
         setCompose((prev) => ({
           ...prev,
           backdrop: typeof raw.backdrop === 'string' ? raw.backdrop : prev.backdrop,
           backdropTransform: mergeLayer(prev.backdropTransform, raw.backdropTransform),
           modelTransform: mergeLayer(prev.modelTransform, raw.modelTransform),
+          animation: animToOption(raw.animation),
+          expression: animToOption(raw.expression),
+          animationStart: toFinite(raw.animationStart, 0),
+          clickAnimation: {
+            enabled: raw.clickAnimation?.enabled === true,
+            name: typeof raw.clickAnimation?.name === 'string' ? raw.clickAnimation.name : '',
+          },
           entrance: {
             autoplay: raw.entrance?.autoplay !== false,
             blend: toFinite(raw.entrance?.blend, prev.entrance.blend),
@@ -173,7 +206,33 @@ export default function ViewerPage({ onGoWallpaper }) {
 
   useEffect(() => () => window.clearTimeout(flashTimerRef.current), [])
 
-  const updateCompose = useCallback((patch) => setCompose((prev) => ({ ...prev, ...patch })), [])
+  const updateCompose = useCallback(
+    (patch) => {
+      setCompose((prev) => ({ ...prev, ...patch }))
+      // The composition preview shares `animation` / `expression` with the main
+      // viewer stage, so pinning one from the panel plays it immediately.
+      // `follow: false` rides along from the panel but is meaningless here.
+      if ('animation' in patch) {
+        setAnimation(
+          patch.animation === ANIM_AUTO
+            ? pickDefaultAnimation(info?.animations ?? [])
+            : patch.animation === ANIM_OFF
+              ? ''
+              : patch.animation,
+        )
+      }
+      if ('expression' in patch) {
+        setExpression(
+          patch.expression === ANIM_AUTO
+            ? pickDefaultExpression(info?.animations ?? [])
+            : patch.expression === ANIM_OFF
+              ? ''
+              : patch.expression,
+        )
+      }
+    },
+    [info],
+  )
 
   const availableNames = useMemo(
     () => new Set((info?.animations ?? []).map((item) => item.name)),
@@ -312,13 +371,27 @@ export default function ViewerPage({ onGoWallpaper }) {
     setFitToken((token) => token + 1)
   }, [])
 
+  // The config file's animation / expression picks apply only to the model they
+  // were tuned for: that is what the composition panel previews and copies, so
+  // the stage must play the same thing. Any other selection keeps the
+  // auto-picked defaults (auto names / missing names fall through).
+  const configAnimationFor = (raw, info, fallback) => {
+    const names = new Set(info.animations.map((item) => item.name))
+    return fileConfigRef.current &&
+      fileConfigRef.current.modelId === info.modelId &&
+      typeof raw === 'string' &&
+      names.has(raw)
+      ? raw
+      : fallback
+  }
+
   const handleLoaded = useCallback((nextInfo) => {
     // A previous model can finish loading one commit late while the user is
     // switching models; never let it overwrite the new selection.
     if (nextInfo.modelId !== selectedIdRef.current) return
     setInfo(nextInfo)
-    setAnimation(pickDefaultAnimation(nextInfo.animations))
-    setExpression(pickDefaultExpression(nextInfo.animations))
+    setAnimation(configAnimationFor(fileConfigRef.current?.animation, nextInfo, pickDefaultAnimation(nextInfo.animations)))
+    setExpression(configAnimationFor(fileConfigRef.current?.expression, nextInfo, pickDefaultExpression(nextInfo.animations)))
     setSkin('')
     setPlaying(true)
     setError(null)
@@ -366,7 +439,10 @@ export default function ViewerPage({ onGoWallpaper }) {
   // debug camera and the composition preview measure the frame, not the
   // workspace. The frame element is ALWAYS rendered (only its box changes), so
   // switching shape never remounts the stage / reloads the asset.
-  const [stageRatio, setStageRatio] = useState('auto')
+  // Default '16:9': the composition is judged against a real wallpaper screen
+  // shape, so the letterboxed 1920×1080 box is the sensible starting point.
+  // 'auto' (fills the workspace) stays available in the toolbar.
+  const [stageRatio, setStageRatio] = useState('16:9')
   const stageAreaRef = useRef(null)
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
   useEffect(() => {
@@ -496,6 +572,9 @@ export default function ViewerPage({ onGoWallpaper }) {
             className={`stage-frame${stageFrame ? ' is-locked' : ''}`}
             style={compose.on ? stageFrameStyle : { ...stageFrameStyle, ...stageStyle }}
           >
+            {/* Visible marker of the locked ratio (e.g. 16:9). Only while the
+                frame is actually letterboxed; 'auto' has no shape to announce. */}
+            {stageFrame && <span className="stage-frame-ratio">{stageRatio}</span>}
             {/* The wrapper is always present so toggling the preview never remounts
                 the WebGL stage (and thus never reloads the asset). */}
             <CompositionStage
@@ -508,8 +587,9 @@ export default function ViewerPage({ onGoWallpaper }) {
               <SpineStage
                 model={selected}
                 animation={animation}
+                animationStart={compose.animationStart}
                 expression={expression}
-                sequence={compose.on ? previewSequence : null}
+                sequence={compose.on && entranceFraming ? previewSequence : null}
                 sequenceToken={composeToken}
                 onSequenceStage={handleStageClip}
                 onSequenceDone={handleSequenceDone}
@@ -572,8 +652,11 @@ export default function ViewerPage({ onGoWallpaper }) {
           state: compose,
           design: composeDesign,
           backdrops: selected.backdrops,
+          animations: info?.animations ?? [],
           playingSequence,
-          fileConfig,
+          // The copied config must target the model being TUNED, not whatever
+          // modelId the file still holds — so it always follows the selection.
+          fileConfig: fileConfig ? { ...fileConfig, modelId: selected?.id ?? fileConfig.modelId } : fileConfig,
           flash: composeFlash,
           onPatch: updateCompose,
           onDetect: handleComposeDetect,

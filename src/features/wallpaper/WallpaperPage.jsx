@@ -391,6 +391,7 @@ export default function WallpaperPage() {
             <SpineStage
               model={model}
               animation={animation}
+              animationStart={Number(config.animationStart) || 0}
               expression={expression}
               // `null` while no entrance is running: an empty list is exactly
               // the stage's "just play `animation`" mode, so with autoplay off

@@ -60,6 +60,7 @@ index.html                       # 挂载点；内联脚本规范化 /spine-view
 vite.config.js                   # react() + modelLibraryPlugin() + wallkitWE()，base: './'
 public/
   wallpaper.config.json          # 出厂默认配置，原样复制到 dist/ 根；用户「记录」过则以记录为准
+wallpaper.presets.json           # 人物配置库（仓库根目录、纯手工维护、代码不读、不进 dist）：每个人物一份完整配置，换人物靠手动复制
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR 尺寸）
   model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile

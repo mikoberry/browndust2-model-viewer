@@ -33,8 +33,14 @@ import LocaleSwitcher from './LocaleSwitcher.jsx'
 import { t, useLocale } from '../../../lib/i18n.js'
 
 const SCALE_MIN = 0.25
-const SCALE_MAX = 3
+const SCALE_MAX = 5 // user cap: 500% of the composed size
 const SCALE_STEP = 0.01
+
+// Offsets are edited in PERCENT of the design canvas (user request): the
+// sliders span ±200% (100% = one full canvas width / height). Internally the
+// tweaks stay in design pixels — the slider only converts at its edges, so the
+// recorded config keeps the same pixel numbers as before.
+const OFFSET_LIMIT = 200
 
 // Parallax strength is a percentage of the design canvas; ±20% is already a
 // huge drift on a 2048px artwork, so the slider stops there.
@@ -44,26 +50,24 @@ const PARALLAX_STEP = 0.5
 
 const round2 = (value) => Math.round(value * 100) / 100
 
-const formatScale = (value) => `${Number(value).toFixed(2)}×`
+const formatScale = (value) => `${Math.round(value * 100)}%`
 
 const formatPercent = (value) => `${round2(value ?? 0)}%`
 
-// Offsets are shown as raw design pixels plus the equivalent percentage, so the
-// number maps 1:1 onto the config value the user will copy. Kept compact (no
-// spaces around the separator) because the two offsets share one row.
-function formatOffset(value, basis) {
-  const percent = basis > 0 ? (value / basis) * 100 : 0
-  return `${Math.round(value)}px · ${percent.toFixed(1)}%`
+// Offsets are shown as a percentage of the design canvas first, with the
+// underlying design pixels in parentheses (that is the number the config file
+// stores). Kept compact (no spaces around the separator) because the two
+// offsets share one row.
+function formatOffset(percent, pixels) {
+  return `${percent.toFixed(1)}% (${Math.round(pixels)}px)`
 }
 
-function LayerGroup({ title, note, spec, design, onChange, onReset }) {
-  // A full canvas each way: on a 21:9 screen the backdrop has to travel well
-  // past half its own width to reach the letterbox, so half a canvas is not
-  // enough. The canvas is no longer clipped, so these offsets really do move
-  // the layer across the whole screen (the viewport clips it, not the canvas).
-  const limitX = Math.max(1, Math.round(design.width))
-  const limitY = Math.max(1, Math.round(design.height))
+// Design-pixel offset -> percent of the design canvas, and back. `basis` is
+// design.width for X and design.height for Y.
+const offsetToPercent = (pixels, basis) => (basis > 0 ? (pixels / basis) * 100 : 0)
+const offsetFromPercent = (percent, basis) => (percent / 100) * basis
 
+function LayerGroup({ title, note, spec, design, onChange, onReset }) {
   return (
     <Group title={title} note={note} onReset={onReset}>
       <SliderField
@@ -81,21 +85,27 @@ function LayerGroup({ title, note, spec, design, onChange, onReset }) {
       <div className="ws-pair">
         <SliderField
           label={t('comp.offsetX')}
-          readout={formatOffset(spec.offsetX, design.width)}
-          min={-limitX}
-          max={limitX}
-          step={1}
-          value={spec.offsetX}
-          onChange={(offsetX) => onChange({ offsetX })}
+          readout={formatOffset(
+            offsetToPercent(spec.offsetX, design.width),
+            spec.offsetX,
+          )}
+          min={-OFFSET_LIMIT}
+          max={OFFSET_LIMIT}
+          step={0.5}
+          value={offsetToPercent(spec.offsetX, design.width)}
+          onChange={(percent) => onChange({ offsetX: offsetFromPercent(percent, design.width) })}
         />
         <SliderField
           label={t('comp.offsetY')}
-          readout={formatOffset(spec.offsetY, design.height)}
-          min={-limitY}
-          max={limitY}
-          step={1}
-          value={spec.offsetY}
-          onChange={(offsetY) => onChange({ offsetY })}
+          readout={formatOffset(
+            offsetToPercent(spec.offsetY, design.height),
+            spec.offsetY,
+          )}
+          min={-OFFSET_LIMIT}
+          max={OFFSET_LIMIT}
+          step={0.5}
+          value={offsetToPercent(spec.offsetY, design.height)}
+          onChange={(percent) => onChange({ offsetY: offsetFromPercent(percent, design.height) })}
         />
       </div>
     </Group>

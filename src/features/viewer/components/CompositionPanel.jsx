@@ -10,20 +10,39 @@
 // time: each of cut_A / cut_B / loop_2 keeps its own backdrop, scale and offsets,
 // and the wallpaper joins them at playback time.
 //
+// It also edits the loop animation / expression / click reaction — the fields
+// that used to be file-only — and "复制配置" emits all of them (plus the
+// currently selected modelId) alongside the composition values.
+//
 // Unlike the wallpaper drawer this page has a real keyboard and no CEF host, so
 // native range / number / select inputs are fine here. Keep them out of the
 // wallpaper feature — that is where the popup and no-keyboard rules apply.
 
 import { useEffect, useState } from 'react'
+import { FACE_ANIM } from '../../../lib/animation.js'
 
 const round2 = (value) => Math.round(value * 100) / 100
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
 
 const SCALE_MIN = 0.25
-const SCALE_MAX = 3
+const SCALE_MAX = 5 // user cap: 500% of the composed size
 const SCALE_STEP = 0.01
 
+// Fixed design-pixel limits for both layers' offsets (user request), so the
+// range is identical for every backdrop size.
+const OFFSET_LIMIT = 200
+
 const NEUTRAL = { scale: 1, offsetX: 0, offsetY: 0 }
+
+// The config file expresses "which animation plays after the entrance" as null
+// (auto-pick) and '' (disable the track); a <select> cannot hold those values,
+// so the panel maps them to two sentinel strings.
+export const ANIM_AUTO = '__auto__'
+export const ANIM_OFF = '__off__'
+export const animToOption = (value) =>
+  value === undefined || value === null ? ANIM_AUTO : value === '' ? ANIM_OFF : String(value)
+export const optionToAnim = (option) =>
+  option === ANIM_AUTO ? null : option === ANIM_OFF ? '' : option
 
 const layerKeyOf = (which) => (which === 'backdrop' ? 'backdropTransform' : 'modelTransform')
 
@@ -71,15 +90,21 @@ function NumberRow({ label, value, min, max, step, onChange }) {
   )
 }
 
+// Offsets are edited in PERCENT of the design canvas (user request), matching
+// the wallpaper drawer: sliders span ±200% (100% = one full canvas width /
+// height). The stored spec stays in design pixels; conversion happens here.
+const OFFSET_TO_PERCENT = (pixels, basis) => (basis > 0 ? (pixels / basis) * 100 : 0)
+const OFFSET_FROM_PERCENT = (percent, basis) => (percent / 100) * basis
+
 function LayerFields({ title, spec, design, onChange }) {
-  const limitX = Math.max(1, Math.round(design.width))
-  const limitY = Math.max(1, Math.round(design.height))
   const value = (raw, fallback) => (Number.isFinite(raw) ? raw : fallback)
+  const offsetX = value(spec.offsetX, 0)
+  const offsetY = value(spec.offsetY, 0)
   return (
     <>
       <div className="section-head">
         <h3>{title}</h3>
-        <span className="badge">{value(spec.scale, 1).toFixed(2)}×</span>
+        <span className="badge">{Math.round(value(spec.scale, 1) * 100)}%</span>
       </div>
       <NumberRow
         label="缩放"
@@ -90,20 +115,20 @@ function LayerFields({ title, spec, design, onChange }) {
         onChange={(scale) => onChange({ scale })}
       />
       <NumberRow
-        label="水平偏移"
-        value={value(spec.offsetX, 0)}
-        min={-limitX}
-        max={limitX}
-        step={1}
-        onChange={(offsetX) => onChange({ offsetX })}
+        label="水平偏移 (%)"
+        value={OFFSET_TO_PERCENT(offsetX, design.width)}
+        min={-OFFSET_LIMIT}
+        max={OFFSET_LIMIT}
+        step={0.5}
+        onChange={(percent) => onChange({ offsetX: OFFSET_FROM_PERCENT(percent, design.width) })}
       />
       <NumberRow
-        label="垂直偏移"
-        value={value(spec.offsetY, 0)}
-        min={-limitY}
-        max={limitY}
-        step={1}
-        onChange={(offsetY) => onChange({ offsetY })}
+        label="垂直偏移 (%)"
+        value={OFFSET_TO_PERCENT(offsetY, design.height)}
+        min={-OFFSET_LIMIT}
+        max={OFFSET_LIMIT}
+        step={0.5}
+        onChange={(percent) => onChange({ offsetY: OFFSET_FROM_PERCENT(percent, design.height) })}
       />
     </>
   )
@@ -154,6 +179,16 @@ function buildConfigText(fileConfig, state) {
     backdrop: state.backdrop,
     backdropTransform: layer(state.backdropTransform),
     modelTransform: layer(state.modelTransform),
+    animation: optionToAnim(state.animation),
+    expression: optionToAnim(state.expression),
+    // Only written when actually trimming, so untouched configs stay clean.
+    ...(Number(state.animationStart) > 0
+      ? { animationStart: round2(Number(state.animationStart)) }
+      : {}),
+    clickAnimation: {
+      enabled: state.clickAnimation?.enabled === true,
+      name: state.clickAnimation?.name ?? '',
+    },
     entrance: {
       autoplay: state.entrance.autoplay !== false,
       blend: round2(state.entrance.blend),
@@ -171,6 +206,7 @@ export default function CompositionPanel({
   state,
   design,
   backdrops,
+  animations,
   playingSequence,
   fileConfig,
   flash,
@@ -260,19 +296,30 @@ export default function CompositionPanel({
           <div className="seg-row" role="group" aria-label="构图层">
             <button
               type="button"
-              className={`btn${isEntrance ? ' is-on' : ''}`}
-              onClick={() => onPatch({ layer: 'entrance' })}
-              title="入场序列播放期间，每一段各自的构图"
-            >
-              入场（按段）
-            </button>
-            <button
-              type="button"
               className={`btn${!isEntrance ? ' is-on' : ''}`}
               onClick={() => onPatch({ layer: 'composed' })}
               title="入场结束后循环播放时使用的构图"
             >
               构图（循环时）
+            </button>
+            <button
+              type="button"
+              className={`btn${isEntrance ? ' is-on' : ''}`}
+              onClick={() =>
+                // Entering the entrance layer means EDITING a shot: loop the
+                // selected clip (solo) instead of running the whole chain — the
+                // chain only plays via「播放完整入场」. Without a clip yet, take
+                // the first one so the stage does not run the full sequence.
+                onPatch({
+                  layer: 'entrance',
+                  solo: true,
+                  follow: false,
+                  clip: state.clip && names.includes(state.clip) ? state.clip : names[0] || '',
+                })
+              }
+              title="单独循环播放选中的那一段，方便调每段的构图；完整入场用下面的「播放完整入场」"
+            >
+              入场（按段）
             </button>
           </div>
 
@@ -430,6 +477,81 @@ export default function CompositionPanel({
               ? `当前只循环 ${clipName}（单段预览），不会拼接其它段。`
               : `实际播放：${playingSequence.length ? playingSequence.join(' → ') : '无（只循环单个动画）'}`}
           </p>
+
+          <div className="section-head">
+            <h3>动画</h3>
+          </div>
+          <span className="hint">循环动画（animation）· 切换立即在预览生效</span>
+          <select
+            className="full-select"
+            value={state.animation ?? ANIM_AUTO}
+            aria-label="循环动画"
+            onChange={(event) => onPatch({ animation: event.target.value, follow: false })}
+          >
+            <option value={ANIM_AUTO}>自动（按 loop_2 → idle → loop 挑选）</option>
+            <option value={ANIM_OFF}>禁用（不播任何动画）</option>
+            {(animations ?? []).map((item) => (
+              <option key={item.name} value={item.name}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+          <span className="hint">表情（expression）· 通常选 face / _face 开头的那条</span>
+          <select
+            className="full-select"
+            value={state.expression ?? ANIM_AUTO}
+            aria-label="表情动画"
+            onChange={(event) => onPatch({ expression: event.target.value, follow: false })}
+          >
+            <option value={ANIM_AUTO}>自动（挑第一个表情动画）</option>
+            <option value={ANIM_OFF}>禁用（不叠表情轨道）</option>
+            {(animations ?? []).map((item) => (
+              <option key={item.name} value={item.name}>
+                {item.name}
+                {FACE_ANIM.test(item.name) ? ' · 表情' : ''}
+              </option>
+            ))}
+          </select>
+          <span className="hint">跳过开头（animationStart，秒）· 待机从第几秒开始播，用来跳过滑入等入场动作</span>
+          <NumberRow
+            label="起始秒数"
+            value={state.animationStart ?? 0}
+            min={0}
+            max={10}
+            step={0.1}
+            onChange={(animationStart) => onPatch({ animationStart, follow: false })}
+          />
+          <label className="check-row">
+            <input
+              type="checkbox"
+              checked={state.clickAnimation?.enabled === true}
+              onChange={(event) =>
+                onPatch({
+                  clickAnimation: { ...(state.clickAnimation ?? { name: '' }), enabled: event.target.checked },
+                })
+              }
+            />
+            点击模型播放一次动作（clickAnimation）
+          </label>
+          {state.clickAnimation?.enabled === true && (
+            <select
+              className="full-select"
+              value={state.clickAnimation?.name ?? ''}
+              aria-label="点击动画"
+              onChange={(event) =>
+                onPatch({ clickAnimation: { ...state.clickAnimation, name: event.target.value } })
+              }
+            >
+              <option value="">（未选择）</option>
+              {(animations ?? [])
+                .filter((item) => !FACE_ANIM.test(item.name))
+                .map((item) => (
+                  <option key={item.name} value={item.name}>
+                    {item.name}
+                  </option>
+                ))}
+            </select>
+          )}
 
           <div className="section-head">
             <h3>写回壁纸</h3>

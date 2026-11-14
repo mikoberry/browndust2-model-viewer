@@ -143,6 +143,12 @@ export const WALLPAPER = {
   animation: null,
   expression: null,
 
+  // Seconds to skip at the head of the looping `animation`. Some BD2 idle
+  // loops bake the character's slide-in into their first frames — set this to
+  // just past that (e.g. 1.2) to start directly on the settled pose. The
+  // entrance sequence clips are NOT trimmed; only the resting loop is.
+  animationStart: 0,
+
   // Entrance sequence on track 0: names played back to back once, and the LAST
   // one then loops. BD2 boss/character cutscenes ship a `cut_A` / `cut_B` pair
   // (some models spell it `A_cut` / `B_cut`, a few add `C_cut`) that lead into
