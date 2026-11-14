@@ -6,9 +6,11 @@
 //
 //   npm run build:home
 //
-// Equivalent to `MODEL_ONLY="<home modelId>" vite build`; the id is read from
-// src/features/wallpaper/config.js so it can never drift from what '/' actually
-// renders.
+// Equivalent to `MODEL_ONLY="<home modelId>" vite build`. The id comes from
+// `public/wallpaper.config.json` FIRST — that file ships inside dist/ and is
+// what '/' actually renders — so the packaged model can never drift from the
+// shipped configuration. config.js is only the built-in fallback for when the
+// JSON cannot be fetched (file:// builds).
 
 import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -16,13 +18,22 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const CONFIG = path.join(ROOT, 'src', 'features', 'wallpaper', 'config.js')
+const SHIPPED_CONFIG = path.join(ROOT, 'public', 'wallpaper.config.json')
+const BUILTIN_CONFIG = path.join(ROOT, 'src', 'features', 'wallpaper', 'config.js')
 
 function readHomeModelId() {
-  const text = readFileSync(CONFIG, 'utf8')
+  // Factory default (shipped next to index.html, highest priority without a
+  // user recording): the model the wallpaper will actually load.
+  try {
+    const raw = JSON.parse(readFileSync(SHIPPED_CONFIG, 'utf8'))
+    if (typeof raw?.modelId === 'string' && raw.modelId.trim()) return raw.modelId
+  } catch {
+    // Missing / unreadable file: fall through to the built-in default.
+  }
+  const text = readFileSync(BUILTIN_CONFIG, 'utf8')
   const match = /modelId:\s*'([^']+)'/.exec(text)
   if (!match) {
-    console.error('✗ 无法从 config.js 读取 modelId')
+    console.error('✗ 无法读取 modelId（public/wallpaper.config.json 与 config.js 都失败）')
     process.exit(1)
   }
   return match[1]
