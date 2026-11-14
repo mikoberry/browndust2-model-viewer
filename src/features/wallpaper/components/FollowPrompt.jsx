@@ -28,6 +28,14 @@ export default function FollowPrompt({ onDismiss }) {
           <path d="M6 6l12 12M18 6L6 18" />
         </svg>
       </button>
+      {/* Countdown bar: shrinks linearly over exactly the auto-dismiss window
+          (duration comes from the same constant, so they can never drift). */}
+      <span className="wallpaper-follow-progress" aria-hidden="true">
+        <span
+          className="wallpaper-follow-progress-fill"
+          style={{ animationDuration: `${AUTO_DISMISS_MS}ms` }}
+        />
+      </span>
     </div>
   )
 }

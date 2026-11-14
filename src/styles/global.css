@@ -1322,6 +1322,39 @@ code {
   height: calc(12px * var(--ui-scale));
 }
 
+/* Countdown bar along the card's bottom edge. The fill animates with a scaleX
+   transform (compositor-only, no layout) over the same duration as the
+   auto-dismiss timer — that duration is set inline from FollowPrompt's
+   AUTO_DISMISS_MS so the two can never drift apart. */
+.wallpaper-follow-progress {
+  position: absolute;
+  left: calc(10px * var(--ui-scale));
+  right: calc(10px * var(--ui-scale));
+  bottom: calc(3px * var(--ui-scale));
+  height: calc(2px * var(--ui-scale));
+  border-radius: calc(1px * var(--ui-scale));
+  background: rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.wallpaper-follow-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.55);
+  transform-origin: left center;
+  animation: wallpaper-follow-progress 5s linear both;
+}
+
+@keyframes wallpaper-follow-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
 @keyframes wallpaper-follow-in {
   from {
     opacity: 0;
