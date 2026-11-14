@@ -17,6 +17,93 @@
         )
       }
     </script>
+    <script>
+      // Media re-arm shim (Wallpaper Engine only; a no-op in a browser).
+      //
+      // WallKit's bridges register in <head>, but WE pushes the current media
+      // state roughly once per page load. The self-contained file:// build
+      // (`build:we:embed`) puts 36 MB of base64 ahead of the entry script, so
+      // that one push can land before the page is in a fit state and nothing
+      // ever arrives until the next track change — the album card stays absent.
+      //
+      // Re-registering the listeners is harmless (they are idempotent writes
+      // into the same `__wallkitMedia` object WallKit created) and makes WE
+      // deliver the current state again. `__BD2_MEDIA__` records what happened,
+      // so a failure can be diagnosed from devtools without a rebuild.
+      ;(function () {
+        var w = window
+        var media = function () {
+          return w.__wallkitMedia
+        }
+        var empty = function () {
+          var m = media()
+          return !m || !(m.title || m.artist || m.albumTitle || m.thumbnail)
+        }
+        var nav = null
+        try {
+          nav = (performance.getEntriesByType('navigation')[0] || {}).type || null
+        } catch (error) {
+          nav = null
+        }
+        var diag = (w.__BD2_MEDIA__ = {
+          nav: nav,
+          startedAt: Date.now(),
+          armedAt: [],
+          hits: 0,
+        })
+
+        function onThumbnail(event) {
+          var m = media()
+          if (!m || !event) return
+          diag.hits += 1
+          m.thumbnail = event.thumbnail || ''
+          m.primaryColor = event.primaryColor || ''
+          m.textColor = event.textColor || ''
+          m.updatedAt = Date.now()
+        }
+
+        function onProperties(event) {
+          var m = media()
+          if (!m || !event) return
+          diag.hits += 1
+          m.title = event.title || ''
+          m.artist = event.artist || ''
+          m.albumTitle = event.albumTitle || ''
+          m.updatedAt = Date.now()
+        }
+
+        function onPlayback(event) {
+          var m = media()
+          if (!m || !event) return
+          diag.hits += 1
+          var constants = w.wallpaperMediaIntegration
+          if (!constants) {
+            m.playback = null
+          } else if (event.state === constants.PLAYBACK_PLAYING) {
+            m.playback = 'playing'
+          } else if (event.state === constants.PLAYBACK_PAUSED) {
+            m.playback = 'paused'
+          } else {
+            m.playback = 'stopped'
+          }
+        }
+
+        function arm() {
+          if (!empty()) return
+          if (typeof w.wallpaperRegisterMediaThumbnailListener !== 'function') return
+          diag.armedAt.push(Date.now() - diag.startedAt)
+          w.wallpaperRegisterMediaThumbnailListener(onThumbnail)
+          w.wallpaperRegisterMediaPropertiesListener(onProperties)
+          w.wallpaperRegisterMediaPlaybackListener(onPlayback)
+        }
+
+        // `load` first: the engine's one-shot push usually lands around there.
+        w.addEventListener('load', arm)
+        // And a few retries in case the engine had no media session yet.
+        var retries = [1500, 4000, 9000, 20000]
+        for (var i = 0; i < retries.length; i += 1) setTimeout(arm, retries[i])
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

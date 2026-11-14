@@ -249,3 +249,18 @@ npm run deploy:we                # 只复制现有 dist/，产物形态原样带
 
 `BD2_EMBED` 不设即为原 ESM 构建（`npm run build`）。WE 若在后续版本恢复 file 访问，
 直接改用 `vite build` 的产物即可，embed 产物在 http 下同样能跑，只是白背 36MB。
+
+### 10.4 专辑封面在 embed 下「首次打开偶尔缺失」
+
+现象：稳定版 WE + embed 产物，首次打开有概率整块专辑卡片不出现；`window.__wallkitMedia`
+全空（`thumbnail` / `title` 都是 `''`），切一次歌即恢复。plain 产物从不出现。
+
+根因在 WE 的推送模型：媒体状态**一次页面加载只推一次**（WallKit 的 `we/vite-plugin.js` 注释原文：
+"in some builds stops the callback from firing at all"），错过就只能等下一次切歌。embed 首屏压着
+36MB `embed-assets.js`，这一次推送容易落在一个很糟的窗口里。
+
+处理：`index.html` 内置一个「补登记」shim（`__BD2_MEDIA__`），在 `load` 以及 1.5s / 4s / 9s / 20s
+时若 `__wallkitMedia` 仍为空，就重新注册三个媒体监听器——WE 会在注册时补发当前状态，写回同一个对象，
+对已正常的会话是纯粹的 no-op（`empty()` 命中即返回）。排查用 `__BD2_MEDIA__`：
+`nav` 是 `navigate` 还是 `reload`（`reload` 说明页面被重载过）、`armedAt` 记录每次补登记的毫秒偏移、
+`hits` 是监听器真正被调用的次数。
