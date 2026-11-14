@@ -225,17 +225,26 @@ export default function WallpaperPage() {
   const [loadFailed, setLoadFailed] = useState(false)
   const sceneReady =
     !model || loadFailed || (Boolean(info) && backdropReady && clipsReady)
-  // The cover starts fading the moment the scene is ready (0.5s CSS), and the
-  // entrance is armed slightly later so cut_A plays FULLY visible — the exact
-  // conditions of a manual replay.
+  // The entrance arms almost immediately after the scene is ready — just two
+  // committed frames, so the stage has painted once under the still-opaque
+  // cover. cut_A's frame 0 then starts BEHIND the cover (which fades over
+  // 0.5s), so the resting composition is never shown on its own: what the
+  // cover reveals is the entrance already in motion. Waiting longer (as an
+  // earlier version did) exposed the resting framing for hundreds of ms.
   const [entranceArmed, setEntranceArmed] = useState(false)
   useEffect(() => {
     if (!sceneReady) {
       setEntranceArmed(false)
       return undefined
     }
-    const timer = setTimeout(() => setEntranceArmed(true), 550)
-    return () => clearTimeout(timer)
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setEntranceArmed(true))
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
   }, [sceneReady])
   // The cover itself is removed shortly after its fade ends.
   const [loadingGone, setLoadingGone] = useState(false)
