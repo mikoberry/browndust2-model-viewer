@@ -90,6 +90,7 @@ src/
       color.js                   # hex ↔ HSV 换算（取色面板用，无 React/DOM，可在 Node 里测）
       useParallax.js             # 鼠标视差：归一化指针 + 缓动，写 CSS 变量（背景）与 offsetRef（模型）
       useCompositionBlend.js     # 段间 / 入场 → 固定构图的渐变：写 --backdrop-* 与 transformRef，不进 state
+      useResampledBars.js        # 频谱柱数：把实时 128 帧按 resampleBars 折成 N 根（wallkit 要求调用方折叠）
       components/
         WallpaperSettings.jsx    # 壁纸设置抽屉：主题色 + 「构图 / 时钟 / 频谱 / 专辑卡 / 氛围 / 指针」tab
         SettingsBoundary.jsx     # 抽屉的错误边界（面板崩了只隐藏面板，壁纸继续跑）

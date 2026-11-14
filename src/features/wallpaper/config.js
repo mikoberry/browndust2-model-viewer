@@ -243,8 +243,10 @@ const BUILTIN_WALLPAPER = {
       // `#rrggbb` override for the text colour; empty = follow `overlay.accent`.
       color: '',
       anchor: 'bottom-left',
-      offsetX: 4,
-      offsetY: 4,
+      // 0 = flush with the anchored edge. The clock is a text card with its own
+      // padding, so a percentage inset just pushed it off the corner.
+      offsetX: 0,
+      offsetY: 0,
       size: 100,
       use24Hour: true,
       // Pointer-following tilt, and whether the card pumps with the bass.
@@ -270,6 +272,11 @@ const BUILTIN_WALLPAPER = {
       // Fallback scale, only read when width / height are left out entirely
       // (hand-written configs); the drawer does not expose it.
       size: 100,
+      // Columns drawn. WallKit hands over 128 bars and folds nothing itself,
+      // so a smaller number means chunkier bars (8 is the readable floor) and
+      // 128 is "one column per band", i.e. no folding at all. The `dots` style
+      // ignores it — it derives its own column count from the canvas width.
+      barCount: 128,
       intensity: 100,
       curve: 1,
     },
@@ -281,6 +288,13 @@ const BUILTIN_WALLPAPER = {
       // `overlay.accent`. (`color` above recolours the card's inline spectrum,
       // not the text.)
       textColor: '',
+      // Tri-state inline spectrum, mirroring wallkit's `spectrum` prop:
+      // 'auto' leaves it to the layout (off for `vinyl`, on for the other ten,
+      // because the record's ring bleeds 22% past the card), 'on' / 'off'
+      // force it. Stored as a string so the drawer can round-trip it through
+      // JSON; `undefined` (the library's own "follow the layout" value) cannot
+      // survive a config file.
+      spectrum: 'auto',
       anchor: 'top-left',
       offsetX: 4,
       offsetY: 4,

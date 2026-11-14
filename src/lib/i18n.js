@@ -222,9 +222,11 @@ const MESSAGES = {
   'widget.color': { zh: '颜色', en: 'Colour', ja: '色', ko: '색상' },
   'widget.textColor': { zh: '文字颜色', en: 'Text colour', ja: '文字色', ko: '글자 색상' },
   'widget.spectrumColor': { zh: '频谱颜色', en: 'Spectrum colour', ja: 'スペクトラム色', ko: '스펙트럼 색상' },
+  'widget.albumSpectrum': { zh: '卡片频谱', en: 'Card spectrum', ja: 'カード内スペクトラム', ko: '카드 스펙트럼' },
   'widget.style': { zh: '样式', en: 'Style', ja: 'スタイル', ko: '스타일' },
   'widget.intensity': { zh: '强度', en: 'Intensity', ja: '強度', ko: '강도' },
   'widget.curve': { zh: '曲线', en: 'Curve', ja: 'カーブ', ko: '커브' },
+  'widget.barCount': { zh: '柱子数量', en: 'Bar count', ja: 'バーの本数', ko: '막대 수' },
   'widget.density2': { zh: '密度', en: 'Density', ja: '密度', ko: '밀도' },
   'widget.opacity': { zh: '不透明度', en: 'Opacity', ja: '不透明度', ko: '불투명도' },
   'widget.form': { zh: '形态', en: 'Form', ja: '形状', ko: '형태' },
@@ -262,6 +264,12 @@ const MESSAGES = {
     ja: '幅はビューポート幅、高さはビューポート高さの比率（100 = 画面いっぱい）。リング系は「直径」のみで正方形を保ちます。',
     ko: '너비는 뷰포트 너비, 높이는 뷰포트 높이 비율(100 = 화면 가득). 링형은 "지름"만 쓰고 정사각형을 유지합니다.',
   },
+  'spectrum.barCountNote': {
+    zh: '128 = 每个频段一根，最密；数值越小柱子越粗。点阵样式按画布宽度自己排布，不受此项影响。',
+    en: '128 draws one bar per band (densest); smaller values make chunkier bars. The dots style lays itself out from the canvas width and ignores this.',
+    ja: '128 は1バンド1本で最も密。小さくするとバーが太くなります。ドットはキャンバス幅から本数を決めるため、この設定の影響を受けません。',
+    ko: '128은 밴드당 한 개로 가장 촘촘합니다. 값을 줄이면 막대가 굵어집니다. 도트는 캔버스 너비로 개수를 정하므로 이 설정과 무관합니다.',
+  },
 
   'album.enable': { zh: '在壁纸上显示专辑卡', en: 'Show album art on the wallpaper', ja: '壁紙にアルバムアートを表示', ko: '배경화면에 앨범 아트 표시' },
   'album.enableNote': {
@@ -269,6 +277,15 @@ const MESSAGES = {
     en: 'Not rendered when no media is playing; no empty placeholder',
     ja: '再生中のメディアがない場合は描画せず、空のプレースホルダも表示しません',
     ko: '재생 중인 미디어가 없으면 렌더링하지 않음 (빈 자리 없음)',
+  },
+  'album.spectrumAuto': { zh: '跟随布局', en: 'Follow layout', ja: 'レイアウトに従う', ko: '레이아웃 따름' },
+  'album.spectrumOn': { zh: '显示', en: 'Show', ja: '表示', ko: '표시' },
+  'album.spectrumOff': { zh: '隐藏', en: 'Hide', ja: '非表示', ko: '숨김' },
+  'album.spectrumNote': {
+    zh: '「跟随布局」时唱片不画外圈、其余布局都画；唱片外圈会向外出血 22%，偏移为 0 贴边时柱尖会被裁掉。',
+    en: '“Follow layout” draws no ring on the vinyl record (the other layouts draw their graph); the ring bleeds 22% past the card, so bars are clipped at the screen edge when the offset is 0.',
+    ja: '「レイアウトに従う」ではレコードに外環を描かず、他のレイアウトは描きます。外環は22%外側に広がるため、オフセット0で画面端に接するとバーの先が切れます。',
+    ko: '"레이아웃 따름"이면 레코드에는 외곽 링을 그리지 않고 나머지 레이아웃은 그립니다. 링은 22% 바깥으로 번지므로 오프셋이 0이면 화면 끝에서 막대 끝이 잘립니다.',
   },
 
   'ambient.enable': { zh: '在壁纸上显示氛围粒子', en: 'Show ambient particles', ja: '壁紙にアンビエント粒子を表示', ko: '배경화면에 앰비언트 입자 표시' },

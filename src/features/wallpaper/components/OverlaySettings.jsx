@@ -122,6 +122,17 @@ const ALBUM_VARIANTS = [
   { value: 'ticket', label: () => t('album.ticket') },
 ]
 
+// wallkit's card `spectrum` prop is tri-state (`undefined` = follow the layout);
+// the drawer has to pick a concrete value, so 'auto' stands for that `undefined`
+// and `WallpaperOverlay` maps it back. 'auto' is not the same as 'on': the
+// `vinyl` layout draws a ring that bleeds past the card, so the library keeps it
+// opt-in there.
+const ALBUM_SPECTRUM_OPTIONS = [
+  { value: 'auto', label: () => t('album.spectrumAuto') },
+  { value: 'on', label: () => t('album.spectrumOn') },
+  { value: 'off', label: () => t('album.spectrumOff') },
+]
+
 const AMBIENT_VARIANTS = [
   { value: 'snow', label: () => t('ambient.snow') },
   { value: 'sakura', label: () => t('ambient.sakura') },
@@ -235,7 +246,10 @@ function ClockPanel({ spec, accent, onChange, onReset }) {
               label={t('widget.size')}
               value={spec.size}
               min={40}
-              max={200}
+              // wallkit clamps `Clock` to CLOCK_SIZE_MAX (400 since 86fe749),
+              // so keep this in step with the library or the top of the range
+              // silently renders at the cap.
+              max={400}
               step={1}
               suffix="%"
               onChange={(size) => onChange({ size })}
@@ -363,6 +377,15 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
               </div>
             )}
             <p className="ws-note">{t('spectrum.sizeNote')}</p>
+            <SliderField
+              label={t('widget.barCount')}
+              value={spec.barCount ?? 128}
+              min={8}
+              max={128}
+              step={1}
+              onChange={(barCount) => onChange({ barCount })}
+            />
+            <p className="ws-note">{t('spectrum.barCountNote')}</p>
           </Group>
           <Group title={t('widget.position')}>
             <PlacementFields spec={spec} onChange={onChange} />
@@ -434,6 +457,13 @@ function AlbumPanel({ spec, accent, onChange, onReset }) {
               fallback={accent}
               onChange={(color) => onChange({ color })}
             />
+            <ChipField
+              label={t('widget.albumSpectrum')}
+              value={spec.spectrum ?? 'auto'}
+              options={ALBUM_SPECTRUM_OPTIONS}
+              onChange={(spectrum) => onChange({ spectrum })}
+            />
+            <p className="ws-note">{t('album.spectrumNote')}</p>
           </Group>
           <Group title={t('widget.position')}>
             <PlacementFields spec={spec} onChange={onChange} />

@@ -33,6 +33,7 @@ import {
   useWallpaperPaused,
 } from 'wallkit/we'
 import { WALLPAPER } from '../config.js'
+import { useResampledBars } from '../useResampledBars.js'
 import { useLocale, localeTag, weekdayName } from '../../../lib/i18n.js'
 
 // `Clock` deliberately owns no timer: the caller drives `now`. Ticking once a
@@ -104,7 +105,10 @@ function ClockWidget({ spec, accent, paused }) {
 // uses `width="46vh" height="46vh"` for a fixed circular diameter. We pass the
 // configured values through untouched; `''` simply means "let `size` decide".
 function SpectrumWidget({ spec, accent, paused }) {
-  const bars = useWallpaperAudio()
+  const source = useWallpaperAudio()
+  // WallKit draws one column per bar and folds nothing itself, so the bar count
+  // is applied to the live frame here (see `useResampledBars`).
+  const bars = useResampledBars(source, spec.barCount, paused)
   return (
     <Spectrum
       bars={bars}
@@ -123,6 +127,12 @@ function SpectrumWidget({ spec, accent, paused }) {
   )
 }
 
+// WallKit's card `spectrum` is a tri-state: `undefined` follows the layout
+// (`vinyl` is a bare record, the other ten draw their graph), `true` / `false`
+// force it. Config files cannot hold `undefined`, so the drawer stores a string
+// and this is the only place it turns back into the library's value.
+const ALBUM_SPECTRUM = { auto: undefined, on: true, off: false }
+
 function AlbumWidget({ spec, accent, paused }) {
   const track = useWallpaperMedia(paused)
   const bars = useWallpaperAudio()
@@ -131,6 +141,7 @@ function AlbumWidget({ spec, accent, paused }) {
       track={track}
       bars={bars}
       variant={spec.variant}
+      spectrum={ALBUM_SPECTRUM[spec.spectrum ?? 'auto']}
       color={spec.textColor || accent || undefined}
       colorHex={spec.color || accent || undefined}
       size={spec.size}
