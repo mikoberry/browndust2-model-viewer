@@ -68,7 +68,7 @@ public/
   wallpaper.config.json          # 出厂默认配置，原样复制到 dist/ 根；用户「记录」过则以记录为准
 wallpaper.presets.json           # 人物配置库（仓库根目录、纯手工维护、代码不读、不进 dist）：每个人物一份完整配置，换人物靠手动复制
 scripts/
-  scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR 尺寸）
+  scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG/WebP/JPEG 头解析尺寸）
   model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile
   embed-build-plugin.mjs         # BD2_EMBED=1：素材 → base64 内嵌，index.html 换成 classic script（见 §12）
   verify-embed.mjs               # 纯 Node 自检 embed 产物，不需要浏览器
@@ -314,7 +314,8 @@ src/features/<feature>/
 `lib/spine/SpineStage.jsx` 的 `design` 分支。
 
 - `skel.width/height` 只是 setup pose 包围盒，**不是**设计分辨率。基准 = **对应背景图的原生像素尺寸**
-  （扫描器读 PNG IHDR 写入 manifest 的 `width`/`height`，构建期就确定）。
+  （扫描器解析 PNG IHDR / WebP VP8X·VP8·VP8L / JPEG SOF 写入 manifest 的 `width`/`height`，构建期就确定；
+  格式按 magic bytes 判断，不看扩展名，所以 `.webp` / `.jpg` 背景同样有正确尺寸）。
 - 背景 `<img>` 与 WebGL `<canvas>` 同为 `.wallpaper-design` 子元素，**共用唯一一个 CSS transform**；
   屏幕尺寸 / 比例变化只改这一个 `scale`（`contain` / `cover`），容器内部相对几何恒定。
 - `SpineStage` 的 `design` 模式用**加载时冻结的 `setupBounds`**（实时姿态包围盒会让动画播放时构图漂移），

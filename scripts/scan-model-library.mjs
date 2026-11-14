@@ -4,7 +4,7 @@
 //
 // Layout is free-form and recursive. The current library uses
 //   model-library/<character>/<skin>/  -> *.skel / *.atlas / page PNGs
-//   model-library/backdrops/<6-digit id>/ -> shared backdrop PNGs
+//   model-library/backdrops/<6-digit id>/ -> shared backdrop images (png/webp/jpg)
 // A "model" is a skeleton file (.skel binary or .json) paired with an .atlas.
 // Atlas pages are read from the atlas page-name lines (BD2 uses separate
 // _2.png ... _N.png files instead of one packed sheet).
@@ -40,23 +40,89 @@ function safeStat(file) {
   }
 }
 
-// Reads intrinsic pixel size from the PNG IHDR chunk. The wallpaper uses the
-// backdrop's native resolution as its fixed design canvas, so the size must be
-// known at build time: measuring it in the browser would make the first frame
-// depend on image load timing and break the fixed-composition guarantee.
-function readPngSize(file) {
+// Reads the intrinsic pixel size of a PNG / WebP / JPEG header. The wallpaper
+// uses the backdrop's native resolution as its fixed design canvas, so the size
+// must be known at build time: measuring it in the browser would make the first
+// frame depend on image load timing and break the fixed-composition guarantee.
+//
+// Backdrops are allowed to be .webp (much smaller for the same artwork) and
+// .jpg, so this cannot assume PNG. The format is detected from magic bytes
+// rather than the extension, so a mislabelled file still measures correctly.
+function readImageSize(file) {
   try {
     const fd = fs.openSync(file, 'r')
-    const header = Buffer.alloc(24)
-    const read = fs.readSync(fd, header, 0, 24, 0)
+    const header = Buffer.alloc(64 * 1024)
+    const read = fs.readSync(fd, header, 0, header.length, 0)
     fs.closeSync(fd)
     if (read < 24) return null
-    if (header.subarray(1, 4).toString('ascii') !== 'PNG') return null
-    if (header.subarray(12, 16).toString('ascii') !== 'IHDR') return null
-    return { width: header.readUInt32BE(16), height: header.readUInt32BE(20) }
+
+    const head = header.subarray(0, read)
+    if (head[0] === 0x89 && head.subarray(1, 4).toString('ascii') === 'PNG') {
+      return readPngSize(head)
+    }
+    if (head.subarray(0, 4).toString('ascii') === 'RIFF' && head.subarray(8, 12).toString('ascii') === 'WEBP') {
+      return readWebpSize(head)
+    }
+    if (head[0] === 0xff && head[1] === 0xd8) {
+      // The SOF marker can sit behind a large EXIF block, so scan the file.
+      return readJpegSize(file)
+    }
+    return null
   } catch {
     return null
   }
+}
+
+function readPngSize(buf) {
+  if (buf.subarray(12, 16).toString('ascii') !== 'IHDR') return null
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) }
+}
+
+// WebP is a RIFF container; the first chunk after 'WEBP' tells us how to read
+// the dimensions: extended (VP8X, includes canvas size), lossy (VP8) or
+// lossless (VP8L).
+function readWebpSize(buf) {
+  const chunk = buf.subarray(12, 16).toString('ascii')
+  if (chunk === 'VP8X') {
+    return { width: buf.readUIntLE(24, 3) + 1, height: buf.readUIntLE(27, 3) + 1 }
+  }
+  if (chunk === 'VP8 ') {
+    // 3-byte frame tag, then the 0x9d 0x01 0x2a start code, then 14-bit sizes.
+    if (buf[23] !== 0x9d || buf[24] !== 0x01 || buf[25] !== 0x2a) return null
+    return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff }
+  }
+  if (chunk === 'VP8L') {
+    if (buf[20] !== 0x2f) return null
+    const bits = buf.readUInt32LE(21)
+    return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 }
+  }
+  return null
+}
+
+// Walks the JPEG segment chain until a Start Of Frame marker, which carries the
+// real pixel size (SOF0 baseline / SOF2 progressive / the rest of the family).
+function readJpegSize(file) {
+  const buf = fs.readFileSync(file)
+  let offset = 2
+  while (offset + 9 < buf.length) {
+    if (buf[offset] !== 0xff) {
+      offset += 1
+      continue
+    }
+    const marker = buf[offset + 1]
+    // Standalone markers have no length field.
+    if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7) || marker === 0xff) {
+      offset += marker === 0xff ? 1 : 2
+      continue
+    }
+    const length = buf.readUInt16BE(offset + 2)
+    const isSof = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc
+    if (isSof) {
+      return { height: buf.readUInt16BE(offset + 5), width: buf.readUInt16BE(offset + 7) }
+    }
+    offset += 2 + length
+  }
+  return null
 }
 
 function prettify(name) {
@@ -150,7 +216,7 @@ function makeBackdrop(libraryDir, absolute, from) {
   const file = path.basename(absolute)
   const stat = safeStat(absolute)
   const source = sourceOf(libraryDir, absolute)
-  const size = readPngSize(absolute)
+  const size = readImageSize(absolute)
   return {
     file,
     source,
