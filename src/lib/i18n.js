@@ -216,6 +216,7 @@ const MESSAGES = {
   'widget.size': { zh: '尺寸', en: 'Size', ja: 'サイズ', ko: '크기' },
   'widget.width': { zh: '宽度', en: 'Width', ja: '幅', ko: '너비' },
   'widget.height': { zh: '高度', en: 'Height', ja: '高さ', ko: '높이' },
+  'widget.diameter': { zh: '直径', en: 'Diameter', ja: '直径', ko: '지름' },
   'widget.color': { zh: '颜色', en: 'Colour', ja: '色', ko: '색상' },
   'widget.textColor': { zh: '文字颜色', en: 'Text colour', ja: '文字色', ko: '글자 색상' },
   'widget.spectrumColor': { zh: '频谱颜色', en: 'Spectrum colour', ja: 'スペクトラム色', ko: '스펙트럼 색상' },
@@ -253,17 +254,11 @@ const MESSAGES = {
 
   'spectrum.enable': { zh: '在壁纸上显示频谱', en: 'Show spectrum on the wallpaper', ja: '壁紙にスペクトラムを表示', ko: '배경화면에 스펙트럼 표시' },
   'spectrum.enableNote': { zh: '条形数据来自 WE 音频帧；普通浏览器里是平的', en: 'Bars come from WE audio frames; flat in a normal browser', ja: 'バーは WE オーディオフレームから。通常ブラウザでは平坦です', ko: '막대는 WE 오디오 프레임에서. 일반 브라우저에서는 평평함' },
-  'spectrum.radialNote': {
-    zh: '环形类样式按「宽高中较小的一边」取直径，想要正圆就把宽、高设成相等（如都是 46）。',
-    en: 'Radial styles take the diameter from the shorter side; set width = height (e.g. 46) for a perfect circle.',
-    ja: 'リング系は「幅と高さの小さい方」を直径に使います。正円にするには幅と高さを同じ（例：46）に。',
-    ko: '링형 스타일은 짧은 변을 지름으로 사용. 완전한 원은 너비=높이(예: 46)로 설정.',
-  },
-  'spectrum.linearNote': {
-    zh: '宽度、高度填了会覆盖上面的「尺寸」；例如 100 / 14 铺满底边。',
-    en: 'Width / height override the "Size" above; e.g. 100 / 14 fills the bottom edge.',
-    ja: '幅・高さを指定すると上の「サイズ」を上書きします。例：100 / 14 で下端を埋めます。',
-    ko: '너비/높이는 위의 "크기"를 덮어씁니다. 예: 100/14는 하단을 채움.',
+  'spectrum.sizeNote': {
+    zh: '宽度按视口宽度、高度按视口高度（100 = 满屏）；环形类只用「直径」，宽高等比。',
+    en: 'Width is a share of the viewport width, height of its height (100 = full screen); radial styles use one diameter, so the box stays square.',
+    ja: '幅はビューポート幅、高さはビューポート高さの比率（100 = 画面いっぱい）。リング系は「直径」のみで正方形を保ちます。',
+    ko: '너비는 뷰포트 너비, 높이는 뷰포트 높이 비율(100 = 화면 가득). 링형은 "지름"만 쓰고 정사각형을 유지합니다.',
   },
 
   'album.enable': { zh: '在壁纸上显示专辑卡', en: 'Show album art on the wallpaper', ja: '壁紙にアルバムアートを表示', ko: '배경화면에 앨범 아트 표시' },

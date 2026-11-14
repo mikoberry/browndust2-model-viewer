@@ -253,14 +253,18 @@ const BUILTIN_WALLPAPER = {
       variant: 'bars',
       color: '',
       anchor: 'bottom-center',
-      // Size is the default control (`size` drives the box scale). Set an exact
-      // `width` / `height` (e.g. '100vw' / '14vh' for a full-bleed strip) to
-      // override `size`; radial styles (ring/ringwave/ripples/aurora) always
-      // ignore them and use `size` to stay square.
-      width: '',
-      height: '',
+      // Exact box, in CSS lengths: width is a share of the viewport width,
+      // height of its height (`'100vw'` / `'14vh'` = a strip along the bottom
+      // edge). Both axes together ARE the size of a spectrum — wallkit lets
+      // them override its `size` scale, so the drawer edits these two and not
+      // `size`. Radial styles (ring / ringwave / ripples / aurora) need a
+      // square, so they use the same `vh` value on both axes (e.g. 46 / 46).
+      width: '100vw',
+      height: '14vh',
       offsetX: 0,
       offsetY: 0,
+      // Fallback scale, only read when width / height are left out entirely
+      // (hand-written configs); the drawer does not expose it.
       size: 100,
       intensity: 100,
       curve: 1,

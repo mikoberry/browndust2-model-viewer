@@ -62,17 +62,20 @@ const SPECTRUM_VARIANTS = [
   { value: 'aurora', label: () => t('spectrum.aurora') },
 ]
 
-// Radial styles take their diameter from the SHORTER side of the box (they
-// force a square in CSS), so the panel only adds a hint that width == height
-// keeps them circular.
+// Radial styles paint their circle inside the box, so the box has to be square
+// in PIXELS — that is why both axes use `vh` for them instead of `vw` / `vh`.
 const SPECTRUM_RADIAL = ['ring', 'ringwave', 'ripples', 'aurora']
 
-// Default box per variant, following wallkit's own playground (layout.jsx):
-// linear styles fill the bottom edge, radial styles keep a square so their
-// circle is not squashed. Values are plain numbers: width is in `vw`, height is
-// in `vh` (so 100 == full width / full height). Switching a style fills these in
-// so the width/height sliders always show a concrete number.
-const SPECTRUM_DIMENSIONS = {
+// The box each style is designed around, in wallkit's own units: width in `vw`,
+// height in `vh` (so 100 == full viewport width / height). Linear styles are a
+// strip along an edge, radial styles a square. These are the numbers the size
+// controls fall back to and the ones written when the style is switched, so the
+// sliders always show a concrete value.
+//
+// `size` is NOT exposed: wallkit lets an explicit width / height override the
+// `size` scale entirely, and since the panel always writes both axes the slider
+// would be dead — the old panel had exactly that trap.
+const SPECTRUM_BOX = {
   bars: { width: 100, height: 14 },
   mirror: { width: 100, height: 14 },
   curve: { width: 100, height: 14 },
@@ -84,15 +87,23 @@ const SPECTRUM_DIMENSIONS = {
   aurora: { width: 46, height: 46 },
 }
 
-// Parse a stored length back into the slider's number for the given unit. The
-// panel only ever writes `vw` for width and `vh` for height, so any other value
-// (a legacy unit, or an empty string) falls back to 0 rather than breaking the
-// slider.
-const lenOf = (value, unit) => {
-  const re = new RegExp(`^(-?\\d+(?:\\.\\d+)?)${unit}$`, 'i')
-  const match = re.exec(String(value ?? '').trim())
-  return match ? Number(match[1]) : 0
+const spectrumBox = (variant) => SPECTRUM_BOX[variant] ?? SPECTRUM_BOX.bars
+
+// Read a stored CSS length back into a slider number. The panel itself only
+// writes `vw` / `vh`, but a hand-written config may hold any unit; the number is
+// what the slider shows, and the first edit rewrites it in the panel's unit.
+const SPECTRUM_LENGTH = /^(-?\d+(?:\.\d+)?)\s*(vw|vh|vmin|vmax|%|px)?$/i
+const lenOf = (value) => {
+  const match = SPECTRUM_LENGTH.exec(String(value ?? '').trim())
+  return match ? Number(match[1]) : null
 }
+
+// Slider numbers for the two axes: the configured value when it parses,
+// otherwise the style's own default (never 0 — a 0px box renders nothing).
+const spectrumWidth = (spec) => lenOf(spec.width) ?? spectrumBox(spec.variant).width
+const spectrumHeight = (spec) => lenOf(spec.height) ?? spectrumBox(spec.variant).height
+const spectrumDiameter = (spec) =>
+  lenOf(spec.width) ?? lenOf(spec.height) ?? spectrumBox(spec.variant).width
 
 // The list mirrors wallkit's `ALBUM_ART_VARIANTS` (11 layouts). It is spelled
 // out here because each entry also needs a translated label; `wallkit` dropped
@@ -274,6 +285,7 @@ function ClockPanel({ spec, accent, onChange, onReset }) {
 
 function SpectrumPanel({ spec, accent, onChange, onReset }) {
   const radial = SPECTRUM_RADIAL.includes(spec.variant)
+  const diameter = spectrumDiameter(spec)
   return (
     <>
       <Group title={t('widget.show')} onReset={onReset}>
@@ -290,54 +302,58 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
           value={spec.variant}
           options={SPECTRUM_VARIANTS}
           onChange={(variant) => {
-            const dims = SPECTRUM_DIMENSIONS[variant]
-            onChange(
-              dims
-                ? { variant, width: `${dims.width}vw`, height: `${dims.height}vh` }
-                : { variant }
-            )
+            // Switching style rewrites the box to that style's own shape:
+            // radial styles need a square (both axes in `vh`), linear ones a
+            // strip. Carrying the old numbers over would squash a ring or
+            // shrink a bar strip to a square.
+            const next = spectrumBox(variant)
+            const square = SPECTRUM_RADIAL.includes(variant)
+            onChange({
+              variant,
+              width: `${next.width}${square ? 'vh' : 'vw'}`,
+              height: `${next.height}vh`,
+            })
           }}
         />
-        <div className="ws-pair">
-          <ColorField
-            label={t('widget.color')}
-            value={spec.color ?? ''}
-            fallback={accent}
-            onChange={(color) => onChange({ color })}
-          />
-          <SliderField
-            label={t('widget.size')}
-            value={spec.size}
-            min={20}
-            max={500}
-            step={1}
-            suffix="%"
-            onChange={(size) => onChange({ size })}
-          />
-        </div>
-        <div className="ws-pair">
-          <SliderField
-            label={t('widget.width')}
-            value={lenOf(spec.width, 'vw')}
-            min={0}
-            max={100}
-            step={1}
-            onChange={(width) => onChange({ width: `${width}vw` })}
-          />
-          <SliderField
-            label={t('widget.height')}
-            value={lenOf(spec.height, 'vh')}
-            min={0}
-            max={100}
-            step={1}
-            onChange={(height) => onChange({ height: `${height}vh` })}
-          />
-        </div>
+        <ColorField
+          label={t('widget.color')}
+          value={spec.color ?? ''}
+          fallback={accent}
+          onChange={(color) => onChange({ color })}
+        />
         {radial ? (
-          <p className="ws-note">{t('spectrum.radialNote')}</p>
+          <SliderField
+            label={t('widget.diameter')}
+            value={diameter}
+            min={10}
+            max={100}
+            step={1}
+            suffix=" vh"
+            onChange={(value) => onChange({ width: `${value}vh`, height: `${value}vh` })}
+          />
         ) : (
-          <p className="ws-note">{t('spectrum.linearNote')}</p>
+          <div className="ws-pair">
+            <SliderField
+              label={t('widget.width')}
+              value={spectrumWidth(spec)}
+              min={10}
+              max={100}
+              step={1}
+              suffix=" vw"
+              onChange={(width) => onChange({ width: `${width}vw` })}
+            />
+            <SliderField
+              label={t('widget.height')}
+              value={spectrumHeight(spec)}
+              min={2}
+              max={60}
+              step={1}
+              suffix=" vh"
+              onChange={(height) => onChange({ height: `${height}vh` })}
+            />
+          </div>
         )}
+        <p className="ws-note">{t('spectrum.sizeNote')}</p>
       </Group>
       <Group title={t('widget.position')}>
         <PlacementFields spec={spec} onChange={onChange} />
