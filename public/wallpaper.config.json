@@ -37,8 +37,8 @@
     "loop_2"
   ],
   "clickAnimation": {
-    "enabled": false,
-    "name": ""
+    "enabled": true,
+    "name": "cut_B"
   },
   "entrance": {
     "autoplay": true,
@@ -76,30 +76,31 @@
   "speed": 1,
   "zoom": 1,
   "overlay": {
-    "accent": "#a8c4ff",
+    "accent": "#e4ec8c",
     "clock": {
       "enabled": true,
       "placement": "minimal",
-      "color": "",
-      "anchor": "bottom-left",
+      "color": "#313507",
+      "anchor": "center-left",
       "offsetX": 4,
       "offsetY": 4,
-      "size": 100,
+      "size": 150,
       "use24Hour": true,
       "tilt": true,
       "beat": true,
       "labels": {
         "locale": "zh-CN",
         "aria": "当前时间与日期"
-      }
+      },
+      "beatCurve": 1
     },
     "spectrum": {
-      "enabled": false,
-      "variant": "bars",
+      "enabled": true,
+      "variant": "curve",
       "color": "",
       "anchor": "bottom-center",
-      "width": "",
-      "height": "",
+      "width": "100vw",
+      "height": "14vh",
       "offsetX": 0,
       "offsetY": 0,
       "size": 100,
@@ -107,34 +108,35 @@
       "curve": 1
     },
     "albumArt": {
-      "enabled": false,
+      "enabled": true,
       "variant": "classic",
       "color": "",
       "textColor": "",
-      "anchor": "top-left",
-      "offsetX": 4,
-      "offsetY": 4,
-      "size": 100,
+      "anchor": "center-right",
+      "offsetX": 2,
+      "offsetY": 0,
+      "size": 80,
       "labels": {
         "aria": "正在播放"
       }
     },
     "ambient": {
-      "enabled": false,
-      "variant": "snow",
-      "color": "",
-      "density": 100,
-      "size": 100,
-      "intensity": 100
+      "enabled": true,
+      "variant": "steam",
+      "color": "#f6f6f6",
+      "density": 260,
+      "size": 250,
+      "intensity": 200,
+      "speed": 225
     },
     "pointer": {
-      "enabled": false,
+      "enabled": true,
       "trail": true,
-      "click": true,
-      "trailVariant": "glow",
+      "click": false,
+      "trailVariant": "bubble",
       "clickVariant": "ripple",
-      "color": "",
-      "size": 100,
+      "color": "#d4d6bb",
+      "size": 200,
       "intensity": 100
     }
   }
