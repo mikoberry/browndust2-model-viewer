@@ -249,19 +249,62 @@ export default function SpineStage(props) {
   // plays the clicked clip once, then the queued `animation` (track 0's resting
   // loop) takes back over with no gap. Skipped while a sequence owns the track,
   // so a click never interrupts the opening cutscene.
+  //
+  // Rapid clicks do NOT restart the playing one-shot: the first click plays,
+  // further clicks while it runs are buffered (depth 1 — latest wins), and the
+  // buffered one fires the moment the current play completes. A burst of clicks
+  // therefore reads as back-to-back plays, never as a restart from frame 0.
+  const clickPlayingRef = useRef(false)
+  const clickPendingRef = useRef(false)
+
+  // Latest-play indirection: both the clickToken effect below and the
+  // completion listener (which must survive re-renders) play through this ref.
+  const playClickRef = useRef(null)
+  playClickRef.current = () => {
+    if (!asset || !clickAnimation) return
+    const { state } = asset
+    const rest = liveRef.current.animation
+    clickPlayingRef.current = true
+    const entry = state.setAnimation(0, clickAnimation, false)
+    entry.listener = {
+      complete: () => {
+        clickPlayingRef.current = false
+        if (clickPendingRef.current) {
+          clickPendingRef.current = false
+          playClickRef.current?.()
+        }
+      },
+      // Something else took track 0 over before the one-shot finished
+      // (sequence start, animation switch, new model) — stop tracking.
+      interrupt: () => {
+        clickPlayingRef.current = false
+        clickPendingRef.current = false
+      },
+    }
+    if (rest && rest !== clickAnimation && asset.data.findAnimation(rest)) {
+      // The queued resting loop inherits the trim, so it resumes past the
+      // slide-in; the clicked one-shot plays as authored.
+      const restEntry = state.addAnimation(0, rest, liveRef.current.loop !== false, 0)
+      applyAnimationStart(restEntry)
+    }
+  }
+
+  // A new model means a new AnimationState: both flags are stale.
+  useEffect(() => {
+    clickPlayingRef.current = false
+    clickPendingRef.current = false
+  }, [asset])
+
   useEffect(() => {
     if (!asset || !clickAnimation || clickToken <= 0) return
     if (sequenceActiveRef.current) return
     if (!asset.data.findAnimation(clickAnimation)) return
-    const { state } = asset
-    const rest = liveRef.current.animation
-    state.setAnimation(0, clickAnimation, false)
-    if (rest && rest !== clickAnimation && asset.data.findAnimation(rest)) {
-      // The queued resting loop inherits the trim, so it resumes past the
-      // slide-in; the clicked one-shot plays as authored.
-      const entry = state.addAnimation(0, rest, liveRef.current.loop !== false, 0)
-      applyAnimationStart(entry)
+    if (clickPlayingRef.current) {
+      // One-shot in progress: buffer the click instead of restarting it.
+      clickPendingRef.current = true
+      return
     }
+    playClickRef.current?.()
   }, [asset, clickAnimation, clickToken])
 
   // Track 1: BD2 character portraits keep facial features in _faceN
