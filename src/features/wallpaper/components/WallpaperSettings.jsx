@@ -21,7 +21,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  CONFIG_FILE,
   CONFIG_README,
   clearRecordedConfig,
   readRecordedConfig,
@@ -464,11 +463,13 @@ export default function WallpaperSettings({
   }
 
   const activeSource = recordedNow || source === 'user' ? 'user' : source
+  // A wallpaper running on the factory config file gets no badge at all: the
+  // line is only meaningful once something overrides it.
   const sourceLabel =
     activeSource === 'user'
       ? `${t('drawer.sourceUser')}${lastAt ? `（${lastAt}）` : ''}`
       : activeSource === 'file'
-        ? `${t('drawer.sourceFile')}：${CONFIG_FILE}${t('drawer.sourceFileNote')}`
+        ? ''
         : t('drawer.sourceBuiltin')
 
   const enabledWidgets = TABS.filter((item) => item.key !== 'composition' && overlay?.[item.key]?.enabled)
@@ -484,7 +485,9 @@ export default function WallpaperSettings({
           <p>
             {t('drawer.designCanvas')} {Math.round(design.width)} × {Math.round(design.height)}
           </p>
-          <p className={`ws-source${activeSource === 'user' ? ' is-user' : ''}`}>{sourceLabel}</p>
+          {sourceLabel ? (
+            <p className={`ws-source${activeSource === 'user' ? ' is-user' : ''}`}>{sourceLabel}</p>
+          ) : null}
         </div>
         <div className="ws-head-side">
           <LocaleSwitcher />

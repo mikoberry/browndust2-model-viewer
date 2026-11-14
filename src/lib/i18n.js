@@ -90,18 +90,6 @@ const MESSAGES = {
     ja: '保存した設定を使用中',
     ko: '저장된 설정 사용 중',
   },
-  'drawer.sourceFile': {
-    zh: '默认值',
-    en: 'Defaults',
-    ja: '初期値',
-    ko: '기본값',
-  },
-  'drawer.sourceFileNote': {
-    zh: '（还会被记录覆盖）',
-    en: ' (overridden by a saved config)',
-    ja: '（保存で上書きされます）',
-    ko: ' (저장 시 덮어씀)',
-  },
   'drawer.sourceBuiltin': {
     zh: '默认值：内置（未读到配置文件）',
     en: 'Defaults: built-in (config file not found)',
