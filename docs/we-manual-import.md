@@ -18,7 +18,7 @@
 ## 1. 只构建，不部署
 
 ```bash
-npm run build:home -- --embed
+npm run build:home:embed
 ```
 
 产物在仓库的 `dist/`：`index.html` + `assets/`（`index-<hash>.js`、`embed-assets.js`、`embed-config.js`）
@@ -171,7 +171,7 @@ npm run project:check -- --target "F:/.../你的新工程名"
 | 改了什么 | 要做的 |
 |---|---|
 | 只改面板文案 / 标题 / 简介 | 改 `project.config.js` → `npm run project:gen -- --target "<目录>"`，**不用重新构建** |
-| 改了代码 / 素材 / 配置 | `npm run build:home -- --embed` → 再复制进 WE 工程（或 `WE_PROJECT="<目录>" npm run deploy:we` 复制现有 `dist/`） |
+| 改了代码 / 素材 / 配置 | `npm run build:home:embed` → 再复制进 WE 工程（或 `WE_PROJECT="<目录>" npm run deploy:we` 复制现有 `dist/`） |
 | 只搬运现有 `dist/` | `WE_PROJECT="<目录>" npm run deploy:we`（不重建） |
 
 `WE_PROJECT` 是 shell 相关的（bash 写 `WE_PROJECT=x npm run …`、cmd 先 `set "WE_PROJECT=x"`、
@@ -181,7 +181,7 @@ PowerShell 用 `$env:WE_PROJECT='x';`）；不确定就一律用 `--target`。
 
 | 坑 | 说明 |
 |---|---|
-| `dist/` 只有一份 | 谁最后跑谁覆盖。跑过 `build:we`（非 embed）之后 `dist/` 就是普通产物，手动导入会黑屏——导入前重跑 `build:home -- --embed` |
+| `dist/` 只有一份 | 谁最后跑谁覆盖。跑过 `build:we`（非 embed）之后 `dist/` 就是普通产物，手动导入会黑屏——导入前重跑 `build:home:embed` |
 | embed 下 `wallpaper.config.json` 不生效 | 配置已内联进 `assets/embed-config.js`；调构图 / 换人物要改仓库的 `public/wallpaper.config.json` 再重新构建 |
 | WE 缓存 manifest | 改完 `project.json` 要在 WE 里**重新应用一次壁纸**，属性面板才会重新读 |
 | 手动导入会整份复制 | 产物约 37MB，导入 / 复制会慢一点；`dist/` 里别临时塞无关文件 |

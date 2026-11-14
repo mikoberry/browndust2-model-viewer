@@ -43,6 +43,7 @@ npm run dev            # Vite dev server —— 由用户自己启动，agent �
 npm run model:list     # 纯 Node 扫描 model-library/，输出模型 / 图集页 / 关联背景
 npm run build          # 生产构建到 dist/（ESM，给浏览器 / 调试）—— 只在用户明确要求时执行
 npm run build:home     # 同上，但只打包 home 配置的那一个模型
+npm run build:home:embed # 只构建不部署的自包含产物（等价于 build:home -- --embed）
 npm run build:we       # 普通构建（真实素材文件）+ 部署到本机 WE 工程目录（默认；会写仓库外的文件，按需执行）
 npm run build:we:embed # 自包含构建（素材 base64）+ 部署 —— 仅 WE 2.8.797 beta / file:// 需要
 npm run deploy:we      # 只复制现有 dist/，不重新构建（产物形态原样带过去）
@@ -476,7 +477,7 @@ src/features/<feature>/
 ### WE 部署（`npm run build:we` / `build:we:embed`）
 
 - `build:we` = 普通构建 + 部署（默认）；`build:we:embed` = 自包含构建 + 部署（beta WE 黑屏时用）。
-- **只构建不部署**：`npm run build:home -- --embed`（产物只在 `dist/`，不碰任何 WE 目录）。用户想用 WE
+- **只构建不部署**：`npm run build:home:embed`（产物只在 `dist/`，不碰任何 WE 目录）。用户想用 WE
   编辑器自己「创建壁纸」导入、再自己管 `project.json` 时走这条，随后用
   `npm run project:gen -- --target "<新工程目录>"` 合并面板文案；完整流程见
   [docs/we-manual-import.md](docs/we-manual-import.md)。

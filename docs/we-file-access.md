@@ -119,7 +119,7 @@
 ```bash
 npm run build                    # ESM（全库）      → 浏览器 / 静态托管
 npm run build:home               # ESM（单模型）    → 浏览器 / 静态托管
-npm run build:home -- --embed    # 自包含           → 以上全部 + file://
+npm run build:home:embed    # 自包含           → 以上全部 + file://
 npm run build:we                 # ESM 单模型 + 部署到 WE（默认）
 npm run build:we:embed           # 自包含 + 部署到 WE（WE 2.8.797 beta 用这个）
 npm run deploy:we                # 只复制现有 dist/，产物形态原样带过去

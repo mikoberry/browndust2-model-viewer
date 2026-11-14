@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:home": "node scripts/build-home.mjs",
+    "build:home:embed": "node scripts/build-home.mjs --embed",
     "build:we": "node scripts/build-home.mjs && node scripts/deploy-weproject.mjs",
     "build:we:embed": "node scripts/build-home.mjs --embed && node scripts/deploy-weproject.mjs",
     "deploy:we": "node scripts/deploy-weproject.mjs",

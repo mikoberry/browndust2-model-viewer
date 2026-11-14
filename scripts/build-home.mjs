@@ -5,7 +5,7 @@
 // `VAR=value command` syntax to worry about.
 //
 //   npm run build:home
-//   npm run build:home -- --embed     # also set BD2_EMBED=1 (file:// build)
+//   npm run build:home:embed     # also set BD2_EMBED=1 (file:// build)
 //
 // Equivalent to `MODEL_ONLY="<home modelId>" vite build`. The id comes from
 // `public/wallpaper.config.json` FIRST — that file ships inside dist/ and is

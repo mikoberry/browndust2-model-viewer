@@ -23,7 +23,7 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 | 命令 | 产物 | 素材 | 能跑在哪 |
 | --- | --- | --- | --- |
 | `npm run build` / `build:home` | ESM 多文件 | `dist/models/**` 真实文件 | 浏览器、http 静态托管、`npm run preview` |
-| `npm run build:home -- --embed` | IIFE 单入口 + `embed-assets.js` | base64 内嵌，零请求 | 以上全部，**外加 file://** |
+| `npm run build:home:embed` | IIFE 单入口 + `embed-assets.js` | base64 内嵌，零请求 | 以上全部，**外加 file://** |
 
 `build:we` = 普通产物 + 部署（默认），`build:we:embed` = 自包含产物 + 部署（备选）。
 
@@ -114,7 +114,7 @@ Spine 读 skel/atlas 的 XHR、读图集页的 `<img>` 全部被拦 → 黑屏�
 不想让脚本直接往工程目录里复制（新建工程、或想自己接管 `project.json`）时，只构建、不部署：
 
 ```bash
-npm run build:home -- --embed     # 产物在 dist/，不碰任何 WE 目录
+npm run build:home:embed     # 产物在 dist/，不碰任何 WE 目录
 ```
 
 然后在 WE 里「创建壁纸」拖入 `dist/index.html`，再用手动指定的目标目录补面板文案：
