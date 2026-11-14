@@ -32,10 +32,14 @@ const ALTERNATE_TAKE_RATIO = 0.6
 // replacement deletes the body, the face and the hair from `cut_A` (the shot
 // renders as a floating hand holding a bowl). Attachment timelines therefore
 // merge instead of replace, and `null` never overrides a real name.
-const ATTACHMENT_TIMELINE = 'AttachmentTimeline'
-
+// Detected by shape, NOT by `constructor.name`: the production build runs the
+// bundle through esbuild, which renames every class (`AttachmentTimeline` ships
+// as `Ws` in dist/), so a name check silently fails once built and the fold
+// falls back to "last writer wins" — `cut_A_bowl` then blanks the body and the
+// shot renders as a lone hand holding a bowl. `attachmentNames` only exists on
+// AttachmentTimeline, which makes it a reliable marker in dev and in dist.
 function isAttachmentTimeline(timeline) {
-  return timeline?.constructor?.name === ATTACHMENT_TIMELINE
+  return Array.isArray(timeline?.attachmentNames)
 }
 
 // Value the clip holds at `time`. `undefined` means its first key is still in
@@ -75,8 +79,27 @@ function foldAttachmentTimeline(baseTimeline, layerTimeline) {
 // Unique id of what a timeline writes. `Animation.getPropertyId()` is empty in
 // the 4.1 builds this project uses, so the target index is rebuilt from the
 // timeline itself: the timeline type plus the bone / slot / constraint it keys.
+//
+// The type half is a per-class sequence number instead of `constructor.name`:
+// minification renames classes, and two renamed classes from different modules
+// can even collide, which would key two unrelated timeline types identically.
+const TYPE_IDS = new WeakMap()
+let nextTypeId = 1
+
+function timelineTypeId(timeline) {
+  const ctor = timeline?.constructor
+  if (!ctor) return 0
+  let id = TYPE_IDS.get(ctor)
+  if (id == null) {
+    id = nextTypeId
+    nextTypeId += 1
+    TYPE_IDS.set(ctor, id)
+  }
+  return id
+}
+
 function timelineKey(timeline) {
-  const type = timeline?.constructor?.name ?? 'timeline'
+  const type = `t${timelineTypeId(timeline)}`
   if (timeline.boneIndex != null) return `${type}:b${timeline.boneIndex}`
   if (timeline.slotIndex != null) return `${type}:s${timeline.slotIndex}`
   if (timeline.constraintIndex != null) return `${type}:c${timeline.constraintIndex}`
