@@ -11,11 +11,6 @@ dist/
 # 其余桶与 _misc/ 只留在本地给扫描器读。新增角色后在这里补一行 negate，
 # 当前白名单可以用 `npm run backdrops:ids` 打印出来核对。
 /model-library/backdrops/*
-!/model-library/backdrops/001001/
-!/model-library/backdrops/001002/
-!/model-library/backdrops/001004/
-!/model-library/backdrops/001006/
-!/model-library/backdrops/001092/
 !/model-library/backdrops/001201/
 !/model-library/backdrops/001206/
 !/model-library/backdrops/001207/
@@ -28,12 +23,6 @@ dist/
 !/model-library/backdrops/021291/
 !/model-library/backdrops/021301/
 !/model-library/backdrops/021391/
-!/model-library/backdrops/066902/
-!/model-library/backdrops/066906/
-!/model-library/backdrops/066907/
-!/model-library/backdrops/067301/
-!/model-library/backdrops/067302/
-!/model-library/backdrops/067303/
 !/model-library/backdrops/067601/
 !/model-library/backdrops/067603/
 !/model-library/backdrops/067604/
