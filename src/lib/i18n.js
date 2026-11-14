@@ -136,7 +136,6 @@ const MESSAGES = {
   },
   'comp.seqEmpty': { zh: '未配置（直接播放循环动画）', en: 'Not set (plays the loop)', ja: '未設定（ループを再生）', ko: '미설정 (루프 재생)' },
   'comp.replay': { zh: '重新播放', en: 'Replay', ja: '再再生', ko: '다시 재생' },
-  'comp.clipRaw': { zh: '原始画布（未单独配置）', en: 'Raw canvas (not configured)', ja: '元のキャンバス（未設定）', ko: '원본 캔버스 (미설정)' },
   'comp.autoplayOnNote': {
     zh: '勾选「启动时播放」：加载完成后自动放一遍，右下角设置按钮上方会出现播放按钮，随时可重放。',
     en: 'With "Play on start" on: plays once after load, and a play button appears above the settings gear.',

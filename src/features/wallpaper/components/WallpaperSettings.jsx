@@ -157,64 +157,36 @@ function ParallaxGroup({ spec, onChange, onReset }) {
 
 // Entrance sequence is played by the model itself, so the controls here are
 // "play it again" plus one switch: whether it runs by itself on load. The
-// playlist AND each clip's framing are read-only: names differ per model,
-// tuning a shot needs a live background and the animation list, and Wallpaper
-// Engine has neither a keyboard nor room for more sliders. Both are edited in
-// the debug viewer's 构图 tab, which writes the same file.
-//
-// One row per clip so it is obvious that a sequence is a CHAIN of framings and
-// not one shared zoom that "resets" on load.
-function SequenceGroup({
-  sequence,
-  entrance,
-  autoplay,
-  activeClip,
-  onAutoplayChange,
-  onReplay,
-}) {
+// sequence is shown as a read-only `a → b → c` line, which is all the drawer
+// needs: each clip's framing needs a live background and the animation list to
+// judge, and Wallpaper Engine has neither a keyboard nor room for more sliders.
+// Shot-by-shot framing is tuned in the debug viewer's 构图 tab, which writes the
+// same file.
+function SequenceGroup({ sequence, autoplay, onAutoplayChange, onReplay }) {
   const list = Array.isArray(sequence) ? sequence : []
-  const clips = entrance?.clips ?? {}
-  const scale = (layer) => `${Number(layer?.scale ?? 1).toFixed(2)}×`
   return (
     <Group title={t('comp.entrance')}>
       {/* `autoplay` is not just a start-up flag: while it is on, the bare
           wallpaper also shows a round play button above the settings gear,
           because a cutscene is easy to miss and this drawer is hidden. It also
-          gates the sub-details below, so turning it off collapses them. */}
+          gates the sequence row, so turning it off collapses it. */}
       <ToggleField
         label={t('comp.autoplay')}
         checked={autoplay}
         onChange={onAutoplayChange}
       />
       {autoplay && (
-        <>
-          <div className="ws-seq">
-            <span
-              className="ws-seq-list"
-              title={t('comp.seqHint')}
-            >
-              {list.length ? list.join(' → ') : t('comp.seqEmpty')}
-            </span>
-            <button type="button" className="ws-btn" onClick={onReplay} disabled={!list.length}>
-              {t('comp.replay')}
-            </button>
-          </div>
-          <ul className="ws-clips">
-            {list.map((name) => {
-              const clip = clips[name]
-              return (
-                <li key={name} className={`ws-clip${name === activeClip ? ' is-active' : ''}`}>
-                  <span className="ws-clip-name">{name}</span>
-                  <span className="ws-clip-value">
-                    {clip
-                      ? `${t('comp.backdrop')} ${scale(clip.backdropTransform)} · ${t('comp.model')} ${scale(clip.modelTransform)}`
-                      : t('comp.clipRaw')}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-        </>
+        <div className="ws-seq">
+          <span
+            className="ws-seq-list"
+            title={t('comp.seqHint')}
+          >
+            {list.length ? list.join(' → ') : t('comp.seqEmpty')}
+          </span>
+          <button type="button" className="ws-btn" onClick={onReplay} disabled={!list.length}>
+            {t('comp.replay')}
+          </button>
+        </div>
       )}
       <p className="ws-note">
         {autoplay ? t('comp.autoplayOnNote') : t('comp.autoplayOffNote')}
@@ -379,9 +351,7 @@ export default function WallpaperSettings({
   spec,
   overlay,
   sequence,
-  entrance,
   autoplay,
-  activeClip,
   source,
   clickAnimation,
   animations,
@@ -556,9 +526,7 @@ export default function WallpaperSettings({
             />
             <SequenceGroup
               sequence={sequence}
-              entrance={entrance}
               autoplay={autoplay}
-              activeClip={activeClip}
               onAutoplayChange={onAutoplayChange}
               onReplay={onReplaySequence}
             />

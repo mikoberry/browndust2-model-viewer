@@ -678,9 +678,7 @@ export default function WallpaperPage() {
           spec={tweaks}
           overlay={overlayTweaks}
           sequence={sequence}
-          entrance={entrance}
           autoplay={autoplay}
-          activeClip={activeClip}
           source={loaded?.source ?? 'builtin'}
           clickAnimation={clickTweak}
           animations={info?.animations ?? []}
