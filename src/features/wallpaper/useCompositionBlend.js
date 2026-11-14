@@ -11,9 +11,9 @@
 // re-render the whole wallpaper (including every WallKit widget). It writes the
 // same two imperative channels the rest of the composition uses:
 //
-//   * backdrop -> `--backdrop-x` / -y / -scale on the <img>, exactly the custom
-//     properties .wallpaper-backdrop's transform consumes (React writes them too,
-//     as the very first paint, then this hook owns them);
+//   * backdrop -> `--backdrop-x` / -y / -scale on the backdrop STACK wrapper
+//     (`.wallpaper-backdrop-stack`); custom properties inherit, so every
+//     stacked <img> layer shares one transform and cross-fades move together;
 //   * model    -> a ref SpineStage reads every frame instead of its `transform`
 //     prop.
 //

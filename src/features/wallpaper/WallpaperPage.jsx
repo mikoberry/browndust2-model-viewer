@@ -46,11 +46,6 @@ import {
 
 const readViewport = () => ({ width: window.innerWidth, height: window.innerHeight })
 
-// Passed to useParallax while an entrance sequence runs: a cutscene has its own
-// camera, so the artwork must not drift with the pointer. Constant identity keeps
-// the hook's effect from re-running on every render.
-const PARALLAX_OFF = { enabled: false, backdrop: 0, model: 0 }
-
 // Config specs may use design pixels or '10%'; the drawer always works with
 // resolved design pixels, so both spellings start from the same numbers.
 function toTweak(spec, design) {
@@ -166,6 +161,93 @@ export default function WallpaperPage() {
   const handleSequenceStage = useCallback((name) => setStageClip(name), [])
 
   const entrance = useMemo(() => resolveEntrance(config.entrance, design), [config.entrance, design])
+
+  // ---- scene warm-up gate -------------------------------------------------
+  // The FIRST entrance must not start while anything is still decoding — that
+  // WAS the first-load stutter, and a manual replay never stuttered because by
+  // then everything (model textures, backdrop bitmaps) was already hot.
+  // `backdropReady` / `clipsReady` decode the global backdrop and every
+  // entrance clip backdrop ahead of time; `info` arrives once the model asset
+  // (skeleton + atlas) has loaded. A load failure or an empty model library
+  // also counts as ready, so the cover always comes off.
+  const [backdropReady, setBackdropReady] = useState(false)
+  useEffect(() => {
+    const url = baseBackdrop ? assetUrl(baseBackdrop.url) : ''
+    if (!url) {
+      setBackdropReady(true) // no backdrop configured: nothing to wait for
+      return undefined
+    }
+    let alive = true
+    const probe = new Image()
+    probe.src = url
+    const settle = () => {
+      if (alive) setBackdropReady(true)
+    }
+    if (typeof probe.decode === 'function') probe.decode().then(settle, settle)
+    else probe.onload = settle
+    return () => {
+      alive = false
+    }
+  }, [baseBackdrop])
+
+  const [clipsReady, setClipsReady] = useState(false)
+  useEffect(() => {
+    const { clips } = entrance
+    const urls = Object.keys(clips)
+      .map((name) => pickBackdrop(model, clips[name].backdrop || config.backdrop))
+      .filter(Boolean)
+      .map((picked) => assetUrl(picked.url))
+    if (!urls.length) {
+      setClipsReady(true)
+      return undefined
+    }
+    let alive = true
+    let done = 0
+    setClipsReady(false)
+    for (const url of urls) {
+      const img = new Image()
+      img.src = url
+      const settle = () => {
+        if (!alive) return
+        done += 1
+        if (done >= urls.length) setClipsReady(true)
+      }
+      // `new Image()` alone only fetches bytes; decode() also warms the decoded
+      // bitmap so the visual swap is a pure compositor operation.
+      if (typeof img.decode === 'function') img.decode().then(settle, settle)
+      else img.onload = settle
+    }
+    return () => {
+      alive = false
+    }
+  }, [entrance, model, config.backdrop])
+
+  const [loadFailed, setLoadFailed] = useState(false)
+  const sceneReady =
+    !model || loadFailed || (Boolean(info) && backdropReady && clipsReady)
+  // The cover starts fading the moment the scene is ready (0.5s CSS), and the
+  // entrance is armed slightly later so cut_A plays FULLY visible — the exact
+  // conditions of a manual replay.
+  const [entranceArmed, setEntranceArmed] = useState(false)
+  useEffect(() => {
+    if (!sceneReady) {
+      setEntranceArmed(false)
+      return undefined
+    }
+    const timer = setTimeout(() => setEntranceArmed(true), 550)
+    return () => clearTimeout(timer)
+  }, [sceneReady])
+  // The cover itself is removed shortly after its fade ends.
+  const [loadingGone, setLoadingGone] = useState(false)
+  useEffect(() => {
+    if (!sceneReady) {
+      setLoadingGone(false)
+      return undefined
+    }
+    const timer = setTimeout(() => setLoadingGone(true), 700)
+    return () => clearTimeout(timer)
+  }, [sceneReady])
+
   // `autoplay: false` means the wallpaper opens on its resting composition and
   // the entrance only runs when asked for. A replay request (the round play
   // button, or the drawer's 重新播放) always wins over the flag.
@@ -173,7 +255,9 @@ export default function WallpaperPage() {
   // reloaded config is never shadowed by a stale copy of itself.
   const [autoplayOverride, setAutoplayOverride] = useState(null)
   const autoplay = autoplayOverride ?? entrance.autoplay
-  const wantsEntrance = autoplay || sequenceToken > 0
+  // Gated on the warm-up gate: before the scene is ready (and armed) the
+  // sequence waits, so the opening cut never plays over cold resources.
+  const wantsEntrance = sceneReady && entranceArmed && (autoplay || sequenceToken > 0)
   // Each clip's own framing only applies WHILE the entrance plays. Once the last
   // clip takes over, the wallpaper returns to its own 「构图」
   // (`backdropTransform` / `modelTransform`) — that is exactly what the debug
@@ -195,23 +279,52 @@ export default function WallpaperPage() {
   const composedT = useMemo(() => ({ backdrop: backdropT, model: modelT }), [backdropT, modelT])
   const targetT = framingT ?? composedT
 
-  // A clip may show a different backdrop image than the global pick. It is set
-  // on the SAME <img>, so the CSS transform (and its custom properties) survive
-  // the swap; every clip image is preloaded so the switch is not a blank frame.
+  // A clip may show a different backdrop image than the global pick. Clip
+  // images are preloaded + decoded by the warm-up gate above, so a switch
+  // never stalls on decode / first GPU upload.
   const activeBackdrop = useMemo(
     () => pickBackdrop(model, clip.backdrop || config.backdrop),
     [model, clip.backdrop, config.backdrop],
   )
   const backdropUrl = useMemo(() => (activeBackdrop ? assetUrl(activeBackdrop.url) : ''), [activeBackdrop])
+  // Backdrop cross-fade. Swapping the single <img>'s src was a hard cut: the
+  // old frame vanished immediately and the new one popped in after decode.
+  // Instead up to TWO layers are stacked; a new one mounts ON TOP at opacity 0
+  // (only after its image has decoded) and fades in over `entrance.blend`
+  // seconds, then the layer underneath is pruned. The wrapper owns the
+  // --backdrop-* custom properties, so both layers always share one transform.
+  const [backdropLayers, setBackdropLayers] = useState([])
+  const backdropLayerIdRef = useRef(0)
   useEffect(() => {
-    const { clips } = entrance
-    for (const name of Object.keys(clips)) {
-      const picked = pickBackdrop(model, clips[name].backdrop || config.backdrop)
-      if (!picked) continue
-      const img = new Image()
-      img.src = assetUrl(picked.url)
+    if (!backdropUrl) {
+      setBackdropLayers([])
+      return undefined
     }
-  }, [entrance, model, config.backdrop])
+    let alive = true
+    // Decode BEFORE mounting the incoming layer so the fade starts from a
+    // fully decoded frame.
+    const probe = new Image()
+    probe.src = backdropUrl
+    const mount = () => {
+      if (!alive) return
+      setBackdropLayers((prev) => {
+        if (prev[prev.length - 1]?.url === backdropUrl) return prev
+        const id = (backdropLayerIdRef.current += 1)
+        // The very first layer must not fade (nothing is underneath it).
+        return [...prev, { url: backdropUrl, id, fade: prev.length > 0 }].slice(-2)
+      })
+    }
+    // Fall back to mounting anyway on decode failure, or the backdrop would
+    // never appear at all.
+    if (typeof probe.decode === 'function') probe.decode().then(mount, mount)
+    else probe.onload = mount
+    return () => {
+      alive = false
+    }
+  }, [backdropUrl])
+  const pruneBackdropLayers = useCallback(() => {
+    setBackdropLayers((prev) => (prev.length > 1 ? prev.slice(-1) : prev))
+  }, [])
 
   // Both layers render on a surface slightly larger than the design canvas, so
   // panning / enlarging stops cutting them off with a visible straight edge at
@@ -226,8 +339,10 @@ export default function WallpaperPage() {
   // The camera reads the model layer from a ref, so the entrance cross-fade can
   // animate it without a render; `transform` stays as the first-paint value.
   const modelTransformRef = useRef(null)
-  // State, not a ref: the blend hook has to re-run once the <img> exists.
-  const [backdropEl, setBackdropEl] = useState(null)
+  // State, not a ref: the blend hook has to re-run once the stack exists. The
+  // element is the WRAPPER (not an <img>): it owns --backdrop-*, and both
+  // stacked layers inherit them, so a cross-fade moves both together.
+  const [backdropStackEl, setBackdropStackEl] = useState(null)
   const stageDesign = useMemo(
     () => ({
       ...design,
@@ -239,9 +354,15 @@ export default function WallpaperPage() {
     }),
     [design, config, modelT, overscan],
   )
-  useParallax({ design, parallax: inEntrance ? PARALLAX_OFF : tweaks.parallax, designRef, modelOffsetRef })
+  // Parallax is written imperatively (CSS vars on the design canvas + a ref the
+  // WebGL camera reads), never through React state: a 60fps drift must not
+  // re-render the page. `suppress` (the entrance sequence) eases the drift to
+  // zero instead of snapping it away — swapping the config object used to
+  // re-run the hook and park both layers at neutral in ONE frame, which read
+  // as a flash at every entrance start / end. See useParallax.js.
+  useParallax({ design, parallax: tweaks.parallax, suppress: inEntrance, designRef, modelOffsetRef })
   useCompositionBlend({
-    backdropEl,
+    backdropEl: backdropStackEl,
     modelTransformRef,
     target: targetT,
     active: inEntrance,
@@ -346,6 +467,8 @@ export default function WallpaperPage() {
     const text = err instanceof Error ? err.message : String(err)
     console.error('[wallpaper]', text)
     setMessage(text)
+    // A failed asset must not hold the loading cover up forever.
+    setLoadFailed(true)
   }, [])
 
   return (
@@ -372,21 +495,26 @@ export default function WallpaperPage() {
         {/* Gated on `ready` like the stage: before the config settles this
             would otherwise paint the BUILT-IN model's backdrop (a square,
             untransformed frame) for a moment before switching to the real
-            configuration. */}
-        {ready && backdropUrl && (
-          <img
-            className="wallpaper-backdrop"
-            src={backdropUrl}
-            alt=""
-            draggable="false"
-            ref={setBackdropEl}
-            // The layer transform lives in CSS custom properties so the parallax
-            // loop can append `--parallax-x/y` on the parent without fighting
-            // React for the inline `transform` (see .wallpaper-backdrop).
-            // They are written imperatively by useCompositionBlend (entrance
-            // cross-fade); React must not own them, or the next render would
-            // snap the backdrop back to the composed framing mid-fade.
-          />
+            configuration. Up to two stacked layers share one wrapper-owned
+            transform; a new layer fades in on top, the old one is pruned when
+            the fade ends. */}
+        {ready && backdropLayers.length > 0 && (
+          <div className="wallpaper-backdrop-stack" ref={setBackdropStackEl}>
+            {backdropLayers.map((layer, index) => {
+              const isTop = index === backdropLayers.length - 1
+              return (
+                <img
+                  key={layer.id}
+                  className={`wallpaper-backdrop${layer.fade && isTop ? ' is-incoming' : ''}`}
+                  style={layer.fade && isTop ? { animationDuration: `${Math.max(entrance.blend, 0.1)}s` } : undefined}
+                  src={layer.url}
+                  alt=""
+                  draggable="false"
+                  onAnimationEnd={isTop ? pruneBackdropLayers : undefined}
+                />
+              )
+            })}
+          </div>
         )}
         {/* Mounting only after the config settles avoids loading the model
             twice (built-in defaults, then the file's modelId). */}
@@ -433,6 +561,21 @@ export default function WallpaperPage() {
       {/* Viewport-anchored, so the composition scale never moves the widgets.
           Renders nothing when every `overlay.*.enabled` is false. */}
       {ready && <WallpaperOverlay config={overlayTweaks} />}
+
+      {/* Full-screen warm-up cover: hides the cold first frames (model texture
+          upload, backdrop decodes) and fades out once the scene can start
+          without hitches. `pointer-events: none` keeps the chrome underneath
+          clickable, and a load failure also lifts it so the error line shows. */}
+      {!loadingGone && (
+        <div
+          className={`wallpaper-loading${sceneReady ? ' is-ready' : ''}`}
+          style={{ backgroundColor: config.letterbox }}
+          role="status"
+        >
+          <span className="stage-loading-spinner" />
+          <span className="wallpaper-loading-text">{t('page.loading')}</span>
+        </div>
+      )}
 
       {!settingsOpen && (
         <div className="wallpaper-tools">

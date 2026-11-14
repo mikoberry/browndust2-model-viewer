@@ -314,6 +314,7 @@ const MESSAGES = {
   'anchor.bottomRight': { zh: '右下', en: 'Bottom-right', ja: '右下', ko: '오른쪽 아래' },
 
   // ---- page-level chrome ----
+  'page.loading': { zh: '正在加载壁纸资源…', en: 'Loading wallpaper resources…', ja: '壁紙リソースを読み込み中…', ko: '배경화면 리소스를 불러오는 중…' },
   'page.playEntrance': { zh: '播放开场动画', en: 'Play entrance', ja: '登場アニメを再生', ko: '등장 애니메이션 재생' },
   'page.openSettings': { zh: '打开构图设置', en: 'Open composition settings', ja: '構図設定を開く', ko: '구도 설정 열기' },
   'page.settingsHint': { zh: '构图设置（S）', en: 'Composition settings (S)', ja: '構図設定（S）', ko: '구도 설정 (S)' },

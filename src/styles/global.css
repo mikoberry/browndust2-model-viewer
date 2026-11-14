@@ -1099,6 +1099,15 @@ code {
   position: absolute;
 }
 
+/* Wrapper for the stacked backdrop layers. It OWNS the --backdrop-* custom
+   properties (written by useCompositionBlend): custom properties inherit, so
+   every <img> inside shares one transform and a cross-fade moves both layers
+   together. React never touches these vars. */
+.wallpaper-backdrop-stack {
+  position: absolute;
+  inset: 0;
+}
+
 .wallpaper-backdrop {
   position: absolute;
   inset: 0;
@@ -1117,6 +1126,56 @@ code {
   will-change: transform;
   pointer-events: none;
   user-select: none;
+}
+
+/* Incoming layer of a backdrop cross-fade: mounted on top at opacity 0, fades
+   in over `entrance.blend` seconds (duration set inline from WallpaperPage),
+   then the layer underneath is pruned onAnimationEnd. */
+.wallpaper-backdrop.is-incoming {
+  animation: wallpaper-backdrop-in ease both;
+  will-change: transform, opacity;
+}
+
+@keyframes wallpaper-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Full-screen warm-up cover (WallpaperPage): shown while config / model /
+   backdrop decodes are still cold, faded out via .is-ready once the scene can
+   start without hitches. pointer-events stays off so the chrome underneath
+   remains clickable while the cover fades. */
+.wallpaper-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+.wallpaper-loading.is-ready {
+  opacity: 0;
+}
+
+.wallpaper-loading .stage-loading-spinner {
+  width: 22px;
+  height: 22px;
+  border-width: 3px;
+}
+
+.wallpaper-loading-text {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
 }
 
 /* Viewport-anchored layer for the WallKit control overlays. It is deliberately
