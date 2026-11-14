@@ -5,10 +5,12 @@
 // replaced, so a `preview.gif` you dropped in by hand (and any other file the
 // host created) survives every re-deploy.
 //
-//   npm run build:we                  # build + deploy to the default folder
+//   npm run build:we                  # plain build + deploy to the default folder
+//   npm run build:we:embed            # file:// self-contained build + deploy
 //   WE_PROJECT=D:/somewhere npm run deploy:we    # deploy an existing dist/
 //
-// Overridable: WE_PROJECT (target folder), WE_TITLE (project title).
+// Overridable: `--target <dir>` / `--title <name>` (shell-agnostic, works in
+// cmd.exe and PowerShell too), or the WE_PROJECT / WE_TITLE env vars.
 
 import { cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
@@ -31,8 +33,22 @@ const MANAGED = ['assets', 'models', 'index.html']
 // "复制配置" to carry a tweak back.
 const RUNTIME_ONLY = 'wallpaper.config.json'
 
-const target = path.resolve(process.env.WE_PROJECT || DEFAULT_TARGET)
-const title = process.env.WE_TITLE || 'BrownDust 2'
+// `--target <dir>` exists because `VAR=value npm run ...` is bash-only syntax:
+// cmd.exe and PowerShell need `set` / `$env:` respectively. A plain argument is
+// shell-agnostic, so `npm run build:we -- --target "F:/.../BD2-plain"` works
+// everywhere. Precedence: CLI > WE_PROJECT > default.
+function readArg(name) {
+  const argv = process.argv.slice(2)
+  const eq = argv.find((arg) => arg.startsWith(`--${name}=`))
+  if (eq) return eq.slice(name.length + 3)
+  const at = argv.indexOf(`--${name}`)
+  if (at !== -1 && argv[at + 1] && !argv[at + 1].startsWith('--')) return argv[at + 1]
+  return undefined
+}
+
+const cliTarget = readArg('target')
+const target = path.resolve(cliTarget || process.env.WE_PROJECT || DEFAULT_TARGET)
+const title = readArg('title') || process.env.WE_TITLE || 'BrownDust 2'
 
 function fail(message) {
   console.error(`✗ ${message}`)
@@ -135,9 +151,23 @@ async function main() {
   )
 
   const size = await dirSize(target)
+  // The default `build:we` deploys real asset files (plain ESM build); the
+  // file:// self-contained bundle (`build:we:embed`) adds assets/embed-assets.js.
+  // Both are supported; we only report which one landed.
+  const embedded = existsSync(path.join(target, 'assets', 'embed-assets.js'))
   console.log(`✓ 已部署到 ${target}`)
   console.log(`  入口 index.html，project.json (type: Web, 音频处理已开启)，覆盖 ${copied} 项`)
-  console.log('  wallpaper.config.json 已随构建覆盖')
+  if (embedded) {
+    console.log('  file:// 自包含构建：素材与配置已内嵌，运行时不发起任何本地请求')
+    console.log(
+      '  wallpaper.config.json 仍然复制过去，但嵌入产物不会读它；调参请改仓库里的文件后重新 `npm run build:we:embed`',
+    )
+  } else {
+    console.log('  普通构建：素材是 dist/models/ 下的真实文件，运行时经 fetch/JS 文件加载')
+    console.log('  ⚠ 若使用 Wallpaper Engine 2.8.797+（CEF 156，默认禁止 file:// 读本地文件），这份产物会黑屏')
+    console.log('    改用 `npm run build:we:embed` 生成自包含版本')
+    console.log('  wallpaper.config.json 已随构建覆盖')
+  }
   console.log(`  ${size.files} 个文件 / ${mb(size.total)}`)
   if (!previewName) {
     console.log('  提示：放一张 preview.gif / .jpg / .png 到该目录可作缩略图，重新部署会保留')

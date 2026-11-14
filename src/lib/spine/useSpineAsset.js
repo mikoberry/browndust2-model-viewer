@@ -12,6 +12,7 @@ import {
   SkeletonBinary,
   SkeletonJson,
 } from '@esotericsoftware/spine-webgl'
+import { embeddedAsset } from '../embed.js'
 import { modelPrefix } from '../assets.js'
 import { mergeClipLayers } from './clipLayers.js'
 
@@ -63,6 +64,17 @@ export function useSpineAsset(context, model) {
 
     try {
       manager = new AssetManager(context, modelPrefix(model))
+      // file:// builds (BD2_EMBED=1) carry every file as a base64 data URI and
+      // the host blocks XHR / cross-origin image loads, so register them first.
+      // Spine then decodes them in memory instead of fetching: binary and text
+      // through atob(), atlas pages by assigning the data URI to <img>.src
+      // (data: images do not taint the canvas, so the WebGL upload is safe).
+      // Keys are relative to the model folder, which is what the loads below
+      // use once Spine prepends its own pathPrefix.
+      for (const file of [model.skeleton, model.atlas, ...(model.pages ?? [])]) {
+        const dataUri = embeddedAsset(file.source)
+        if (dataUri) manager.setRawDataURI(file.file, dataUri)
+      }
       if (model.skeleton.kind === 'json') manager.loadJson(model.skeleton.file)
       else manager.loadBinary(model.skeleton.file)
       // Page images are resolved as pathPrefix + page.name, so every page must

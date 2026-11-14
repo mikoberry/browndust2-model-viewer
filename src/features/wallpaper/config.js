@@ -38,6 +38,10 @@
 // what a fresh install shows.
 import shippedConfig from '../../../public/wallpaper.config.json'
 
+// Dependency-free lookups into the file:// build's inlined tables: the factory
+// config object and "is this model actually shipped?". See lib/embed.js.
+import { injectedConfig, isPackagedModel, packagedModel } from '../../lib/embed.js'
+
 export {
   FALLBACK_DESIGN,
   designLength,
@@ -447,6 +451,19 @@ export function clearRecordedConfig() {
 // `file://`, plain static hosting without the JSON) just falls back to the
 // built-in defaults, so the wallpaper always renders.
 async function readConfigFile({ timeout = 5000 } = {}) {
+  // `BD2_EMBED=1` builds inline this very file as `assets/embed-config.js`,
+  // because a file:// host blocks fetch(). It occupies the same priority slot
+  // as the real file (still below the user's recorded snapshot), so retuning
+  // now means editing public/wallpaper.config.json and rebuilding.
+  const injected = injectedConfig()
+  if (injected) {
+    return {
+      config: mergeConfig(WALLPAPER, injected),
+      source: 'file',
+      url: `embedded:${CONFIG_FILE}`,
+    }
+  }
+
   const url = configFileUrl()
   const controller = typeof AbortController === 'function' ? new AbortController() : null
   const timer = controller ? setTimeout(() => controller.abort(), timeout) : 0
@@ -487,7 +504,28 @@ export { pickBackdrop } from '../../lib/backdrops.js'
 export function resolveWallpaperModel(models, overrideId = '', modelId = WALLPAPER.modelId) {
   if (!models?.length) return null
   const id = overrideId || modelId
-  return models.find((item) => item.id === id) ?? models.find((item) => item.id.includes(id)) ?? models[0]
+  const picked =
+    models.find((item) => item.id === id) ??
+    models.find((item) => item.id.includes(id)) ??
+    models[0]
+  // An embed build ships ONLY the model named by public/wallpaper.config.json
+  // (`MODEL_ONLY`). A localStorage snapshot left over from tuning another
+  // character would pick a model whose files are not inlined: every lookup
+  // misses, the loader falls back to blocked file:// requests and the page
+  // hangs until the 60s timeout — a black wallpaper with no useful error.
+  // Fall back to the model this build actually carries, loudly.
+  if (picked && !isPackagedModel(picked)) {
+    const fallback = packagedModel(models)
+    if (fallback) {
+      console.warn(
+        `[wallpaper] ${picked.id} 未随本次构建打包，改用 ${fallback.id}。` +
+          '要换人物请改 public/wallpaper.config.json 后重新 build:we:embed，' +
+          '或在抽屉里「恢复首次默认」清掉旧快照',
+      )
+      return fallback
+    }
+  }
+  return picked
 }
 
 // Composition geometry lives in src/lib/composition.js (re-exported at the top):

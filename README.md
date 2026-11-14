@@ -10,11 +10,26 @@
 ```bash
 npm install
 npm run dev          # 根地址 = 壁纸；地址后加 /spine-viewer 进调试页
-npm run build        # 产出 dist/
-npm run build:we     # 打包 + 部署到 Wallpaper Engine 项目目录
+npm run build        # 产出 dist/（ESM：浏览器 / 静态托管用）
+npm run build:we     # 默认：普通构建（真实素材文件）+ 部署到 Wallpaper Engine 项目目录
+npm run build:we:embed  # 备选：file:// 自包含构建（素材 base64 内嵌）+ 部署
+npm run verify:embed # 自检自包含产物（纯 Node，不需要浏览器）
 npm run preview      # 预览构建产物
 npm run model:list   # 命令行查看 model-library 扫描结果
 ```
+
+**两种产物可以随时切换**，同一个 `dist/`：
+
+| 命令 | 产物 | 素材 | 能跑在哪 |
+| --- | --- | --- | --- |
+| `npm run build` / `build:home` | ESM 多文件 | `dist/models/**` 真实文件 | 浏览器、http 静态托管、`npm run preview` |
+| `npm run build:home -- --embed` | IIFE 单入口 + `embed-assets.js` | base64 内嵌，零请求 | 以上全部，**外加 file://** |
+
+`build:we` = 普通产物 + 部署（默认），`build:we:embed` = 自包含产物 + 部署（备选）。
+
+Wallpaper Engine **2.8.797 beta**（CEF 156，默认禁止 file:// 读本地文件）目前只跑得动 embed 那一份，
+所以在这个 beta 上要 `npm run build:we:embed`；正式版若修复了 file 访问，`build:we` 的默认产物即可直接用。
+部署脚本会检查目标目录里有没有 `assets/embed-assets.js` 来判定这次部署的是哪一种，并在日志里说明。
 
 开发时直接访问 `http://localhost:5173/spine-viewer`。
 
@@ -47,15 +62,45 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 ## 部署到 Wallpaper Engine
 
 ```bash
-npm run build:we     # = vite build + scripts/deploy-weproject.mjs
-npm run deploy:we    # 只复制现有 dist/，不重新构建
+npm run build:we        # 默认：普通构建（dist/models/ 真实文件）+ 部署
+npm run build:we:embed  # 备选：file:// 自包含构建（素材 base64 内嵌）+ 部署
+npm run deploy:we       # 只复制现有 dist/，不重新构建
 ```
 
-目标目录默认 `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，
-可用 `WE_PROJECT=D:/somewhere` 覆盖、`WE_TITLE` 改工程标题。
+目标目录默认 `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`。
+换目录用 **`--target`（推荐，cmd / PowerShell / bash 写法一致）**：
+
+```bash
+npm run build:we:embed -- --target "F:/SteamLibrary/steamapps/common/wallpaper_engine/projects/myprojects/BD2-embed"
+npm run build:we       -- --target "F:/SteamLibrary/steamapps/common/wallpaper_engine/projects/myprojects/BD2-plain"
+```
+
+也可以用环境变量 `WE_PROJECT` / `WE_TITLE`，但那是 shell 相关的（bash 写 `WE_PROJECT=x npm run …`、
+cmd 要先 `set "WE_PROJECT=x"`、PowerShell 要用 `$env:WE_PROJECT='x';`）。
 
 脚本会生成 `project.json`（`type: "Web"`、`general.supportsaudioprocessing: true`，频谱 / 专辑卡需要）。
 放一张 `preview.jpg|png|gif` 进部署目录即可作为缩略图。
+
+### 什么时候需要「自包含」构建（`build:we:embed`）
+
+Wallpaper Engine **2.8.797 beta** 把渲染内核升到 CEF 156（Chromium 156），**默认禁止 file:// 页面读取本地文件**。
+普通构建（`npm run build:we` 的默认产物）在这个 beta 里会全灭：module 脚本、`crossorigin` 样式表、
+Spine 读 skel/atlas 的 XHR、读图集页的 `<img>` 全部被拦 → 黑屏。
+
+这是 beta 的行为，正式版可能恢复对 file 的访问，所以**普通构建仍是默认**；如果黑屏，改用
+`npm run build:we:embed`。自包含产物**运行时不发起任何本地请求**：
+
+- 入口打包成 IIFE，用经典 `<script defer src>`（无 `type="module"`、无 `crossorigin`）；
+- 样式由 Vite 注入到 JS chunk 里（iife 下不产出外链 `.css`）；
+- 素材（skel / atlas / 图集页 / 背景）全部 base64 进 `dist/assets/embed-assets.js`，
+  运行时经 Spine 自带的 `setRawDataURI()` 通道解码，`dist/models/` 不再生成；
+- 出厂配置注入 `dist/assets/embed-config.js`（`window.__BD2_WALLPAPER_CONFIG__`）。
+
+**代价**：部署目录里的 `wallpaper.config.json` 在 WE 里不再被读取，调参要改仓库的
+`public/wallpaper.config.json` 后重新 `npm run build:we:embed`。抽屉的「记录配置」（localStorage）
+仍然优先于它。产物约 37MB（base64 放大约 33%），另有约 36MB 常驻内存。
+
+细节与排障见 [docs/we-file-access.md](docs/we-file-access.md)。
 
 ## 添加模型
 

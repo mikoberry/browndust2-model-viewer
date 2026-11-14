@@ -41,11 +41,17 @@
 npm install            # 安装依赖（Node 18+）
 npm run dev            # Vite dev server —— 由用户自己启动，agent 不要起
 npm run model:list     # 纯 Node 扫描 model-library/，输出模型 / 图集页 / 关联背景
-npm run build          # 生产构建到 dist/ —— 只在用户明确要求时执行
-npm run build:we       # 构建 + 部署到本机 WE 工程目录（会写仓库外的文件，按需执行）
-npm run deploy:we      # 只复制现有 dist/，不重新构建
+npm run build          # 生产构建到 dist/（ESM，给浏览器 / 调试）—— 只在用户明确要求时执行
+npm run build:home     # 同上，但只打包 home 配置的那一个模型
+npm run build:we       # 普通构建（真实素材文件）+ 部署到本机 WE 工程目录（默认；会写仓库外的文件，按需执行）
+npm run build:we:embed # 自包含构建（素材 base64）+ 部署 —— 仅 WE 2.8.797 beta / file:// 需要
+npm run deploy:we      # 只复制现有 dist/，不重新构建（产物形态原样带过去）
+npm run verify:embed   # 纯 Node 自检 embed 产物（无 module/crossorigin、素材完整）
 npm run preview        # 预览构建产物
 ```
+
+产物形态（embed / 真实文件）与「是否部署」是**两件正交的事**：形态只由 `BD2_EMBED=1`（或
+`build-home.mjs --embed`）决定，`dist/` 只会有一份，后跑的命令覆盖前一个。不要新增第三套构建链路。
 
 没有 `test` / `lint` / `format` / `generate` 脚本，也不要为本项目引入无关的脚手架或代码生成器。
 `prepare:model` 已不存在：素材不复制进 `public/`，由插件在 dev/build 两路直接供给。
@@ -64,6 +70,8 @@ wallpaper.presets.json           # 人物配置库（仓库根目录、纯手工
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG IHDR 尺寸）
   model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile
+  embed-build-plugin.mjs         # BD2_EMBED=1：素材 → base64 内嵌，index.html 换成 classic script（见 §12）
+  verify-embed.mjs               # 纯 Node 自检 embed 产物，不需要浏览器
   deploy-weproject.mjs           # 把 dist/ 复制成 WE 工程文件夹并生成 project.json
 src/
   main.jsx                       # Vite 入口（index.html 引用 /src/main.jsx，位置不要动）
@@ -409,7 +417,8 @@ src/features/<feature>/
 - **壁纸页**：默认无 UI，只有加载失败或素材库为空时左下角显示一行纯文本，同时 `console.error`。
   不要加 toast / 弹窗 / 重试按钮（构图设置抽屉是唯一的例外，且必须保持收起状态）。
 - **配置文件读取失败必须静默降级**：`loadWallpaperConfig()` 不 reject，返回内置默认值 + `source: 'builtin'`，
-  `console.warn` 一条即可。`file://` 下 fetch 本地 JSON 必然失败，这是预期路径，不要当错误弹提示。
+  `console.warn` 一条即可。ESM 构建在 `file://` 下 fetch 本地 JSON 必然失败，这是预期路径，不要当错误弹提示。
+  （embed 构建不会走到 fetch：它先读注入的 `__BD2_WALLPAPER_CONFIG__`。）
 - **调试页**：`onError` → 右下角 `error-toast`，可手动关闭；资源加载带 60s 超时与图集页缺失提示。
 - WebGL 上下文创建失败由 `SpineStage` 捕获并走 `onError`；`AssetManager.dispose()` 放在 effect cleanup，
   切模型前释放图集纹理。
@@ -424,22 +433,45 @@ src/features/<feature>/
 - 调试包围盒 overlay 在隐藏时避免每帧写 DOM（防强制重排）。
 - build 只 emit manifest 引用的素材，`dist/` 不含 366MB 背景库；`base: './'` 保证 `file://` 与任意子路径可用。
   不要改成绝对路径或加 CDN 部署假设。
+- **两套产物，别混用**：`npm run build` 出 ESM（`<script type="module" crossorigin>` + 外链 CSS + `dist/models/**`），
+  只能在 http / 浏览器里跑；`npm run build:we:embed`（`BD2_EMBED=1`）出 **file:// 自包含** 版本：IIFE 经典脚本、
+  素材全部 base64 进 `assets/embed-assets.js`、配置进 `assets/embed-config.js`、`dist/models/` 不再存在。
+  两者都只是 `vite build` 的开关差异，不是两套源码。
+- **file:// 构建存在的原因**：Wallpaper Engine **2.8.797 beta** 起 CEF 156 默认禁止 file:// 页面跨源读本地文件，
+  module 脚本 / `crossorigin` 样式表 / XHR 读 skel.atlas / `<img>` 读图集页全部被拦 → 黑屏。
+  这是 beta 行为，正式版可能修，所以**默认部署（`build:we`）仍是普通产物**，embed 只是备选。
+  WE 里黑屏时才换 `build:we:embed`，别把 embed 当默认。
+  改 `vite.config.js` 的 `rollupOptions`、`index.html` 的 script 标签、或素材加载方式前先读
+  `docs/we-file-access.md`。三处运行时桥接必须同时保持：
+  `src/lib/assets.js` 的 `assetUrl()`/`embeddedAsset()` 查表（键 = manifest `source`，无 `models/` 前缀、未编码）、
+  `useSpineAsset.js` 的 `manager.setRawDataURI()`（file → data URI）、
+  `config.js` 的 `readConfigFile()` 优先读 `__BD2_WALLPAPER_CONFIG__`。
+  缺任何一个都会退回到"请求 file://"并重新黑屏；`npm run verify:embed` 只覆盖前两项之一的产物形态，
+  运行时行为仍需在 WE 里实测。
+- iife 构建下 CSS 不会单独产出 `.css`：Vite 把它注入 JS chunk（`document.createElement('style')`），
+  这是零请求路径，不要为了"样式要单独文件"去改 `format` 或加 `cssCodeSplit`。
 - **`wallkit` 是源码直出的 git 依赖**（无构建步骤），所以 `vite.config.js` 里 `optimizeDeps.exclude: ['wallkit']`，
   由 Vite / `@vitejs/plugin-react` 自己编译它的 JSX。去掉这行会让 dev 预打包去处理它的 CSS import。
   升版本只改 `package.json` 的 commit sha（`github:mikoberry/wallkit#<sha>`），不要改成 npm 包或 vendor 副本。
 - `wallkitWE()` 只是往 `index.html` 的 `<head>` 顶部注入 classic script（audio / media / pause，`timeline` 默认关）。
   它不改构图、不写 `project.json`；`dist/index.html` 里应能看到 `<!-- wallkit-we:* -->` 标记。
 
-### WE 部署（`npm run build:we`）
+### WE 部署（`npm run build:we` / `build:we:embed`）
+
+- `build:we` = 普通构建 + 部署（默认）；`build:we:embed` = 自包含构建 + 部署（beta WE 黑屏时用）。
 
 - `scripts/deploy-weproject.mjs` 默认目标
-  `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用 `WE_PROJECT` 覆盖；
+  `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用
+  `--target <dir>`（跨 shell，推荐）或 `WE_PROJECT` 环境变量覆盖；
   它会写仓库外的文件，**只在用户明确要求时执行**。
 - 只清 `assets/` / `models/` / `index.html` 三项，其它文件（`preview.gif`、WE 自己生成的快照等）必须保留。
 - `wallpaper.config.json` **和其他文件一样直接覆盖**（部署目录是 `dist/` 的镜像）。它只是出厂默认值，
   所以覆盖它不会影响已经「记录」过的用户（那份在客户端的 `localStorage` 里）；想把这些值拿回仓库，
   用抽屉的「记录配置」复制出来再整份粘进 `public/wallpaper.config.json`；
   不要为了「一致性」改成每次覆盖。
+- **embed 部署后这个 json 不再被读取**：配置已在构建时注入 `assets/embed-config.js`，调参必须改仓库里的
+  `public/wallpaper.config.json` 再 `npm run build:we:embed`。脚本会检测 `assets/embed-assets.js` 是否存在来决定
+  打印哪一种提示，不要删掉这个分支（`deploy:we` 复制一份已构建的 dist/ 也是合法用法）。
 - `project.json` 由脚本生成：`file: index.html`、`type: "Web"`（大写）、
   `general.supportsaudioprocessing: true`（**必须在 `general` 内**）。`preview` 只在目标目录里真有图片时才登记。
 - 目标路径防护：段数 < 3 或等于仓库根时直接拒绝，避免误删。改这段时别放宽。
@@ -466,6 +498,11 @@ src/features/<feature>/
    `clearRecordedConfig()` 后 → 又回到文件；`localStorage` getter 抛错时降级到文件且不抛。
 3. **构建**：`npm run build`（仅用户明确要求时），核对 `dist/` 只含 manifest 引用的素材，
    且 `dist/wallpaper.config.json` 存在、文件名无 hash。
+   **embed 构建**：`npm run build:we:embed`（或 `BD2_EMBED=1` 构建）之后跑 `npm run verify:embed`（不需要浏览器）。它断言
+   `dist/index.html` 无 `type="module"` / `crossorigin` / 外链样式、三个 defer 脚本顺序为
+   素材 → 配置 → 主脚本、CSS 确实注入在 JS chunk 里、`embed-assets.js` 的条目数与 MIME 及 PNG 魔数、
+   `dist/models/` 不再存在、`embed-config.js` 的 `modelId` 与 `public/wallpaper.config.json` 一致。
+   它**不覆盖运行时**（`setRawDataURI` 注入、data URI 图片能否被 WebGL 接受），那两项只能在 WE 里看。
 4. **取色面板**：`src/features/wallpaper/color.js` 可在 Node 里直接 import，断言 `hsvToHex(hexToHsv(x)) === x`
    （含 `#000000` / 饱和色）与 `s`/`v` 越界裁剪；组件本身不做渲染验证。
 5. **视差方向 / 比例**：`parallaxOffset(strength, design, { x, y })` 也是纯函数，断言
