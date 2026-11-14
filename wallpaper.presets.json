@@ -8,6 +8,163 @@
     "每个条目就是一份完整的 wallpaper.config.json 内容，可原样复制回去用。"
   ],
   "presets": {
+    "Ren_Yamashiro/Role_Reversal/cutscene_char021391": {
+      "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
+      "modelId": "Ren_Yamashiro/Role_Reversal/cutscene_char021391",
+      "backdrop": "char021391 back2.png",
+      "design": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fit": "contain",
+      "letterbox": "#101319",
+      "bleed": true,
+      "overscan": 1.5,
+      "model": {
+        "heightRatio": 1,
+        "widthRatio": 1,
+        "alignX": 0.5,
+        "alignY": 0.5
+      },
+      "backdropTransform": {
+        "scale": 1.05,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "modelTransform": {
+        "scale": 1.35,
+        "offsetX": 240,
+        "offsetY": 27
+      },
+      "parallax": {
+        "enabled": true,
+        "backdrop": 2,
+        "model": 2
+      },
+      "animation": "loop_2",
+      "expression": null,
+      "animationStart": 0,
+      "sequence": [
+        "cut_A",
+        "cut_B",
+        "loop_2"
+      ],
+      "clickAnimation": {
+        "enabled": true,
+        "name": "cut_B"
+      },
+      "entrance": {
+        "autoplay": true,
+        "blend": 0.9,
+        "clips": {
+          "cut_A": {
+            "backdrop": "char001297_back1.webp",
+            "backdropTransform": {
+              "scale": 1.21,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.1,
+              "offsetX": 0,
+              "offsetY": 65
+            }
+          },
+          "cut_B": {
+            "backdrop": "char021391 back2.png",
+            "backdropTransform": {
+              "scale": 1.2,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.75,
+              "offsetX": 365,
+              "offsetY": -16
+            }
+          }
+        }
+      },
+      "skin": "",
+      "speed": 1,
+      "zoom": 1,
+      "overlay": {
+        "accent": "#4a07b5",
+        "clock": {
+          "enabled": true,
+          "placement": "segments",
+          "color": "",
+          "anchor": "top-left",
+          "offsetX": 5,
+          "offsetY": 5,
+          "size": 150,
+          "use24Hour": true,
+          "tilt": true,
+          "beat": true,
+          "labels": {
+            "locale": "zh-CN",
+            "aria": "当前时间与日期"
+          }
+        },
+        "spectrum": {
+          "enabled": false,
+          "variant": "bars",
+          "color": "",
+          "anchor": "bottom-center",
+          "width": "100vw",
+          "height": "14vh",
+          "offsetX": 0,
+          "offsetY": 0,
+          "size": 100,
+          "barCount": 128,
+          "intensity": 100,
+          "curve": 1
+        },
+        "albumArt": {
+          "enabled": true,
+          "variant": "vinyl",
+          "color": "#9172c3",
+          "textColor": "#f0f0f1",
+          "spectrum": "on",
+          "anchor": "center-left",
+          "offsetX": 4,
+          "offsetY": 4,
+          "size": 150,
+          "labels": {
+            "aria": "正在播放"
+          }
+        },
+        "ambient": {
+          "enabled": false,
+          "variant": "leaves",
+          "color": "",
+          "density": 100,
+          "size": 100,
+          "intensity": 100,
+          "speed": 100
+        },
+        "pointer": {
+          "enabled": false,
+          "trail": true,
+          "click": true,
+          "trailVariant": "ribbon",
+          "clickVariant": "ripple",
+          "color": "",
+          "size": 100,
+          "intensity": 100
+        },
+        "spotlight": {
+          "enabled": false,
+          "size": 420,
+          "feather": 0.45,
+          "dim": 0.72,
+          "glow": 0.22,
+          "darkColor": "#000000",
+          "lightColor": "#ffffff",
+          "smoothing": 0.05
+        }
+      }
+    },
     "Liatris/Sweet_Temptation/cutscene_char001297": {
       "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
       "modelId": "Liatris/Sweet_Temptation/cutscene_char001297",
