@@ -1294,6 +1294,21 @@ code {
 
 .wallpaper-follow-text {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: calc(2px * var(--ui-scale));
+}
+
+/* Second line: the same message in English, dimmer and smaller, so speakers
+   of other locales still get the gist. Hidden entirely under the en locale. */
+.wallpaper-follow-primary {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.wallpaper-follow-secondary {
+  font-size: calc(10px * var(--ui-scale));
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .wallpaper-follow-close {

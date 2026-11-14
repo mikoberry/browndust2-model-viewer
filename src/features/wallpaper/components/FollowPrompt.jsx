@@ -3,20 +3,32 @@
 // dismissal means; this component just renders the card, starts the 5s
 // auto-dismiss timer on mount and forwards the × click. It unmounts entirely
 // once dismissed, so the timer's cleanup runs on both exit paths.
+//
+// The text renders in the current locale plus a smaller English line — unless
+// the current locale IS English, in which case only one line is shown.
 import { useEffect } from 'react'
-import { t } from '../../../lib/i18n.js'
+import { MESSAGES, t, useLocale } from '../../../lib/i18n.js'
 
 const AUTO_DISMISS_MS = 5000
+const KEY = 'page.followPrompt'
 
 export default function FollowPrompt({ onDismiss }) {
+  const { locale } = useLocale()
   useEffect(() => {
     const timer = setTimeout(onDismiss, AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
   }, [onDismiss])
 
+  const entry = MESSAGES[KEY] ?? {}
+  const primary = entry[locale] ?? entry.zh ?? KEY
+  const secondary = locale === 'en' ? null : entry.en
+
   return (
     <div className="wallpaper-follow" role="status">
-      <span className="wallpaper-follow-text">{t('page.followPrompt')}</span>
+      <span className="wallpaper-follow-text">
+        <span className="wallpaper-follow-primary">{primary}</span>
+        {secondary && <span className="wallpaper-follow-secondary">{secondary}</span>}
+      </span>
       <button
         type="button"
         className="wallpaper-follow-close"
