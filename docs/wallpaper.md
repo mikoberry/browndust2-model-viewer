@@ -26,8 +26,9 @@
 - `fit: 'contain'` 保证完整构图（其它比例留边）、`'cover'` 铺满并对称裁切；**两者都不改变相对构图**。
   留边默认用同一张背景的模糊放大版填充（纯装饰层，不参与构图）。
 
-`src/features/wallpaper/config.js` 里的 `WALLPAPER` 是**内置默认值**（也是配置文件的兜底），
-`public/wallpaper.config.json` 是**可外部修改的运行期配置**，字段与它一一对应：
+`public/wallpaper.config.json` 是**唯一事实来源**：`src/features/wallpaper/config.js` 顶部静态 import 它，
+用 `mergeConfig` 合并出 `WALLPAPER` 作为**内置兜底值**（两者因此不会漂移），
+它同时是**可外部修改的运行期配置**，字段说明如下：
 
 | 字段 | 说明 |
 | --- | --- |
@@ -67,8 +68,9 @@
 
 注意事项：
 
-- `file://` 直接打开 `dist/index.html` 时浏览器禁止 fetch 本地 JSON，会**退回内置默认值**，console 有一条 warning。
-  需要读配置文件请用 `npm run preview` 或任意静态服务器。
+- `file://` 直接打开 `dist/index.html` 时浏览器禁止 fetch 本地 JSON，会**退回内置兜底值**（即打包时
+  烤进 bundle 的那份 JSON，仍是出厂默认），console 有一条 warning。
+  需要读取「改过的」配置文件请用 `npm run preview` 或任意静态服务器。
 - 记录存在 `localStorage['wallpaper.config.user']`（`{ at, config }`，是整个配置对象而不是字符串）。
 - 配置值不做严格校验，写错类型会原样进入渲染。
 - 想扩展新设置：JSON 里直接加键即可（会被保留），但要真正生效还需要在代码里读取它。

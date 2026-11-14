@@ -73,7 +73,7 @@ src/
   features/
     wallpaper/                   # Feature：根路由正式壁纸，默认无 chrome
       WallpaperPage.jsx          # 背景 img + canvas，页面入口 / 组合根；设置抽屉开关与 tweak 状态
-      config.js                  # 内置默认值 + mergeConfig/loadWallpaperConfig（几何函数从 lib/composition.js 转出）
+      config.js                  # 内置默认值（静态 import 出厂 JSON 合并而成）+ mergeConfig/loadWallpaperConfig（几何函数从 lib/composition.js 转出）
       color.js                   # hex ↔ HSV 换算（取色面板用，无 React/DOM，可在 Node 里测）
       useParallax.js             # 鼠标视差：归一化指针 + 缓动，写 CSS 变量（背景）与 offsetRef（模型）
       useCompositionBlend.js     # 段间 / 入场 → 固定构图的渐变：写 --backdrop-* 与 transformRef，不进 state
@@ -359,12 +359,14 @@ src/features/<feature>/
   两个通道和视差同源：背景写 `--backdrop-x/y/scale`、模型写 `design.transformRef`（`SpineStage` 里
   `d.transformRef.current ?? d.transform`）——**不要**把这些值搬进 React state，60fps 渐变会让整页 + 所有控件重渲染。
   背景的三个变量**只能有一个写者**：React 不再给 `.wallpaper-backdrop` 设 inline style，否则一次重渲染就会把画面
-  掸回构图值、而渐变循环不会重跑。入场期间视差强制关闭（`PARALLAX_OFF`）。
+  掸回构图值、而渐变循环不会重跑。入场期间视差由 `useParallax` 的 `suppress`
+  输入**缓动归零**（强度渐变到 0 / 恢复，不许换配置对象瞬间拍回）。
   这是唯一允许「壁纸画面跟随某个动画阶段改构图」的机制，不要在别处再开第二条。
 - 构图设置抽屉（`features/wallpaper/components/WallpaperSettings.jsx`）里的数值一律是**设计像素**，
   进入渲染前同样走 `resolveLayerTransform()`，所以「面板调到 X」与「`wallpaper.config.json` 写 X」等价。
-- 改默认构图时**优先改 `public/wallpaper.config.json`**（打包后仍可改、无需重建），`config.js` 里的 `WALLPAPER`
-  只作为兜底默认值同步更新；两者字段必须一一对应。
+- 改默认配置**只改 `public/wallpaper.config.json`**（唯一事实来源，打包后仍可改、无需重建）：
+  `config.js` 顶部静态 import 该 JSON 并 `mergeConfig` 进 `WALLPAPER`，兜底值自动跟随、不会漂移
+  （`build:home` 的 `MODEL_ONLY` 也从这份 JSON 读 `modelId`）。新增字段仍要在 `BUILTIN_WALLPAPER` 留键并给默认值。
 
 ## 10. 路由（Routing）
 
@@ -464,8 +466,8 @@ src/features/<feature>/
 
 - **加模型**：把 `.skel` / `.json` + `.atlas` + 全部图集页 PNG 放进 `model-library/<角色>/<皮肤>/`，刷新即可；
   用 `npm run model:list` 核对图集页是否齐全。不要改 `src/` 去硬编码模型列表。
-- **改壁纸**：调默认构图改 `public/wallpaper.config.json`（出厂默认、打包后可改）；`src/features/wallpaper/config.js`
-  的 `WALLPAPER` 只是兜底默认值，改了要同步 JSON。这些都不参与调试页。
+- **改壁纸**：默认配置只改 `public/wallpaper.config.json`（唯一事实来源；`config.js` 静态 import 它，
+  兜底值自动跟随）。这些都不参与调试页。
   **注意**：客户端一旦「记录配置」，那份 `localStorage` 快照会盖掉文件里的同名字段（见 §7 优先级），
   所以改文件只对没记录过 / 点过「恢复首次默认」/ 卸载重装的场景生效。
 - **改调试 UI**：只动 `src/features/viewer/`；若某组件要复用到壁纸，先按 §3 提升到共享层。

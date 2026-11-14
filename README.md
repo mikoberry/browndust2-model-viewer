@@ -25,8 +25,8 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 | `/`（以及其它所有路径） | **壁纸**：全屏固定模型 + 对应背景，默认零 UI |
 | `/spine-viewer` | **开发调试辅助页**：完整查看器（模型库 / 工具栏 / 检查器 / 时间轴） |
 
-根路由显示的模型、背景、构图与播放参数由 `src/features/wallpaper/config.js`（内置默认值）和
-随页面发布的 `wallpaper.config.json`（运行时实际值）决定。
+根路由显示的模型、背景、构图与播放参数由随页面发布的 `wallpaper.config.json`（**唯一事实来源**）
+和 `src/features/wallpaper/config.js`（静态 import 该 JSON 合并出的内置兜底值）决定——改默认配置只需改 JSON。
 
 ## 壁纸设置
 
@@ -34,7 +34,7 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 改完点「记录配置」存进 `localStorage['wallpaper.config.user']`，此后启动按这份来；
 `wallpaper.config.json` 只是出厂默认值（「恢复首次默认」回到它）。
 
-配置优先级：内置默认值 < `wallpaper.config.json` < 用户「记录配置」。
+配置优先级：内置默认值（已自动并入 JSON）< `wallpaper.config.json` < 用户「记录配置」。
 
 ### 按人物保存配置（人物配置库）
 

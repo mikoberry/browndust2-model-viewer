@@ -12,10 +12,14 @@
 //
 // Configuration has three layers, in increasing priority:
 //
-//   1. this BUILT-IN object — fallback when even the JSON file is unreadable
-//      (e.g. a `file://` build, where fetch cannot read local JSON);
+//   1. this BUILT-IN object — `BUILTIN_WALLPAPER` below deep-merged with the
+//      shipped JSON at module load, so a `file://` build (where fetch cannot
+//      read local JSON) still opens with the factory defaults;
 //   2. `wallpaper.config.json` (shipped next to index.html) — the FACTORY
-//      DEFAULTS: what a fresh install / first open shows;
+//      DEFAULTS and the single source of truth: it is imported statically
+//      above, so the built-in copy can never drift from it. Editing the file
+//      next to a built dist/ still retunes the wallpaper without a rebuild
+//      (the runtime fetch below wins over the baked-in values);
 //   3. the user's own snapshot, saved by the drawer's 「记录配置」 into
 //      localStorage — once it exists it WINS over the file, so a wallpaper that
 //      was tuned by hand keeps that tune across reloads and across switching to
@@ -28,6 +32,11 @@
 // The geometry helpers re-exported here live in src/lib/composition.js, because
 // the debug viewer's composition preview uses the exact same maths. Keeping one
 // import path for the wallpaper keeps the two call sites honest.
+
+// Single source of truth for the factory defaults. Inlined into the bundle at
+// build time, so `BUILTIN_WALLPAPER` (below) merged with it is always exactly
+// what a fresh install shows.
+import shippedConfig from '../../../public/wallpaper.config.json'
 
 export {
   FALLBACK_DESIGN,
@@ -47,7 +56,7 @@ export {
   normalizeRect,
 } from '../../lib/composition.js'
 
-export const WALLPAPER = {
+const BUILTIN_WALLPAPER = {
   // Exact model id (see `npm run model:list`). Exact match -> partial match ->
   // first model, so changing the library never blanks the page.
   // Dev only: /?model=<id> overrides this without a rebuild.
@@ -105,9 +114,9 @@ export const WALLPAPER = {
   // Because these numbers live inside the fixed design canvas, the whole
   // composition is just scaled by one factor on the real screen: the result is
   // identical on every resolution / aspect ratio / DPR / fit mode.
-  // Keep these in sync with public/wallpaper.config.json: that file overrides
-  // them at runtime, but `file://` cannot fetch it, so this copy must already
-  // hold the intended defaults.
+  // The shipped JSON overrides these at runtime (and is merged in at load
+  // time above), so tuning belongs in public/wallpaper.config.json — the
+  // values below are only the pre-merge base.
   backdropTransform: {
     scale: 1.7,
     offsetX: 0,
@@ -289,6 +298,12 @@ export const WALLPAPER = {
     },
   },
 }
+
+// Shipped file wins over the handwritten base, field by field — this is what
+// makes the JSON the single source of truth. `mergeConfig` (hoisted function
+// declaration below) skips `_`-prefixed keys and preserves the base's key
+// order, so the drawer's 「复制完整配置」 stays byte-identical to the file.
+export const WALLPAPER = mergeConfig(BUILTIN_WALLPAPER, shippedConfig)
 
 // ---------------------------------------------------------------------------
 // External config file (factory defaults)
