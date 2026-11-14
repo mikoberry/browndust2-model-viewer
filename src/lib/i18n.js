@@ -315,6 +315,13 @@ const MESSAGES = {
 
   // ---- page-level chrome ----
   'page.loading': { zh: '正在加载壁纸资源…', en: 'Loading wallpaper resources…', ja: '壁紙リソースを読み込み中…', ko: '배경화면 리소스를 불러오는 중…' },
+  'page.followPrompt': {
+    zh: '喜欢这个壁纸吗？欢迎关注、点赞、收藏',
+    en: 'Enjoying this wallpaper? Follow, like and save it',
+    ja: 'この壁紙が気に入ったら、フォロー・いいね・お気に入りをよろしく',
+    ko: '이 배경화면이 마음에 든다면 팔로우·좋아요·즐겨찾기 부탁드려요',
+  },
+  'page.followClose': { zh: '关闭', en: 'Dismiss', ja: '閉じる', ko: '닫기' },
   'page.playEntrance': { zh: '播放开场动画', en: 'Play entrance', ja: '登場アニメを再生', ko: '등장 애니메이션 재생' },
   'page.openSettings': { zh: '打开构图设置', en: 'Open composition settings', ja: '構図設定を開く', ko: '구도 설정 열기' },
   'page.settingsHint': { zh: '构图设置（S）', en: 'Composition settings (S)', ja: '構図設定（S）', ko: '구도 설정 (S)' },

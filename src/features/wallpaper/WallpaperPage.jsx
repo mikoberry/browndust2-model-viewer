@@ -28,6 +28,7 @@ import { assetUrl } from '../../lib/assets.js'
 import WallpaperSettings from './components/WallpaperSettings.jsx'
 import SettingsBoundary from './components/SettingsBoundary.jsx'
 import WallpaperOverlay from './components/WallpaperOverlay.jsx'
+import FollowPrompt from './components/FollowPrompt.jsx'
 import useParallax from './useParallax.js'
 import useCompositionBlend from './useCompositionBlend.js'
 import { t, useLocale } from '../../lib/i18n.js'
@@ -127,6 +128,40 @@ export default function WallpaperPage() {
   }, [clickTweak])
 
   const [settingsOpen, setSettingsOpen] = useState(false)
+
+  // One-shot "follow / like / save" nudge. Armed by the FIRST close of the
+  // settings drawer (open → closed), shown once EVER: the dismissal is
+  // persisted in localStorage, so it never comes back in later sessions.
+  // Storage is guarded — Wallpaper Engine origins may deny it, in which case
+  // the nudge just repeats per session instead of sticking forever.
+  const FOLLOW_DISMISS_KEY = 'wallpaper.followPrompt.dismissed'
+  const [showFollow, setShowFollow] = useState(false)
+  const settingsEverOpenedRef = useRef(false)
+  useEffect(() => {
+    if (settingsOpen) {
+      settingsEverOpenedRef.current = true
+      return
+    }
+    // Only the transition out of a really-opened drawer arms the nudge; the
+    // initial mount (never opened) must not trigger it.
+    if (!settingsEverOpenedRef.current || showFollow) return
+    let dismissed = false
+    try {
+      dismissed = window.localStorage.getItem(FOLLOW_DISMISS_KEY) === '1'
+    } catch {
+      // storage unavailable — treat as "not dismissed yet"
+    }
+    if (dismissed) return
+    setShowFollow(true)
+  }, [settingsOpen])
+  const dismissFollow = useCallback(() => {
+    setShowFollow(false)
+    try {
+      window.localStorage.setItem(FOLLOW_DISMISS_KEY, '1')
+    } catch {
+      // storage unavailable — the nudge may reappear next session
+    }
+  }, [])
 
   // Model state reported by the stage. Declared up here because the entrance
   // playlist below needs the animation list.
@@ -646,6 +681,11 @@ export default function WallpaperPage() {
           onClose={() => setSettingsOpen(false)}
         />
       </SettingsBoundary>
+
+      {/* One-shot nudge, anchored above the bottom-right tools (same 16px
+          inset, raised clear of the button column). Rendered outside the
+          drawer so it survives the drawer unmounting. */}
+      {showFollow && <FollowPrompt onDismiss={dismissFollow} />}
     </div>
   )
 }
