@@ -5,6 +5,12 @@
 // replaced, so a `preview.gif` you dropped in by hand (and any other file the
 // host created) survives every re-deploy.
 //
+// `project.json` is no longer hand-written: `project.config.js` declares the
+// Workshop copy and panel blocks, `wallkit/project` produces the engine shape,
+// and mergeProject() keeps whatever the editor wrote (preview, version,
+// workshopid). Regenerating therefore cannot detach a published Workshop item.
+// Panel copy can also be updated without a build: `npm run project:gen`.
+//
 //   npm run build:we                  # plain build + deploy to the default folder
 //   npm run build:we:embed            # file:// self-contained build + deploy
 //   WE_PROJECT=D:/somewhere npm run deploy:we    # deploy an existing dist/
@@ -12,16 +18,22 @@
 // Overridable: `--target <dir>` / `--title <name>` (shell-agnostic, works in
 // cmd.exe and PowerShell too), or the WE_PROJECT / WE_TITLE env vars.
 
-import { cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { cp, mkdir, readdir, rm, stat } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  assertSafeTarget,
+  buildProject,
+  loadProjectConfig,
+  readArg,
+  readProjectFile,
+  resolveTarget,
+  writeProjectFile,
+} from './project-manifest.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const DIST = path.join(ROOT, 'dist')
-
-const DEFAULT_TARGET =
-  'F:/SteamLibrary/steamapps/common/wallpaper_engine/projects/myprojects/BD2-test'
 
 // Build artifacts owned by Vite / this script. Cleared before every copy so a
 // removed chunk or model never lingers in the deployed folder.
@@ -33,34 +45,14 @@ const MANAGED = ['assets', 'models', 'index.html']
 // "复制配置" to carry a tweak back.
 const RUNTIME_ONLY = 'wallpaper.config.json'
 
-// `--target <dir>` exists because `VAR=value npm run ...` is bash-only syntax:
-// cmd.exe and PowerShell need `set` / `$env:` respectively. A plain argument is
-// shell-agnostic, so `npm run build:we -- --target "F:/.../BD2-plain"` works
-// everywhere. Precedence: CLI > WE_PROJECT > default.
-function readArg(name) {
-  const argv = process.argv.slice(2)
-  const eq = argv.find((arg) => arg.startsWith(`--${name}=`))
-  if (eq) return eq.slice(name.length + 3)
-  const at = argv.indexOf(`--${name}`)
-  if (at !== -1 && argv[at + 1] && !argv[at + 1].startsWith('--')) return argv[at + 1]
-  return undefined
-}
-
-const cliTarget = readArg('target')
-const target = path.resolve(cliTarget || process.env.WE_PROJECT || DEFAULT_TARGET)
-const title = readArg('title') || process.env.WE_TITLE || 'BrownDust 2'
+const target = resolveTarget()
+// No fallback here: `project.config.js` owns the default title. Leaving this
+// undefined lets defineProject() use it, while --title / WE_TITLE still win.
+const cliTitle = readArg('title') || process.env.WE_TITLE || undefined
 
 function fail(message) {
   console.error(`✗ ${message}`)
   process.exit(1)
-}
-
-// The script deletes and rewrites directories, so refuse obviously wrong
-// targets (drive root, the repo itself, a parent of the repo).
-function assertSafeTarget(dir) {
-  const segments = dir.split(/[\\/]+/).filter(Boolean)
-  if (segments.length < 3) fail(`目标路径太浅，拒绝执行：${dir}`)
-  if (dir === ROOT) fail('目标路径就是仓库根目录，拒绝执行')
 }
 
 async function dirSize(dir) {
@@ -86,7 +78,7 @@ async function main() {
   if (!existsSync(path.join(DIST, 'index.html'))) {
     fail('dist/index.html 不存在，先跑 `npm run build`（或用 `npm run build:we`）')
   }
-  assertSafeTarget(target)
+  assertSafeTarget(target, fail)
 
   await mkdir(target, { recursive: true })
 
@@ -114,49 +106,31 @@ async function main() {
   }
 
   // `preview` is only declared when the file really exists, otherwise the host
-  // shows a broken thumbnail.
+  // shows a broken thumbnail. Omitting it from defineProject() keeps whatever
+  // the editor already wrote in project.json.
   const previewName = ['preview.gif', 'preview.jpg', 'preview.png'].find((name) =>
     existsSync(path.join(target, name)),
   )
 
-  const project = {
-    file: 'index.html',
-    general: {
-      properties: {
-        schemecolor: {
-          order: 0,
-          text: 'schemecolor',
-          type: 'color',
-          value: '0 0 0',
-        },
-      },
-      // The spectrum / album widgets read the host's audio and media bridges;
-      // without this flag Wallpaper Engine never publishes the audio frames.
-      supportsaudioprocessing: true,
-    },
-    ...(previewName ? { preview: previewName } : {}),
-    snapshotformat: 1,
-    snapshotoverlay: '',
-    title,
-    // Capitalised on purpose: wallkit's WE guide lists `type` as `"Web"`.
-    // (Wallpaper Engine's own writer emits lowercase `web`; both load.)
-    type: 'Web',
-    version: 0,
-  }
+  const projectFile = path.join(target, 'project.json')
+  const existing = await readProjectFile(projectFile)
+  const config = await loadProjectConfig()
+  const { merged: project } = buildProject(config, existing, {
+    title: cliTitle,
+    preview: previewName,
+  })
+  await writeProjectFile(projectFile, project)
 
-  await writeFile(
-    path.join(target, 'project.json'),
-    `${JSON.stringify(project, null, '\t')}\n`,
-    'utf8',
-  )
-
+  const propertyCount = Object.keys(project.general?.properties || {}).length
   const size = await dirSize(target)
   // The default `build:we` deploys real asset files (plain ESM build); the
   // file:// self-contained bundle (`build:we:embed`) adds assets/embed-assets.js.
   // Both are supported; we only report which one landed.
   const embedded = existsSync(path.join(target, 'assets', 'embed-assets.js'))
   console.log(`✓ 已部署到 ${target}`)
-  console.log(`  入口 index.html，project.json (type: Web, 音频处理已开启)，覆盖 ${copied} 项`)
+  console.log(
+    `  入口 index.html，project.json (type: Web, 音频处理已开启, ${propertyCount} 项属性)，覆盖 ${copied} 项`,
+  )
   if (embedded) {
     console.log('  file:// 自包含构建：素材与配置已内嵌，运行时不发起任何本地请求')
     console.log(

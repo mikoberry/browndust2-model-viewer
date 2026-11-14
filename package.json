@@ -11,6 +11,8 @@
     "build:we": "node scripts/build-home.mjs && node scripts/deploy-weproject.mjs",
     "build:we:embed": "node scripts/build-home.mjs --embed && node scripts/deploy-weproject.mjs",
     "deploy:we": "node scripts/deploy-weproject.mjs",
+    "project:gen": "node scripts/gen-project.mjs",
+    "project:check": "node scripts/gen-project.mjs --check",
     "verify:embed": "node scripts/verify-embed.mjs",
     "preview": "vite preview",
     "model:list": "node scripts/scan-model-library.mjs",
@@ -22,7 +24,7 @@
     "@esotericsoftware/spine-webgl": "4.1.56",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "wallkit": "github:mikoberry/wallkit#7bfee313ab13e504981d0b71db2dd88a4adaed95"
+    "wallkit": "github:mikoberry/wallkit#aea2ed3ba3657e43563615d48dcc0cb8a5966194"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

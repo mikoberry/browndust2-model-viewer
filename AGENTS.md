@@ -46,6 +46,8 @@ npm run build:home     # 同上，但只打包 home 配置的那一个模型
 npm run build:we       # 普通构建（真实素材文件）+ 部署到本机 WE 工程目录（默认；会写仓库外的文件，按需执行）
 npm run build:we:embed # 自包含构建（素材 base64）+ 部署 —— 仅 WE 2.8.797 beta / file:// 需要
 npm run deploy:we      # 只复制现有 dist/，不重新构建（产物形态原样带过去）
+npm run project:gen    # 从 project.config.js 重新生成 WE 工程目录里的 project.json，不用重新构建
+npm run project:check  # 只报告 project.json 与配置的漂移，不写盘
 npm run verify:embed   # 纯 Node 自检 embed 产物（无 module/crossorigin、素材完整）
 npm run preview        # 预览构建产物
 ```
@@ -67,12 +69,15 @@ vite.config.js                   # react() + modelLibraryPlugin() + wallkitWE()�
 public/
   wallpaper.config.json          # 出厂默认配置，原样复制到 dist/ 根；用户「记录」过则以记录为准
 wallpaper.presets.json           # 人物配置库（仓库根目录、纯手工维护、代码不读、不进 dist）：每个人物一份完整配置，换人物靠手动复制
+project.config.js                # WE 工程清单声明：Workshop 标题 / 简介 / 属性面板自定义文案（html() 区块）；手工维护，不进 dist
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG/WebP/JPEG 头解析尺寸）
   model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile
   embed-build-plugin.mjs         # BD2_EMBED=1：素材 → base64 内嵌，index.html 换成 classic script（见 §12）
   verify-embed.mjs               # 纯 Node 自检 embed 产物，不需要浏览器
-  deploy-weproject.mjs           # 把 dist/ 复制成 WE 工程文件夹并生成 project.json
+  project-manifest.mjs           # project.json 唯一生成点：读 project.config.js → defineProject + mergeProject
+  gen-project.mjs                # npm run project:gen / project:check：单独重生成或校验 project.json
+  deploy-weproject.mjs           # 把 dist/ 复制成 WE 工程文件夹，并合并写出 project.json
 src/
   main.jsx                       # Vite 入口（index.html 引用 /src/main.jsx，位置不要动）
   app/                           # 应用层：路由分发 + 路由实现
@@ -470,6 +475,10 @@ src/features/<feature>/
 ### WE 部署（`npm run build:we` / `build:we:embed`）
 
 - `build:we` = 普通构建 + 部署（默认）；`build:we:embed` = 自包含构建 + 部署（beta WE 黑屏时用）。
+- **只构建不部署**：`npm run build:home -- --embed`（产物只在 `dist/`，不碰任何 WE 目录）。用户想用 WE
+  编辑器自己「创建壁纸」导入、再自己管 `project.json` 时走这条，随后用
+  `npm run project:gen -- --target "<新工程目录>"` 合并面板文案；完整流程见
+  [docs/we-manual-import.md](docs/we-manual-import.md)。
 
 - `scripts/deploy-weproject.mjs` 默认目标
   `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用
@@ -483,8 +492,14 @@ src/features/<feature>/
 - **embed 部署后这个 json 不再被读取**：配置已在构建时注入 `assets/embed-config.js`，调参必须改仓库里的
   `public/wallpaper.config.json` 再 `npm run build:we:embed`。脚本会检测 `assets/embed-assets.js` 是否存在来决定
   打印哪一种提示，不要删掉这个分支（`deploy:we` 复制一份已构建的 dist/ 也是合法用法）。
-- `project.json` 由脚本生成：`file: index.html`、`type: "Web"`（大写）、
-  `general.supportsaudioprocessing: true`（**必须在 `general` 内**）。`preview` 只在目标目录里真有图片时才登记。
+- `project.json` 由 `project.config.js` + `wallkit/project` 生成，**唯一生成点在 `scripts/project-manifest.mjs`**
+  （`deploy-weproject.mjs` 与 `gen-project.mjs` 共用）：`file: index.html`、`type: "Web"`（大写）、
+  `general.supportsaudioprocessing: true`（**必须在 `general` 内**）、`schemecolor` 自动补在属性首位。
+  `preview` 只在目标目录里真有图片时才登记；`--title` / `WE_TITLE` 仍可覆盖 config 里的标题。
+- **写回必须走 `mergeProject()`**：`workshopid` / `version` / `snapshotformat` / `snapshotoverlay` 是引擎自有字段，
+  无条件保留（丢了 `workshopid` 会把下次发布变成新 Workshop 条目）；配置没声明的属性也保留，只有 `--prune` 才删。
+  改面板文案跑 `npm run project:gen` 即可，不必重新构建。`html()` 区块只进 WE 属性面板、不推给页面，
+  所以运行时不需要 `useWallpaperProperties()`；别把它接成 Vite 插件或运行时配置。
 - 目标路径防护：段数 < 3 或等于仓库根时直接拒绝，避免误删。改这段时别放宽。
 
 ## 13. 验证方式（Verification）

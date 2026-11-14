@@ -68,19 +68,27 @@
 的 `<head>` 最前面（必须早于模块入口，否则会丢首帧）。普通浏览器里这些全局函数不存在，脚本自动跳过——
 所以浏览器里**时钟照常走，频谱是平的、专辑卡不渲染**，这是库的规定行为，不会用假数据兜底。
 
-要在 WE 里真的出数据，需要一份 `project.json`——**`npm run build:we` 会自动生成**：
+要在 WE 里真的出数据，需要一份 `project.json`——**`npm run build:we` / `deploy:we` 会自动生成**，
+内容来自仓库根的 `project.config.js`（`wallkit/project` 的 `defineProject` 保证形状，
+`mergeProject` 保留引擎写过的 `workshopid` / `preview` / `version`）。只改文案时不必重新构建：
 
-```json
-{
-  "file": "index.html",
-  "general": { "supportsaudioprocessing": true },
-  "title": "BrownDust 2",
-  "type": "Web"
-}
+```bash
+npm run project:gen     # 重新生成 WE 工程目录里的 project.json
+npm run project:check   # 只报告漂移，不写盘
 ```
 
-- `supportsaudioprocessing` **必须嵌在 `general` 内**，写顶层会被静默忽略（症状：监听器注册成功但回调 0 次）。
+`project.config.js` 里的 `html()` 区块是**属性面板的说明文案**：头像、求点赞订阅、主页与致谢。
+引擎把它当 HTML 渲染，且**不会把值推给页面**，所以运行时不用 `useWallpaperProperties()`；
+面板链接有域名白名单（Steam / B 站 / YouTube 可点，GitHub 不行），主页用带颜色的 `<a>` 显示、仍要复制到浏览器打开；
+只有 `github.com/mikoberry.png` 这类头像图能显示。
+
+- `supportsaudioprocessing` **必须嵌在 `general` 内**，写顶层会被静默忽略（症状：监听器注册成功但回调 0 次）；
+  工具已经把它放对位置，不要手写清单把它挪出去。
 - `type` 必须是大写 `"Web"`。
+- **面板 HTML 只认一小组标签，`style=` 会被整条丢弃**（实测统计本机 250 份已订阅壁纸的
+  `project.json`：用 `style` 的 0 份）。能用的标签：`img` / `br` / `h3`–`h6` / `a` / `b` / `center` /
+  `p` / `small` / `hr` / `font` / `li` / `ul`；上色只能写 `<font color=#RRGGBB>`。所以
+  `div` / `span` / `background-color` / 圆角 / 边框全部无效——想「醒目」只能靠标题层级 + 颜色 + `<hr>` 分隔。
 - 暂停由 `useWallpaperPaused()` 分发：时钟停止 tick、频谱 / 粒子 / 指针特效 / 聚光灯冻结。
 
 ## 与构图的边界

@@ -78,8 +78,15 @@ npm run build:we       -- --target "F:/SteamLibrary/steamapps/common/wallpaper_e
 也可以用环境变量 `WE_PROJECT` / `WE_TITLE`，但那是 shell 相关的（bash 写 `WE_PROJECT=x npm run …`、
 cmd 要先 `set "WE_PROJECT=x"`、PowerShell 要用 `$env:WE_PROJECT='x';`）。
 
-脚本会生成 `project.json`（`type: "Web"`、`general.supportsaudioprocessing: true`，频谱 / 专辑卡需要）。
-放一张 `preview.jpg|png|gif` 进部署目录即可作为缩略图。
+`project.json` 由仓库根的 **`project.config.js`** 生成（`wallkit/project` 的 `defineProject` 保证形状、
+`mergeProject` 保留 WE 编辑器写过的 `workshopid` / `preview` / `version`）。频谱 / 专辑卡需要的
+`general.supportsaudioprocessing: true` 与 `type: "Web"` 由工具自动补齐；放一张
+`preview.jpg|png|gif` 进部署目录即可作为缩略图。
+
+想改 Workshop 标题、简介或属性面板里的自定义文案（头像、求点赞订阅、主页、致谢），只改
+`project.config.js` 然后 `npm run project:gen` 即可，**不用重新构建**；`npm run project:check`
+只报告漂移不写盘。面板文案用 `html()` 区块，引擎当 HTML 渲染且不会推给页面，所以壁纸运行时零改动；
+GitHub 链接不在面板白名单里，主页用带颜色的 `<a>` 显示、仍需复制到浏览器打开；头像 `github.com/mikoberry.png` 则能正常显示。
 
 ### 什么时候需要「自包含」构建（`build:we:embed`）
 
@@ -101,6 +108,24 @@ Spine 读 skel/atlas 的 XHR、读图集页的 `<img>` 全部被拦 → 黑屏�
 仍然优先于它。产物约 37MB（base64 放大约 33%），另有约 36MB 常驻内存。
 
 细节与排障见 [docs/we-file-access.md](docs/we-file-access.md)。
+
+### 想用 WE 编辑器自己导入
+
+不想让脚本直接往工程目录里复制（新建工程、或想自己接管 `project.json`）时，只构建、不部署：
+
+```bash
+npm run build:home -- --embed     # 产物在 dist/，不碰任何 WE 目录
+```
+
+然后在 WE 里「创建壁纸」拖入 `dist/index.html`，再用手动指定的目标目录补面板文案：
+
+```bash
+npm run project:gen   -- --target "F:/.../wallpaper_engine/projects/myprojects/你的新工程"
+npm run project:check -- --target "F:/.../wallpaper_engine/projects/myprojects/你的新工程"
+```
+
+完整步骤、手贴 `general` 的四条铁律与常见坑见
+[docs/we-manual-import.md](docs/we-manual-import.md)。
 
 ## 性能自测
 
@@ -189,6 +214,7 @@ model-library/        # 唯一素材源，只读
 - [壁纸与构图](docs/wallpaper.md) —— 设计画布基准、两层独立变换、入场序列与按段构图、配置文件详解
 - [控件浮层 WallKit](docs/wallkit.md) —— 六个控件、WE 数据桥接、与构图的边界
 - [实现要点](docs/implementation.md) —— Spine 技术坑、构图数学、架构约定
+- [手动导入 WE 工程](docs/we-manual-import.md) —— 只构建不部署、WE 编辑器自己导入、手工维护 `project.json`
 
 > `AGENTS.md` 是给 coding agent 的约束清单（架构规则、Spine 技术坑、构图数学、执行规则、Git 约定），
 > 已与当前实现同步；使用方式与配置说明以本 README 为准。
