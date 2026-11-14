@@ -303,6 +303,8 @@ const BUILTIN_WALLPAPER = {
 // makes the JSON the single source of truth. `mergeConfig` (hoisted function
 // declaration below) skips `_`-prefixed keys and preserves the base's key
 // order, so the drawer's 「复制完整配置」 stays byte-identical to the file.
+const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+
 export const WALLPAPER = mergeConfig(BUILTIN_WALLPAPER, shippedConfig)
 
 // ---------------------------------------------------------------------------
@@ -322,8 +324,6 @@ export const CONFIG_FILE = 'wallpaper.config.json'
 // re-emits it so a copied file can be pasted back verbatim.
 export const CONFIG_README =
   '壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 \'10%\'（相对设计画布宽 / 高）。'
-
-const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 
 // Deep-merge `override` onto `base`. Only plain objects recurse; numbers,
 // strings, booleans, arrays and null replace wholesale. Unknown keys survive,
