@@ -30,6 +30,14 @@ const clone = (value) => ({
   model: { ...value.model },
 })
 
+// Resolved layers are `{ scale, dx, dy }` on both sides (see resolveLayerTransform).
+const sameLayer = (a, b) =>
+  a.scale === b.scale &&
+  Math.abs(a.dx - b.dx) < 0.01 &&
+  Math.abs(a.dy - b.dy) < 0.01
+
+const sameValue = (a, b) => sameLayer(a.backdrop, b.backdrop) && sameLayer(a.model, b.model)
+
 export default function useCompositionBlend({ backdropEl, modelTransformRef, target, active, duration = 0 }) {
   const currentRef = useRef(null)
   const rafRef = useRef(0)
@@ -49,6 +57,13 @@ export default function useCompositionBlend({ backdropEl, modelTransformRef, tar
 
     const next = clone(pendingRef.current)
     const leavingEntrance = wasActiveRef.current && !active
+    // The entrance OPENS on its first shot: nothing of the sequence is on screen
+    // before it, so the hand-off from the resting composition must be a hard cut,
+    // not a fade. Easing it used to be hidden behind the loading cover only in
+    // theory — the cover starts lifting at the same moment and takes 0.5s, so a
+    // 0.9s fade leaked out as a "short rest-framing -> clip 1" slide right after
+    // the load screen (the exact symptom reported).
+    const enteringEntrance = !wasActiveRef.current && active
     wasActiveRef.current = active
 
     if (rafRef.current) {
@@ -59,10 +74,10 @@ export default function useCompositionBlend({ backdropEl, modelTransformRef, tar
     const from = currentRef.current
     // Ease every target change that happens inside (or right after) the
     // sequence — that is one call per clip boundary plus the final hand-off.
-    // Everything else snaps: the first application, a drawer slider, a backdrop
-    // swap, or `blend` disabled.
-    const animate = (active || leavingEntrance) && duration > 0
-    if (!from || !animate) {
+    // Everything else snaps: the first application, the entrance's own first
+    // shot, a drawer slider, a backdrop swap, or `blend` disabled.
+    const animate = !enteringEntrance && (active || leavingEntrance) && duration > 0
+    if (!from || !animate || sameValue(from, next)) {
       currentRef.current = next
       write(next)
       return undefined

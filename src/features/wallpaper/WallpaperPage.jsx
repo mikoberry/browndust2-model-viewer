@@ -184,18 +184,31 @@ export default function WallpaperPage() {
     return names.filter((name) => available.has(name))
   }, [config.sequence, info])
   const sequenceKey = sequence.join('|')
-  const [entranceDone, setEntranceDone] = useState(false)
-  // Which shot is on screen right now, reported by the stage once per clip.
-  const [stageClip, setStageClip] = useState('')
   // Bumped to replay the entrance from the first clip (no asset reload).
   const [sequenceToken, setSequenceToken] = useState(0)
   const replaySequence = useCallback(() => setSequenceToken((token) => token + 1), [])
-  useEffect(() => {
-    setEntranceDone(false)
-    setStageClip('')
-  }, [sequenceKey, sequenceToken, model?.id])
-  const handleSequenceDone = useCallback(() => setEntranceDone(true), [])
-  const handleSequenceStage = useCallback((name) => setStageClip(name), [])
+  // Both the "done" flag and the shot reported by the stage belong to ONE run of
+  // the sequence. Tagging them with that run (sequence + token + model) makes a
+  // replay read as "nothing has played yet" in the SAME render the token bumps.
+  // Clearing them from an effect ran one commit late, which left the previous
+  // run's tail clip in `stageClip` for a frame — the stage then reported the old
+  // clip's framing before clip 1, and that bounce was cross-faded.
+  const entranceRun = `${sequenceKey}|${sequenceToken}|${model?.id ?? ''}`
+  const entranceRunRef = useRef(entranceRun)
+  entranceRunRef.current = entranceRun
+  const [entranceDoneRun, setEntranceDoneRun] = useState({ run: '', done: false })
+  // Which shot is on screen right now, reported by the stage once per clip.
+  const [stageClipRun, setStageClipRun] = useState({ run: '', name: '' })
+  const entranceDone = entranceDoneRun.run === entranceRun && entranceDoneRun.done
+  const stageClip = stageClipRun.run === entranceRun ? stageClipRun.name : ''
+  const handleSequenceDone = useCallback(
+    () => setEntranceDoneRun({ run: entranceRunRef.current, done: true }),
+    [],
+  )
+  const handleSequenceStage = useCallback(
+    (name) => setStageClipRun({ run: entranceRunRef.current, name }),
+    [],
+  )
 
   const entrance = useMemo(() => resolveEntrance(config.entrance, design), [config.entrance, design])
 
@@ -312,6 +325,13 @@ export default function WallpaperPage() {
   // sliders, which is not what the two labels promise.
   const inEntrance = wantsEntrance && sequence.length > 0 && !entranceDone
   const activeClip = inEntrance ? stageClip || sequence[0] || '' : ''
+  // True only for the first shot of a run: the stage has not reported a clip
+  // yet, so clip 1 is on screen because it is `sequence[0]`, not because it
+  // already started. Nothing of the entrance is visible before it, so BOTH the
+  // framing and the backdrop image must switch to it as a hard cut — a fade
+  // there is the "rest composition slides into clip 1 after the load screen"
+  // artefact.
+  const atEntranceStart = inEntrance && !stageClip
   // Memoised: `clipFraming` builds a fresh object, and an unstable identity here
   // would restart the cross-fade on every render.
   const clip = useMemo(() => clipFraming(entrance, activeClip), [entrance, activeClip])
@@ -356,6 +376,12 @@ export default function WallpaperPage() {
       setBackdropLayers((prev) => {
         if (prev[prev.length - 1]?.url === backdropUrl) return prev
         const id = (backdropLayerIdRef.current += 1)
+        // Clip 1 of the entrance replaces the resting backdrop with no fade:
+        // the still frame it replaces was only there because the scene had not
+        // started yet, and dissolving it is the visible half of the bug above.
+        // The incoming bitmap is already decoded (`probe.decode` gated this
+        // call), so dropping the old layer cannot flash an empty canvas.
+        if (atEntranceStart) return [{ url: backdropUrl, id, fade: false }]
         // The very first layer must not fade (nothing is underneath it).
         return [...prev, { url: backdropUrl, id, fade: prev.length > 0 }].slice(-2)
       })
@@ -367,6 +393,10 @@ export default function WallpaperPage() {
     return () => {
       alive = false
     }
+    // `atEntranceStart` is deliberately NOT a dependency: this effect belongs to
+    // the image that is being swapped in, and that render's value is the one
+    // that says whether the swap is a shot change or the entrance's first shot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backdropUrl])
   const pruneBackdropLayers = useCallback(() => {
     setBackdropLayers((prev) => (prev.length > 1 ? prev.slice(-1) : prev))
