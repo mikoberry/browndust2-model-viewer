@@ -216,69 +216,76 @@ function PlacementFields({ spec, onChange }) {
 function ClockPanel({ spec, accent, onChange, onReset }) {
   return (
     <>
-      <Group title={t('widget.show')} onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset} note={spec.enabled ? undefined : t('widget.enableHint')}>
         <ToggleField label={t('clock.enable')} checked={spec.enabled} onChange={(enabled) => onChange({ enabled })} />
       </Group>
-      <Group title={t('widget.appearance')}>
-        <ChipField
-          label={t('widget.layout')}
-          value={spec.placement}
-          options={CLOCK_PLACEMENTS}
-          onChange={(placement) => onChange({ placement })}
-        />
-        <SliderField
-          label={t('widget.size')}
-          value={spec.size}
-          min={40}
-          max={200}
-          step={1}
-          suffix="%"
-          onChange={(size) => onChange({ size })}
-        />
-        <ColorField
-          label={t('widget.textColor')}
-          value={spec.color ?? ''}
-          fallback={accent}
-          onChange={(color) => onChange({ color })}
-        />
-      </Group>
-      <Group title={t('widget.position')} note={t('clock.anchorNote')}>
-        <PlacementFields spec={spec} onChange={onChange} />
-      </Group>
-      <Group title={t('widget.interaction')}>
-        <ToggleField
-          label={t('clock.tilt')}
-          note={t('clock.tiltNote')}
-          checked={Boolean(spec.tilt)}
-          onChange={(tilt) => onChange({ tilt })}
-        />
-        <ToggleField
-          label={t('clock.beat')}
-          note={t('clock.beatNote')}
-          checked={Boolean(spec.beat)}
-          onChange={(beat) => onChange({ beat })}
-        />
-        {spec.beat && (
-          <div className="ws-pair">
+      {/* Everything below only exists while the widget is on: an unchecked
+          widget can neither be seen nor adjusted, so its knobs stay folded
+          away instead of inviting edits that change nothing on screen. */}
+      {spec.enabled && (
+        <>
+          <Group title={t('widget.appearance')}>
+            <ChipField
+              label={t('widget.layout')}
+              value={spec.placement}
+              options={CLOCK_PLACEMENTS}
+              onChange={(placement) => onChange({ placement })}
+            />
             <SliderField
-              label={t('clock.beatStrength')}
-              value={spec.beatIntensity ?? 100}
-              min={0}
-              max={1000}
+              label={t('widget.size')}
+              value={spec.size}
+              min={40}
+              max={200}
               step={1}
-              onChange={(beatIntensity) => onChange({ beatIntensity })}
+              suffix="%"
+              onChange={(size) => onChange({ size })}
             />
-            <SliderField
-              label={t('clock.beatCurve')}
-              value={spec.beatCurve ?? 0.62}
-              min={0.2}
-              max={2}
-              step={0.01}
-              onChange={(beatCurve) => onChange({ beatCurve })}
+            <ColorField
+              label={t('widget.textColor')}
+              value={spec.color ?? ''}
+              fallback={accent}
+              onChange={(color) => onChange({ color })}
             />
-          </div>
-        )}
-      </Group>
+          </Group>
+          <Group title={t('widget.position')} note={t('clock.anchorNote')}>
+            <PlacementFields spec={spec} onChange={onChange} />
+          </Group>
+          <Group title={t('widget.interaction')}>
+            <ToggleField
+              label={t('clock.tilt')}
+              note={t('clock.tiltNote')}
+              checked={Boolean(spec.tilt)}
+              onChange={(tilt) => onChange({ tilt })}
+            />
+            <ToggleField
+              label={t('clock.beat')}
+              note={t('clock.beatNote')}
+              checked={Boolean(spec.beat)}
+              onChange={(beat) => onChange({ beat })}
+            />
+            {spec.beat && (
+              <div className="ws-pair">
+                <SliderField
+                  label={t('clock.beatStrength')}
+                  value={spec.beatIntensity ?? 100}
+                  min={0}
+                  max={1000}
+                  step={1}
+                  onChange={(beatIntensity) => onChange({ beatIntensity })}
+                />
+                <SliderField
+                  label={t('clock.beatCurve')}
+                  value={spec.beatCurve ?? 0.62}
+                  min={0.2}
+                  max={2}
+                  step={0.01}
+                  onChange={(beatCurve) => onChange({ beatCurve })}
+                />
+              </div>
+            )}
+          </Group>
+        </>
+      )}
     </>
   )
 }
@@ -288,7 +295,7 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
   const diameter = spectrumDiameter(spec)
   return (
     <>
-      <Group title={t('widget.show')} onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset} note={spec.enabled ? undefined : t('widget.enableHint')}>
         <ToggleField
           label={t('spectrum.enable')}
           note={t('spectrum.enableNote')}
@@ -296,88 +303,92 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
           onChange={(enabled) => onChange({ enabled })}
         />
       </Group>
-      <Group title={t('widget.appearance')}>
-        <ChipField
-          label={t('widget.style')}
-          value={spec.variant}
-          options={SPECTRUM_VARIANTS}
-          onChange={(variant) => {
-            // Switching style rewrites the box to that style's own shape:
-            // radial styles need a square (both axes in `vh`), linear ones a
-            // strip. Carrying the old numbers over would squash a ring or
-            // shrink a bar strip to a square.
-            const next = spectrumBox(variant)
-            const square = SPECTRUM_RADIAL.includes(variant)
-            onChange({
-              variant,
-              width: `${next.width}${square ? 'vh' : 'vw'}`,
-              height: `${next.height}vh`,
-            })
-          }}
-        />
-        <ColorField
-          label={t('widget.color')}
-          value={spec.color ?? ''}
-          fallback={accent}
-          onChange={(color) => onChange({ color })}
-        />
-        {radial ? (
-          <SliderField
-            label={t('widget.diameter')}
-            value={diameter}
-            min={10}
-            max={100}
-            step={1}
-            suffix=" vh"
-            onChange={(value) => onChange({ width: `${value}vh`, height: `${value}vh` })}
-          />
-        ) : (
-          <div className="ws-pair">
-            <SliderField
-              label={t('widget.width')}
-              value={spectrumWidth(spec)}
-              min={10}
-              max={100}
-              step={1}
-              suffix=" vw"
-              onChange={(width) => onChange({ width: `${width}vw` })}
+      {spec.enabled && (
+        <>
+          <Group title={t('widget.appearance')}>
+            <ChipField
+              label={t('widget.style')}
+              value={spec.variant}
+              options={SPECTRUM_VARIANTS}
+              onChange={(variant) => {
+                // Switching style rewrites the box to that style's own shape:
+                // radial styles need a square (both axes in `vh`), linear ones a
+                // strip. Carrying the old numbers over would squash a ring or
+                // shrink a bar strip to a square.
+                const next = spectrumBox(variant)
+                const square = SPECTRUM_RADIAL.includes(variant)
+                onChange({
+                  variant,
+                  width: `${next.width}${square ? 'vh' : 'vw'}`,
+                  height: `${next.height}vh`,
+                })
+              }}
             />
-            <SliderField
-              label={t('widget.height')}
-              value={spectrumHeight(spec)}
-              min={2}
-              max={60}
-              step={1}
-              suffix=" vh"
-              onChange={(height) => onChange({ height: `${height}vh` })}
+            <ColorField
+              label={t('widget.color')}
+              value={spec.color ?? ''}
+              fallback={accent}
+              onChange={(color) => onChange({ color })}
             />
-          </div>
-        )}
-        <p className="ws-note">{t('spectrum.sizeNote')}</p>
-      </Group>
-      <Group title={t('widget.position')}>
-        <PlacementFields spec={spec} onChange={onChange} />
-      </Group>
-      <Group title={t('widget.response')}>
-        <div className="ws-pair">
-          <SliderField
-            label={t('widget.intensity')}
-            value={spec.intensity}
-            min={0}
-            max={1000}
-            step={1}
-            onChange={(intensity) => onChange({ intensity })}
-          />
-          <SliderField
-            label={t('widget.curve')}
-            value={spec.curve}
-            min={0.2}
-            max={2}
-            step={0.01}
-            onChange={(curve) => onChange({ curve })}
-          />
-        </div>
-      </Group>
+            {radial ? (
+              <SliderField
+                label={t('widget.diameter')}
+                value={diameter}
+                min={10}
+                max={100}
+                step={1}
+                suffix=" vh"
+                onChange={(value) => onChange({ width: `${value}vh`, height: `${value}vh` })}
+              />
+            ) : (
+              <div className="ws-pair">
+                <SliderField
+                  label={t('widget.width')}
+                  value={spectrumWidth(spec)}
+                  min={10}
+                  max={100}
+                  step={1}
+                  suffix=" vw"
+                  onChange={(width) => onChange({ width: `${width}vw` })}
+                />
+                <SliderField
+                  label={t('widget.height')}
+                  value={spectrumHeight(spec)}
+                  min={2}
+                  max={60}
+                  step={1}
+                  suffix=" vh"
+                  onChange={(height) => onChange({ height: `${height}vh` })}
+                />
+              </div>
+            )}
+            <p className="ws-note">{t('spectrum.sizeNote')}</p>
+          </Group>
+          <Group title={t('widget.position')}>
+            <PlacementFields spec={spec} onChange={onChange} />
+          </Group>
+          <Group title={t('widget.response')}>
+            <div className="ws-pair">
+              <SliderField
+                label={t('widget.intensity')}
+                value={spec.intensity}
+                min={0}
+                max={1000}
+                step={1}
+                onChange={(intensity) => onChange({ intensity })}
+              />
+              <SliderField
+                label={t('widget.curve')}
+                value={spec.curve}
+                min={0.2}
+                max={2}
+                step={0.01}
+                onChange={(curve) => onChange({ curve })}
+              />
+            </div>
+          </Group>
+        </>
+      )}
     </>
   )
 }
@@ -385,7 +396,7 @@ function SpectrumPanel({ spec, accent, onChange, onReset }) {
 function AlbumPanel({ spec, accent, onChange, onReset }) {
   return (
     <>
-      <Group title={t('widget.show')} onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset} note={spec.enabled ? undefined : t('widget.enableHint')}>
         <ToggleField
           label={t('album.enable')}
           note={t('album.enableNote')}
@@ -393,38 +404,42 @@ function AlbumPanel({ spec, accent, onChange, onReset }) {
           onChange={(enabled) => onChange({ enabled })}
         />
       </Group>
-      <Group title={t('widget.appearance')}>
-        <ChipField
-          label={t('widget.layout')}
-          value={spec.variant}
-          options={ALBUM_VARIANTS}
-          onChange={(variant) => onChange({ variant })}
-        />
-        <SliderField
-          label={t('widget.size')}
-          value={spec.size}
-          min={20}
-          max={300}
-          step={1}
-          suffix="%"
-          onChange={(size) => onChange({ size })}
-        />
-        <ColorField
-          label={t('widget.textColor')}
-          value={spec.textColor ?? ''}
-          fallback={accent}
-          onChange={(textColor) => onChange({ textColor })}
-        />
-        <ColorField
-          label={t('widget.spectrumColor')}
-          value={spec.color ?? ''}
-          fallback={accent}
-          onChange={(color) => onChange({ color })}
-        />
-      </Group>
-      <Group title={t('widget.position')}>
-        <PlacementFields spec={spec} onChange={onChange} />
-      </Group>
+      {spec.enabled && (
+        <>
+          <Group title={t('widget.appearance')}>
+            <ChipField
+              label={t('widget.layout')}
+              value={spec.variant}
+              options={ALBUM_VARIANTS}
+              onChange={(variant) => onChange({ variant })}
+            />
+            <SliderField
+              label={t('widget.size')}
+              value={spec.size}
+              min={20}
+              max={300}
+              step={1}
+              suffix="%"
+              onChange={(size) => onChange({ size })}
+            />
+            <ColorField
+              label={t('widget.textColor')}
+              value={spec.textColor ?? ''}
+              fallback={accent}
+              onChange={(textColor) => onChange({ textColor })}
+            />
+            <ColorField
+              label={t('widget.spectrumColor')}
+              value={spec.color ?? ''}
+              fallback={accent}
+              onChange={(color) => onChange({ color })}
+            />
+          </Group>
+          <Group title={t('widget.position')}>
+            <PlacementFields spec={spec} onChange={onChange} />
+          </Group>
+        </>
+      )}
     </>
   )
 }
@@ -432,7 +447,7 @@ function AlbumPanel({ spec, accent, onChange, onReset }) {
 function AmbientPanel({ spec, accent, onChange, onReset }) {
   return (
     <>
-      <Group title={t('widget.show')} onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset} note={spec.enabled ? undefined : t('widget.enableHint')}>
         <ToggleField
           label={t('ambient.enable')}
           note={t('ambient.enableNote')}
@@ -440,60 +455,64 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
           onChange={(enabled) => onChange({ enabled })}
         />
       </Group>
-      <Group title={t('widget.appearance')}>
-        <ChipField
-          label={t('widget.form')}
-          value={spec.variant}
-          options={AMBIENT_VARIANTS}
-          onChange={(variant) => onChange({ variant })}
-        />
-        <ColorField
-          label={t('widget.color')}
-          value={spec.color ?? ''}
-          fallback={AMBIENT_FIXED_COLORS[spec.variant] ?? accent}
-          onChange={(color) => onChange({ color })}
-        />
-        <SliderField
-          label={t('ambient.speed')}
-          value={spec.speed}
-          min={AMBIENT_SPEED_MIN}
-          max={AMBIENT_SPEED_MAX}
-          step={1}
-          suffix="%"
-          onChange={(speed) => onChange({ speed })}
-        />
-      </Group>
-      <Group title={t('widget.density')}>
-        <div className="ws-pair">
-          <SliderField
-            label={t('widget.density2')}
-            value={spec.density}
-            min={10}
-            max={300}
-            step={1}
-            suffix="%"
-            onChange={(density) => onChange({ density })}
-          />
-          <SliderField
-            label={t('widget.size')}
-            value={spec.size}
-            min={20}
-            max={300}
-            step={1}
-            suffix="%"
-            onChange={(size) => onChange({ size })}
-          />
-        </div>
-        <SliderField
-          label={t('widget.opacity')}
-          value={spec.intensity}
-          min={0}
-          max={300}
-          step={1}
-          suffix="%"
-          onChange={(intensity) => onChange({ intensity })}
-        />
-      </Group>
+      {spec.enabled && (
+        <>
+          <Group title={t('widget.appearance')}>
+            <ChipField
+              label={t('widget.form')}
+              value={spec.variant}
+              options={AMBIENT_VARIANTS}
+              onChange={(variant) => onChange({ variant })}
+            />
+            <ColorField
+              label={t('widget.color')}
+              value={spec.color ?? ''}
+              fallback={AMBIENT_FIXED_COLORS[spec.variant] ?? accent}
+              onChange={(color) => onChange({ color })}
+            />
+            <SliderField
+              label={t('ambient.speed')}
+              value={spec.speed}
+              min={AMBIENT_SPEED_MIN}
+              max={AMBIENT_SPEED_MAX}
+              step={1}
+              suffix="%"
+              onChange={(speed) => onChange({ speed })}
+            />
+          </Group>
+          <Group title={t('widget.density')}>
+            <div className="ws-pair">
+              <SliderField
+                label={t('widget.density2')}
+                value={spec.density}
+                min={10}
+                max={300}
+                step={1}
+                suffix="%"
+                onChange={(density) => onChange({ density })}
+              />
+              <SliderField
+                label={t('widget.size')}
+                value={spec.size}
+                min={20}
+                max={300}
+                step={1}
+                suffix="%"
+                onChange={(size) => onChange({ size })}
+              />
+            </div>
+            <SliderField
+              label={t('widget.opacity')}
+              value={spec.intensity}
+              min={0}
+              max={300}
+              step={1}
+              suffix="%"
+              onChange={(intensity) => onChange({ intensity })}
+            />
+          </Group>
+        </>
+      )}
     </>
   )
 }
@@ -507,7 +526,7 @@ function PointerPanel({ spec, spotlight, accent, onChange, onSpotlightChange, on
   }
   return (
     <>
-      <Group title={t('widget.show')} onReset={onReset}>
+      <Group title={t('widget.show')} onReset={onReset} note={spec.enabled ? undefined : t('widget.enableHint')}>
         <ToggleField
           label={t('pointer.enable')}
           note={t('pointer.enableNote')}
@@ -515,61 +534,69 @@ function PointerPanel({ spec, spotlight, accent, onChange, onSpotlightChange, on
           onChange={(enabled) => onChange({ enabled })}
         />
       </Group>
-      <Group title={t('widget.channels')}>
-        <div className="ws-pair">
-          <ToggleField label={t('widget.trail')} checked={Boolean(spec.trail)} onChange={(trail) => onChange({ trail })} />
-          <ToggleField label={t('widget.click')} checked={Boolean(spec.click)} onChange={(click) => onChange({ click })} />
-        </div>
-        <div className="ws-pair">
-          <ChipField
-            label={t('widget.trailForm')}
-            value={spec.trailVariant}
-            options={POINTER_TRAIL_VARIANTS}
-            onChange={(trailVariant) => onChange({ trailVariant })}
-          />
-          <ChipField
-            label={t('widget.clickForm')}
-            value={spec.clickVariant}
-            options={POINTER_CLICK_VARIANTS}
-            onChange={(clickVariant) => onChange({ clickVariant })}
-          />
-        </div>
-      </Group>
-      <Group title={t('widget.appearance')}>
-        <ColorField
-          label={t('widget.color')}
-          value={spec.color ?? ''}
-          fallback={accent}
-          onChange={(color) => onChange({ color })}
-        />
-        <div className="ws-pair">
-          <SliderField
-            label={t('widget.size')}
-            value={spec.size}
-            min={20}
-            max={300}
-            step={1}
-            suffix="%"
-            onChange={(size) => onChange({ size })}
-          />
-          <SliderField
-            label={t('widget.intensity')}
-            value={spec.intensity}
-            min={0}
-            max={300}
-            step={1}
-            suffix="%"
-            onChange={(intensity) => onChange({ intensity })}
-          />
-        </div>
-      </Group>
+      {spec.enabled && (
+        <>
+          <Group title={t('widget.channels')}>
+            <div className="ws-pair">
+              <ToggleField label={t('widget.trail')} checked={Boolean(spec.trail)} onChange={(trail) => onChange({ trail })} />
+              <ToggleField label={t('widget.click')} checked={Boolean(spec.click)} onChange={(click) => onChange({ click })} />
+            </div>
+            <div className="ws-pair">
+              <ChipField
+                label={t('widget.trailForm')}
+                value={spec.trailVariant}
+                options={POINTER_TRAIL_VARIANTS}
+                onChange={(trailVariant) => onChange({ trailVariant })}
+              />
+              <ChipField
+                label={t('widget.clickForm')}
+                value={spec.clickVariant}
+                options={POINTER_CLICK_VARIANTS}
+                onChange={(clickVariant) => onChange({ clickVariant })}
+              />
+            </div>
+          </Group>
+          <Group title={t('widget.appearance')}>
+            <ColorField
+              label={t('widget.color')}
+              value={spec.color ?? ''}
+              fallback={accent}
+              onChange={(color) => onChange({ color })}
+            />
+            <div className="ws-pair">
+              <SliderField
+                label={t('widget.size')}
+                value={spec.size}
+                min={20}
+                max={300}
+                step={1}
+                suffix="%"
+                onChange={(size) => onChange({ size })}
+              />
+              <SliderField
+                label={t('widget.intensity')}
+                value={spec.intensity}
+                min={0}
+                max={300}
+                step={1}
+                suffix="%"
+                onChange={(intensity) => onChange({ intensity })}
+              />
+            </div>
+          </Group>
+        </>
+      )}
       {/* The spotlight lives in this tab on purpose: it is the other full-bleed
           layer driven purely by pointer input, and it is what the trail often
           pairs with. It keeps its own config key (`overlay.spotlight`), so the
           two can be enabled independently. */}
       {spotlight && (
         <>
-          <Group title={t('spotlight.title')} onReset={onResetSpotlight}>
+          <Group
+            title={t('spotlight.title')}
+            onReset={onResetSpotlight}
+            note={spotlight.enabled ? undefined : t('widget.enableHint')}
+          >
             <ToggleField
               label={t('spotlight.enable')}
               note={t('spotlight.enableNote')}
@@ -578,74 +605,78 @@ function PointerPanel({ spec, spotlight, accent, onChange, onSpotlightChange, on
             />
             <p className="ws-note">{t('spotlight.noPosition')}</p>
           </Group>
-          <Group title={t('spotlight.shape')}>
-            <SliderField
-              label={t('spotlight.size')}
-              value={spotlight.size ?? SPOTLIGHT_SIZE_DEFAULT}
-              min={SPOTLIGHT_SIZE_MIN}
-              max={SPOTLIGHT_SIZE_MAX}
-              step={10}
-              suffix="px"
-              onChange={(size) => onSpotlightChange({ size })}
-            />
-            <div className="ws-pair">
-              <SliderField
-                label={t('spotlight.feather')}
-                value={spotlight.feather ?? SPOTLIGHT_FEATHER_DEFAULT}
-                min={SPOTLIGHT_FEATHER_MIN}
-                max={SPOTLIGHT_FEATHER_MAX}
-                step={0.01}
-                readout={pct(spotlight.feather, SPOTLIGHT_FEATHER_DEFAULT)}
-                onChange={(feather) => onSpotlightChange({ feather })}
-              />
-              <SliderField
-                label={t('spotlight.dim')}
-                value={spotlight.dim ?? SPOTLIGHT_DIM_DEFAULT}
-                min={SPOTLIGHT_DIM_MIN}
-                max={SPOTLIGHT_DIM_MAX}
-                step={0.01}
-                readout={pct(spotlight.dim, SPOTLIGHT_DIM_DEFAULT)}
-                onChange={(dim) => onSpotlightChange({ dim })}
-              />
-            </div>
-            <SliderField
-              label={t('spotlight.glow')}
-              value={spotlight.glow ?? SPOTLIGHT_GLOW_DEFAULT}
-              min={SPOTLIGHT_GLOW_MIN}
-              max={SPOTLIGHT_GLOW_MAX}
-              step={0.01}
-              readout={pct(spotlight.glow, SPOTLIGHT_GLOW_DEFAULT)}
-              onChange={(glow) => onSpotlightChange({ glow })}
-            />
-          </Group>
-          <Group title={t('spotlight.lightGroup')}>
-            <div className="ws-pair">
-              <ColorField
-                label={t('spotlight.darkColor')}
-                value={spotlight.darkColor ?? ''}
-                fallback={SPOTLIGHT_DARK_DEFAULT}
-                allowInherit={false}
-                onChange={(darkColor) => onSpotlightChange({ darkColor })}
-              />
-              <ColorField
-                label={t('spotlight.lightColor')}
-                value={spotlight.lightColor ?? ''}
-                fallback={SPOTLIGHT_LIGHT_DEFAULT}
-                allowInherit={false}
-                onChange={(lightColor) => onSpotlightChange({ lightColor })}
-              />
-            </div>
-            <SliderField
-              label={t('spotlight.smoothing')}
-              value={spotlight.smoothing ?? SPOTLIGHT_SMOOTHING_DEFAULT}
-              min={SPOTLIGHT_SMOOTHING_MIN}
-              max={SPOTLIGHT_SMOOTHING_MAX}
-              step={0.01}
-              suffix=" s"
-              onChange={(smoothing) => onSpotlightChange({ smoothing })}
-            />
-            <p className="ws-note">{t('spotlight.smoothingNote')}</p>
-          </Group>
+          {spotlight.enabled && (
+            <>
+              <Group title={t('spotlight.shape')}>
+                <SliderField
+                  label={t('spotlight.size')}
+                  value={spotlight.size ?? SPOTLIGHT_SIZE_DEFAULT}
+                  min={SPOTLIGHT_SIZE_MIN}
+                  max={SPOTLIGHT_SIZE_MAX}
+                  step={10}
+                  suffix="px"
+                  onChange={(size) => onSpotlightChange({ size })}
+                />
+                <div className="ws-pair">
+                  <SliderField
+                    label={t('spotlight.feather')}
+                    value={spotlight.feather ?? SPOTLIGHT_FEATHER_DEFAULT}
+                    min={SPOTLIGHT_FEATHER_MIN}
+                    max={SPOTLIGHT_FEATHER_MAX}
+                    step={0.01}
+                    readout={pct(spotlight.feather, SPOTLIGHT_FEATHER_DEFAULT)}
+                    onChange={(feather) => onSpotlightChange({ feather })}
+                  />
+                  <SliderField
+                    label={t('spotlight.dim')}
+                    value={spotlight.dim ?? SPOTLIGHT_DIM_DEFAULT}
+                    min={SPOTLIGHT_DIM_MIN}
+                    max={SPOTLIGHT_DIM_MAX}
+                    step={0.01}
+                    readout={pct(spotlight.dim, SPOTLIGHT_DIM_DEFAULT)}
+                    onChange={(dim) => onSpotlightChange({ dim })}
+                  />
+                </div>
+                <SliderField
+                  label={t('spotlight.glow')}
+                  value={spotlight.glow ?? SPOTLIGHT_GLOW_DEFAULT}
+                  min={SPOTLIGHT_GLOW_MIN}
+                  max={SPOTLIGHT_GLOW_MAX}
+                  step={0.01}
+                  readout={pct(spotlight.glow, SPOTLIGHT_GLOW_DEFAULT)}
+                  onChange={(glow) => onSpotlightChange({ glow })}
+                />
+              </Group>
+              <Group title={t('spotlight.lightGroup')}>
+                <div className="ws-pair">
+                  <ColorField
+                    label={t('spotlight.darkColor')}
+                    value={spotlight.darkColor ?? ''}
+                    fallback={SPOTLIGHT_DARK_DEFAULT}
+                    allowInherit={false}
+                    onChange={(darkColor) => onSpotlightChange({ darkColor })}
+                  />
+                  <ColorField
+                    label={t('spotlight.lightColor')}
+                    value={spotlight.lightColor ?? ''}
+                    fallback={SPOTLIGHT_LIGHT_DEFAULT}
+                    allowInherit={false}
+                    onChange={(lightColor) => onSpotlightChange({ lightColor })}
+                  />
+                </div>
+                <SliderField
+                  label={t('spotlight.smoothing')}
+                  value={spotlight.smoothing ?? SPOTLIGHT_SMOOTHING_DEFAULT}
+                  min={SPOTLIGHT_SMOOTHING_MIN}
+                  max={SPOTLIGHT_SMOOTHING_MAX}
+                  step={0.01}
+                  suffix=" s"
+                  onChange={(smoothing) => onSpotlightChange({ smoothing })}
+                />
+                <p className="ws-note">{t('spotlight.smoothingNote')}</p>
+              </Group>
+            </>
+          )}
         </>
       )}
     </>

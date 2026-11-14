@@ -206,6 +206,12 @@ const MESSAGES = {
   'widget.other': { zh: '其他', en: 'Other', ja: 'その他', ko: '기타' },
 
   'widget.show': { zh: '显示', en: 'Display', ja: '表示', ko: '표시' },
+  'widget.enableHint': {
+    zh: '勾选后展开它的详细设置。',
+    en: 'Check this to reveal its settings.',
+    ja: 'チェックすると詳細設定が開きます。',
+    ko: '체크하면 세부 설정이 열립니다.',
+  },
   'widget.appearance': { zh: '外观', en: 'Appearance', ja: '外観', ko: '외관' },
   'widget.position': { zh: '位置', en: 'Position', ja: '位置', ko: '위치' },
   'widget.interaction': { zh: '交互', en: 'Interaction', ja: 'インタラクション', ko: '상호작용' },
