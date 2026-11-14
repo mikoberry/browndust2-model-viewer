@@ -1,7 +1,7 @@
 {
   "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
-  "modelId": "Tenka_Izumo/Ame-no-Mitori/cutscene_char021201",
-  "backdrop": "char021201_back4_upscayl_2x_upscayl-standard-4x.webp",
+  "modelId": "Ren_Yamashiro/Role_Reversal/cutscene_char021391",
+  "backdrop": "char021391 back2.png",
   "design": null,
   "fit": "contain",
   "letterbox": "#101319",
@@ -14,19 +14,19 @@
     "alignY": 0.5
   },
   "backdropTransform": {
-    "scale": 1.38,
-    "offsetX": 51,
-    "offsetY": 0
+    "scale": 1.2,
+    "offsetX": -117,
+    "offsetY": 38
   },
   "modelTransform": {
-    "scale": 0.9,
-    "offsetX": 0,
-    "offsetY": 0
+    "scale": 1,
+    "offsetX": 334,
+    "offsetY": 132
   },
   "parallax": {
     "enabled": true,
-    "backdrop": 1,
-    "model": 1.5
+    "backdrop": 0,
+    "model": 2
   },
   "animation": "loop_2",
   "expression": null,
@@ -37,37 +37,37 @@
     "loop_2"
   ],
   "clickAnimation": {
-    "enabled": true,
-    "name": "cut_B"
+    "enabled": false,
+    "name": ""
   },
   "entrance": {
     "autoplay": true,
     "blend": 0.9,
     "clips": {
       "cut_A": {
-        "backdrop": "char021201_back1_upscayl_2x_upscayl-standard-4x.webp",
+        "backdrop": "char001297_back1.webp",
         "backdropTransform": {
-          "scale": 1.05,
-          "offsetX": 0,
+          "scale": 1.2,
+          "offsetX": -100,
           "offsetY": 0
         },
         "modelTransform": {
-          "scale": 1.29,
+          "scale": 1.1,
           "offsetX": 0,
-          "offsetY": 0
+          "offsetY": 56
         }
       },
       "cut_B": {
-        "backdrop": "char021201_back4_upscayl_2x_upscayl-standard-4x.webp",
+        "backdrop": "char001297_back2.webp",
         "backdropTransform": {
-          "scale": 2.13,
-          "offsetX": 77,
-          "offsetY": 194
+          "scale": 1.5,
+          "offsetX": -117,
+          "offsetY": 38
         },
         "modelTransform": {
-          "scale": 1.24,
-          "offsetX": 0,
-          "offsetY": 259
+          "scale": 1.25,
+          "offsetX": 334,
+          "offsetY": 132
         }
       }
     }
@@ -76,27 +76,26 @@
   "speed": 1,
   "zoom": 1,
   "overlay": {
-    "accent": "#e4ec8c",
+    "accent": "#a8c4ff",
     "clock": {
       "enabled": true,
       "placement": "minimal",
-      "color": "#313507",
-      "anchor": "center-left",
-      "offsetX": 4,
-      "offsetY": 4,
-      "size": 150,
+      "color": "",
+      "anchor": "bottom-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "size": 100,
       "use24Hour": true,
       "tilt": true,
       "beat": true,
       "labels": {
         "locale": "zh-CN",
         "aria": "当前时间与日期"
-      },
-      "beatCurve": 1
+      }
     },
     "spectrum": {
-      "enabled": true,
-      "variant": "curve",
+      "enabled": false,
+      "variant": "bars",
       "color": "",
       "anchor": "bottom-center",
       "width": "100vw",
@@ -104,39 +103,41 @@
       "offsetX": 0,
       "offsetY": 0,
       "size": 100,
+      "barCount": 128,
       "intensity": 100,
       "curve": 1
     },
     "albumArt": {
-      "enabled": true,
+      "enabled": false,
       "variant": "classic",
       "color": "",
       "textColor": "",
-      "anchor": "center-right",
-      "offsetX": 2,
-      "offsetY": 0,
-      "size": 80,
+      "spectrum": "auto",
+      "anchor": "top-left",
+      "offsetX": 4,
+      "offsetY": 4,
+      "size": 100,
       "labels": {
         "aria": "正在播放"
       }
     },
     "ambient": {
-      "enabled": true,
-      "variant": "steam",
-      "color": "#f6f6f6",
-      "density": 260,
-      "size": 250,
-      "intensity": 200,
-      "speed": 225
+      "enabled": false,
+      "variant": "snow",
+      "color": "",
+      "density": 100,
+      "size": 100,
+      "intensity": 100,
+      "speed": 100
     },
     "pointer": {
-      "enabled": true,
+      "enabled": false,
       "trail": true,
-      "click": false,
-      "trailVariant": "bubble",
+      "click": true,
+      "trailVariant": "glow",
       "clickVariant": "ripple",
-      "color": "#d4d6bb",
-      "size": 200,
+      "color": "",
+      "size": 100,
       "intensity": 100
     },
     "spotlight": {

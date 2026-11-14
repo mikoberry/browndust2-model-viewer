@@ -8,6 +8,313 @@
     "每个条目就是一份完整的 wallpaper.config.json 内容，可原样复制回去用。"
   ],
   "presets": {
+    "Liatris/Sweet_Temptation/cutscene_char001297": {
+      "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
+      "modelId": "Liatris/Sweet_Temptation/cutscene_char001297",
+      "backdrop": "char001297_back2.webp",
+      "design": null,
+      "fit": "contain",
+      "letterbox": "#101319",
+      "bleed": true,
+      "overscan": 1.5,
+      "model": {
+        "heightRatio": 1,
+        "widthRatio": 1,
+        "alignX": 0.5,
+        "alignY": 0.5
+      },
+      "backdropTransform": {
+        "scale": 1.2,
+        "offsetX": -117,
+        "offsetY": 38
+      },
+      "modelTransform": {
+        "scale": 1,
+        "offsetX": 334,
+        "offsetY": 132
+      },
+      "parallax": {
+        "enabled": true,
+        "backdrop": 1,
+        "model": 1.5
+      },
+      "animation": "loop_2",
+      "expression": null,
+      "animationStart": 0,
+      "sequence": [
+        "cut_A",
+        "cut_B",
+        "loop_2"
+      ],
+      "clickAnimation": {
+        "enabled": true,
+        "name": "cut_B"
+      },
+      "entrance": {
+        "autoplay": true,
+        "blend": 0.9,
+        "clips": {
+          "cut_A": {
+            "backdrop": "char001297_back1.webp",
+            "backdropTransform": {
+              "scale": 1.2,
+              "offsetX": -100,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.1,
+              "offsetX": 0,
+              "offsetY": 56
+            }
+          },
+          "cut_B": {
+            "backdrop": "char001297_back2.webp",
+            "backdropTransform": {
+              "scale": 1.5,
+              "offsetX": -117,
+              "offsetY": 38
+            },
+            "modelTransform": {
+              "scale": 1.25,
+              "offsetX": 334,
+              "offsetY": 132
+            }
+          }
+        }
+      },
+      "skin": "",
+      "speed": 1,
+      "zoom": 1,
+      "overlay": {
+        "accent": "#bb7013",
+        "clock": {
+          "enabled": true,
+          "placement": "stamp",
+          "color": "",
+          "anchor": "center-left",
+          "offsetX": 2.5,
+          "offsetY": 0,
+          "size": 250,
+          "use24Hour": true,
+          "tilt": true,
+          "beat": true,
+          "labels": {
+            "locale": "zh-CN",
+            "aria": "当前时间与日期"
+          }
+        },
+        "spectrum": {
+          "enabled": true,
+          "variant": "pill",
+          "color": "",
+          "anchor": "center-left",
+          "width": "18vw",
+          "height": "30vh",
+          "offsetX": 3,
+          "offsetY": 22,
+          "size": 100,
+          "barCount": 10,
+          "intensity": 100,
+          "curve": 1
+        },
+        "albumArt": {
+          "enabled": false,
+          "variant": "cd",
+          "color": "",
+          "textColor": "",
+          "spectrum": "auto",
+          "anchor": "top-left",
+          "offsetX": 4,
+          "offsetY": 4,
+          "size": 97,
+          "labels": {
+            "aria": "正在播放"
+          }
+        },
+        "ambient": {
+          "enabled": true,
+          "variant": "sakura",
+          "color": "",
+          "density": 50,
+          "size": 100,
+          "intensity": 100,
+          "speed": 100
+        },
+        "pointer": {
+          "enabled": true,
+          "trail": false,
+          "click": true,
+          "trailVariant": "ribbon",
+          "clickVariant": "firework",
+          "color": "#83b4f9",
+          "size": 250,
+          "intensity": 100
+        },
+        "spotlight": {
+          "enabled": false,
+          "size": 420,
+          "feather": 0.45,
+          "dim": 0.72,
+          "glow": 0.22,
+          "darkColor": "#000000",
+          "lightColor": "#ffffff",
+          "smoothing": 0.05
+        }
+      }
+    },
+    "Tenka_Izumo/Ame-no-Mitori/cutscene_char021201": {
+      "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
+      "modelId": "Tenka_Izumo/Ame-no-Mitori/cutscene_char021201",
+      "backdrop": "char021201_back4_upscayl_2x_upscayl-standard-4x.webp",
+      "design": null,
+      "fit": "contain",
+      "letterbox": "#101319",
+      "bleed": true,
+      "overscan": 1.5,
+      "model": {
+        "heightRatio": 1,
+        "widthRatio": 1,
+        "alignX": 0.5,
+        "alignY": 0.5
+      },
+      "backdropTransform": {
+        "scale": 1.38,
+        "offsetX": 51,
+        "offsetY": 0
+      },
+      "modelTransform": {
+        "scale": 0.9,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "parallax": {
+        "enabled": true,
+        "backdrop": 1,
+        "model": 1.5
+      },
+      "animation": "loop_2",
+      "expression": null,
+      "animationStart": 0,
+      "sequence": [
+        "cut_A",
+        "cut_B",
+        "loop_2"
+      ],
+      "clickAnimation": {
+        "enabled": true,
+        "name": "cut_B"
+      },
+      "entrance": {
+        "autoplay": true,
+        "blend": 0.9,
+        "clips": {
+          "cut_A": {
+            "backdrop": "char021201_back1_upscayl_2x_upscayl-standard-4x.webp",
+            "backdropTransform": {
+              "scale": 1.05,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.29,
+              "offsetX": 0,
+              "offsetY": 0
+            }
+          },
+          "cut_B": {
+            "backdrop": "char021201_back4_upscayl_2x_upscayl-standard-4x.webp",
+            "backdropTransform": {
+              "scale": 2.13,
+              "offsetX": 77,
+              "offsetY": 194
+            },
+            "modelTransform": {
+              "scale": 1.24,
+              "offsetX": 0,
+              "offsetY": 259
+            }
+          }
+        }
+      },
+      "skin": "",
+      "speed": 1,
+      "zoom": 1,
+      "overlay": {
+        "accent": "#e4ec8c",
+        "clock": {
+          "enabled": true,
+          "placement": "minimal",
+          "color": "#313507",
+          "anchor": "center-left",
+          "offsetX": 4,
+          "offsetY": 4,
+          "size": 150,
+          "use24Hour": true,
+          "tilt": true,
+          "beat": true,
+          "labels": {
+            "locale": "zh-CN",
+            "aria": "当前时间与日期"
+          },
+          "beatCurve": 1
+        },
+        "spectrum": {
+          "enabled": true,
+          "variant": "curve",
+          "color": "",
+          "anchor": "bottom-center",
+          "width": "100vw",
+          "height": "14vh",
+          "offsetX": 0,
+          "offsetY": 0,
+          "size": 100,
+          "intensity": 100,
+          "curve": 1
+        },
+        "albumArt": {
+          "enabled": true,
+          "variant": "classic",
+          "color": "",
+          "textColor": "",
+          "anchor": "center-right",
+          "offsetX": 2,
+          "offsetY": 0,
+          "size": 80,
+          "labels": {
+            "aria": "正在播放"
+          }
+        },
+        "ambient": {
+          "enabled": true,
+          "variant": "steam",
+          "color": "#f6f6f6",
+          "density": 260,
+          "size": 250,
+          "intensity": 200,
+          "speed": 225
+        },
+        "pointer": {
+          "enabled": true,
+          "trail": true,
+          "click": false,
+          "trailVariant": "bubble",
+          "clickVariant": "ripple",
+          "color": "#d4d6bb",
+          "size": 200,
+          "intensity": 100
+        },
+        "spotlight": {
+          "enabled": false,
+          "size": 420,
+          "feather": 0.45,
+          "dim": 0.72,
+          "glow": 0.22,
+          "darkColor": "#000000",
+          "lightColor": "#ffffff",
+          "smoothing": 0.05
+        }
+      }
+    },
     "Wilhelmina/Iron_Monarch/cutscene_char067601": {
       "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
       "modelId": "Wilhelmina/Iron_Monarch/cutscene_char067601",
