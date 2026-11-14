@@ -285,6 +285,8 @@ const BUILTIN_WALLPAPER = {
       density: 100,
       size: 100,
       intensity: 100,
+      // Percent pace for the whole particle layer (wallkit AMBIENT_SPEED_*).
+      speed: 100,
     },
     pointer: {
       enabled: false,

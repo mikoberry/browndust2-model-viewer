@@ -7,6 +7,7 @@
 // variant in the library shows up here without a second source of truth.
 
 import { Group, AnchorPicker, ChipField, ColorField, SliderField, ToggleField } from './settings-fields.jsx'
+import { AMBIENT_SPEED_MIN, AMBIENT_SPEED_MAX } from 'wallkit/components/ambient-fx'
 import { t } from '../../../lib/i18n.js'
 
 // Option lists are rendered as button chips (never a <select>), so labels are
@@ -84,7 +85,23 @@ const AMBIENT_VARIANTS = [
   { value: 'snow', label: () => t('ambient.snow') },
   { value: 'sakura', label: () => t('ambient.sakura') },
   { value: 'bubble', label: () => t('ambient.bubble') },
+  { value: 'steam', label: () => t('ambient.steam') },
+  { value: 'rain', label: () => t('ambient.rain') },
+  { value: 'fog', label: () => t('ambient.fog') },
+  { value: 'leaves', label: () => t('ambient.leaves') },
 ]
+
+// Each variant's INNATE colour in wallkit (bubble has none — it follows the
+// accent). Shown as the colour field's fallback so the swatch always matches
+// what an empty `color` actually renders.
+const AMBIENT_FIXED_COLORS = {
+  snow: '#dbe9ff',
+  sakura: '#f5b8cd',
+  steam: '#eef1f4',
+  rain: '#a8c0dc',
+  fog: '#dfe6ee',
+  leaves: '#d98a4f',
+}
 
 const POINTER_TRAIL_VARIANTS = [
   { value: 'glow', label: () => t('pointer.glow') },
@@ -387,8 +404,17 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
         <ColorField
           label={t('widget.color')}
           value={spec.color ?? ''}
-          fallback={spec.variant === 'sakura' ? '#f5b8cd' : spec.variant === 'snow' ? '#dbe9ff' : accent}
+          fallback={AMBIENT_FIXED_COLORS[spec.variant] ?? accent}
           onChange={(color) => onChange({ color })}
+        />
+        <SliderField
+          label={t('ambient.speed')}
+          value={spec.speed}
+          min={AMBIENT_SPEED_MIN}
+          max={AMBIENT_SPEED_MAX}
+          step={1}
+          suffix="%"
+          onChange={(speed) => onChange({ speed })}
         />
       </Group>
       <Group title={t('widget.density')}>

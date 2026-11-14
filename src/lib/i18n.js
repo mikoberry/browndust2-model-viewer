@@ -364,6 +364,11 @@ const MESSAGES = {
   'ambient.snow': { zh: '飘雪', en: 'Snow', ja: '雪', ko: '눈' },
   'ambient.sakura': { zh: '樱花', en: 'Sakura', ja: '桜', ko: '벚꽃' },
   'ambient.bubble': { zh: '气泡', en: 'Bubbles', ja: '泡', ko: '거품' },
+  'ambient.steam': { zh: '水汽', en: 'Steam', ja: '蒸気', ko: '수증기' },
+  'ambient.rain': { zh: '细雨', en: 'Rain', ja: '雨', ko: '비' },
+  'ambient.fog': { zh: '薄雾', en: 'Fog', ja: '霧', ko: '안개' },
+  'ambient.leaves': { zh: '落叶', en: 'Falling leaves', ja: '落ち葉', ko: '떨어지는 나뭇잎' },
+  'ambient.speed': { zh: '速度', en: 'Speed', ja: '速度', ko: '속도' },
 
   'pointer.glow': { zh: '柔光', en: 'Glow', ja: 'グロー', ko: '글로우' },
   'pointer.ribbon': { zh: '丝带', en: 'Ribbon', ja: 'リボン', ko: '리본' },

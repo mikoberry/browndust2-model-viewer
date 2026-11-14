@@ -17,7 +17,7 @@
     "@esotericsoftware/spine-webgl": "4.1.56",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "wallkit": "github:mikoberry/wallkit#793a51d344d87429bcf3f4993c48f09deacf0584"
+    "wallkit": "github:mikoberry/wallkit#9b29b10aa985c87f632af4856f79001153c74955"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",

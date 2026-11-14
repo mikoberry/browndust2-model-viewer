@@ -164,6 +164,7 @@ export default function WallpaperOverlay({ config }) {
           density={ambient.density}
           size={ambient.size}
           intensity={ambient.intensity}
+          speed={ambient.speed}
           paused={paused}
         />
       )}
