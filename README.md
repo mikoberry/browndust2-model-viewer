@@ -47,10 +47,16 @@ Wallpaper Engine **2.8.797 beta**（CEF 156，默认禁止 file:// 读本地文�
 
 壁纸页右下角手柄 / `S` 键打开设置抽屉，tab 分组：**构图 · 时钟 · 频谱 · 专辑卡 · 氛围 · 指针**
 （聚光灯在「指针」tab 内的第二节，配置键仍是独立的 `overlay.spotlight`）。
-改完点「记录配置」存进 `localStorage['wallpaper.config.user']`，此后启动按这份来；
+改完点「记录配置」存进 `localStorage['mikoberry:wallpaper.config.user:<modelId>']`，此后启动按这份来；
 `wallpaper.config.json` 只是出厂默认值（「恢复首次默认」回到它）。
 
 配置优先级：内置默认值（已自动并入 JSON）< `wallpaper.config.json` < 用户「记录配置」。
+
+存储键按 `mikoberry:<键名>:<modelId>` 组成（`STORAGE_OWNER` 只是给人看的标记，可换成任意固定字符串）：
+WE 里所有网页壁纸共用同一个 `file://` origin 的 localStorage，用裸键会让「记录配置」互相覆盖
+（一张壁纸的构图/背景/浮层被另一张顶掉）。所以快照和关注提示
+（`mikoberry:wallpaper.followPrompt.dismissed:<modelId>`）都带模型后缀，语言 `wallpaper.locale` 与性能面板
+`bd2.stats` 则故意保持全局共享。同一个模型的两个工程会共用同一份记录（这是有意的）。
 
 ### 按人物保存配置（人物配置库）
 

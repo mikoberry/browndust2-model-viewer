@@ -45,9 +45,15 @@ import {
   resolveEntrance,
   clipFraming,
   resolveParallax,
+  FOLLOW_DISMISS_KEY,
+  storageKey,
 } from './config.js'
 
 const readViewport = () => ({ width: window.innerWidth, height: window.innerHeight })
+
+// Per-wallpaper storage key for the follow nudge; `FOLLOW_DISMISS_KEY` is only
+// the base name (config.js owns both it and the namespace).
+const FOLLOW_STORAGE_KEY = storageKey(FOLLOW_DISMISS_KEY)
 
 // Config specs may use design pixels or '10%'; the drawer always works with
 // resolved design pixels, so both spellings start from the same numbers.
@@ -136,7 +142,9 @@ export default function WallpaperPage() {
   // persisted in localStorage, so it never comes back in later sessions.
   // Storage is guarded — Wallpaper Engine origins may deny it, in which case
   // the nudge just repeats per session instead of sticking forever.
-  const FOLLOW_DISMISS_KEY = 'wallpaper.followPrompt.dismissed'
+  // The key is namespaced by this build's model (see config.js): every
+  // wallpaper greets its own viewers, and dismissing it on one does not silence
+  // the others.
   const [showFollow, setShowFollow] = useState(false)
   const settingsEverOpenedRef = useRef(false)
   useEffect(() => {
@@ -149,7 +157,7 @@ export default function WallpaperPage() {
     if (!settingsEverOpenedRef.current || showFollow) return
     let dismissed = false
     try {
-      dismissed = window.localStorage.getItem(FOLLOW_DISMISS_KEY) === '1'
+      dismissed = window.localStorage.getItem(FOLLOW_STORAGE_KEY) === '1'
     } catch {
       // storage unavailable — treat as "not dismissed yet"
     }
@@ -159,7 +167,7 @@ export default function WallpaperPage() {
   const dismissFollow = useCallback(() => {
     setShowFollow(false)
     try {
-      window.localStorage.setItem(FOLLOW_DISMISS_KEY, '1')
+      window.localStorage.setItem(FOLLOW_STORAGE_KEY, '1')
     } catch {
       // storage unavailable — the nudge may reappear next session
     }

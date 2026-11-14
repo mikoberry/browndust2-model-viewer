@@ -419,6 +419,11 @@ export function configFileUrl() {
 // in storage as inert junk and gets replaced by the first new 「记录配置」.
 const RECORD_KEY = 'wallpaper.config.user'
 
+// The one-shot follow nudge's "already dismissed" flag (WallpaperPage). It is
+// per-wallpaper too — every wallpaper greets its own first-time viewer — and
+// lives here so clearWallpaperStorage() can drop both keys at once.
+export const FOLLOW_DISMISS_KEY = 'wallpaper.followPrompt.dismissed'
+
 function storage() {
   try {
     return window.localStorage ?? null
@@ -427,13 +432,56 @@ function storage() {
   }
 }
 
-// `{ at: ISO string, config: <complete config object> }`.
-export function readRecordedConfig() {
-  const store = storage()
-  if (!store) return null
+// ---------------------------------------------------------------------------
+// Storage owner tag + namespace
+// ---------------------------------------------------------------------------
+// Wallpaper Engine runs EVERY web wallpaper on the same `file://` origin, and
+// `file://` has no per-directory origin: the whole scheme shares one
+// localStorage bucket (measured in WE 2.8's own CEF profile). A bare key was
+// therefore shared by all wallpapers built from this repo, so recording one
+// preset silently overwrote the others — and a snapshot tuned for another
+// character's model then beat this build's own `wallpaper.config.json`, leaving
+// the right model in the wrong composition.
+//
+// Keys are therefore built as `<owner>:<base>:<modelId>`:
+//
+//   mikoberry:wallpaper.config.user:Ren_Yamashiro/Role_Reversal/cutscene_char021391
+//   mikoberry:wallpaper.followPrompt.dismissed:Liatris/Sweet_Temptation/cutscene_char001297
+//
+// The owner tag is purely for humans: it makes every key this project writes
+// instantly recognisable in a bucket shared with other people's wallpapers
+// (DevTools → Application → Local Storage, or the on-disk leveldb). Nothing at
+// runtime parses it, so it can be any fixed string — a handle, or a random id
+// like '98ks023n99'. Changing it only orphans snapshots of already-shipped
+// builds; it never breaks a running one.
+const STORAGE_OWNER = 'mikoberry'
+
+// The per-wallpaper suffix comes from the FACTORY config (the shipped JSON, or
+// the config an embed build inlined), NOT from the snapshot we are about to
+// read — reading a key to learn which key to read would be circular, and the
+// `?model=` dev override must not fork storage either.
+//
+// Truly global preferences stay untagged on purpose: `wallpaper.locale`
+// (lib/i18n.js) and `bd2.stats` (statsFlag.js).
+export function storageNamespace() {
+  return String(WALLPAPER.modelId || '').trim()
+}
+
+// `wallpaper.config.user` -> `mikoberry:wallpaper.config.user:<modelId>`
+export function storageKey(base) {
+  const parts = []
+  if (STORAGE_OWNER) parts.push(STORAGE_OWNER)
+  parts.push(base)
+  const namespace = storageNamespace()
+  if (namespace) parts.push(namespace)
+  return parts.join(':')
+}
+
+// `{ at: ISO string, config: <complete config object> }`, or null.
+function readSnapshot(store, key) {
   let raw
   try {
-    raw = store.getItem(RECORD_KEY)
+    raw = store.getItem(key)
   } catch {
     return null
   }
@@ -447,11 +495,42 @@ export function readRecordedConfig() {
   }
 }
 
+export function readRecordedConfig() {
+  const store = storage()
+  if (!store) return null
+
+  const own = readSnapshot(store, storageKey(RECORD_KEY))
+  if (own) return own
+
+  // One-time adoption of an older slot. Both are unowned leftovers:
+  //   `wallpaper.config.user`            — pre-namespace, shared by every build;
+  //   `wallpaper.config.user:<modelId>`  — the namespaced-but-untagged form.
+  // The global one holds whichever wallpaper was recorded LAST, which may be a
+  // different build entirely, so only take a snapshot when it was tuned for THIS
+  // build's model. The copy lands in the current key and the old one is left in
+  // place — another wallpaper built from the same model may still read it.
+  const namespace = storageNamespace()
+  if (!namespace) return null
+  for (const legacyKey of [RECORD_KEY, `${RECORD_KEY}:${namespace}`]) {
+    const legacy = readSnapshot(store, legacyKey)
+    if (!legacy) continue
+    if (String(legacy.config.modelId || '').trim() !== namespace) continue
+    try {
+      store.setItem(storageKey(RECORD_KEY), JSON.stringify(legacy))
+    } catch {
+      // Storage full / read-only: the in-memory value still applies this session.
+    }
+    console.info('[wallpaper] 已把旧的配置快照迁移到本壁纸的键：', storageKey(RECORD_KEY))
+    return legacy
+  }
+  return null
+}
+
 export function saveRecordedConfig(config, at = new Date().toISOString()) {
   const store = storage()
   if (!store) return false
   try {
-    store.setItem(RECORD_KEY, JSON.stringify({ at, config }))
+    store.setItem(storageKey(RECORD_KEY), JSON.stringify({ at, config }))
     return true
   } catch {
     return false
@@ -463,11 +542,29 @@ export function clearRecordedConfig() {
   const store = storage()
   if (!store) return false
   try {
-    store.removeItem(RECORD_KEY)
+    store.removeItem(storageKey(RECORD_KEY))
     return true
   } catch {
     return false
   }
+}
+
+// Drawer's test-only "clear storage" button: drop THIS wallpaper's keys only.
+// Locale and the performance HUD are preferences shared by every wallpaper, so
+// they survive — the previous implementation called localStorage.clear(), which
+// (because the origin is shared) also reset the other wallpapers' snapshots.
+export function clearWallpaperStorage() {
+  const store = storage()
+  if (!store) return false
+  let ok = true
+  for (const base of [RECORD_KEY, FOLLOW_DISMISS_KEY]) {
+    try {
+      store.removeItem(storageKey(base))
+    } catch {
+      ok = false
+    }
+  }
+  return ok
 }
 
 // Reads the shipped JSON file. Never rejects: a missing / unreadable file (e.g.

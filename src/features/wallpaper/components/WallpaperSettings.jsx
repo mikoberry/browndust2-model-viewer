@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   CONFIG_README,
   clearRecordedConfig,
+  clearWallpaperStorage,
   readRecordedConfig,
   saveRecordedConfig,
 } from '../config.js'
@@ -243,12 +244,15 @@ function AccentField({ value, onChange }) {
   )
 }
 
-// Test-only tab: nuke the browser storage so a wallpaper can be exercised from a
-// clean slate. Two-step confirm (no `confirm()` in Wallpaper Engine's CEF host).
-// Clearing localStorage drops the recorded config snapshot, so a reload then
-// falls back to the shipped `wallpaper.config.json`.
+// Test-only tab: reset this wallpaper's recorded state so it can be exercised
+// from a clean slate. Two-step confirm (no `confirm()` in Wallpaper Engine's CEF
+// host). Clearing drops THIS wallpaper's keys (recorded snapshot + follow
+// nudge), so a reload then falls back to the shipped `wallpaper.config.json`.
+// Storage is shared with every other WE wallpaper on the `file://` origin, so a
+// blanket localStorage.clear() would reset the others too — hence the scoped
+// helper. sessionStorage is never written by this project, so it gets no button.
 function OtherPanel() {
-  const [confirmKey, setConfirmKey] = useState('')
+  const [confirming, setConfirming] = useState(false)
   const [stats, setStats] = useState(readStatsFlag)
   const timerRef = useRef(0)
 
@@ -263,21 +267,20 @@ function OtherPanel() {
     [],
   )
 
-  const arm = (key) => {
-    setConfirmKey(key)
+  const arm = () => {
+    setConfirming(true)
     window.clearTimeout(timerRef.current)
-    timerRef.current = window.setTimeout(() => setConfirmKey(''), 5000)
+    timerRef.current = window.setTimeout(() => setConfirming(false), 5000)
   }
 
-  const clearAndReload = (key) => {
+  const clearAndReload = () => {
     window.clearTimeout(timerRef.current)
     try {
-      if (key === 'local') window.localStorage.clear()
-      else window.sessionStorage.clear()
+      clearWallpaperStorage()
     } catch {
       // Storage can be unavailable on some WE origins; clearing is best-effort.
     }
-    setConfirmKey('')
+    setConfirming(false)
     window.location.reload()
   }
 
@@ -290,17 +293,10 @@ function OtherPanel() {
         <div className="ws-actions">
           <button
             type="button"
-            className={`ws-btn${confirmKey === 'local' ? ' is-danger' : ''}`}
-            onClick={() => (confirmKey === 'local' ? clearAndReload('local') : arm('local'))}
+            className={`ws-btn${confirming ? ' is-danger' : ''}`}
+            onClick={() => (confirming ? clearAndReload() : arm())}
           >
-            {confirmKey === 'local' ? t('common.confirmClear') : t('comp.clearLocal')}
-          </button>
-          <button
-            type="button"
-            className={`ws-btn${confirmKey === 'session' ? ' is-danger' : ''}`}
-            onClick={() => (confirmKey === 'session' ? clearAndReload('session') : arm('session'))}
-          >
-            {confirmKey === 'session' ? t('common.confirmClear') : t('comp.clearSession')}
+            {confirming ? t('common.confirmClear') : t('comp.clearLocal')}
           </button>
         </div>
       </Group>

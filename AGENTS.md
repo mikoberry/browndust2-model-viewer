@@ -168,8 +168,10 @@ src/features/<feature>/
   + 五个控件各一个 tab（聚光灯在「指针」tab 内，是 `overlay.spotlight` 独立配置段），
   顶部是共用主题色（`overlay.accent`）。它的编辑只改页面内存状态，**绝不写回 `config.js`**；
   唯一出口是「记录配置」：生成**完整配置内容**（`_readme` + 全部字段，两层 transform、入场开关与 `overlay` 都用面板当前值），
-  写进 `localStorage['wallpaper.config.user']`（`{ at: ISO, config: <完整配置对象> }`）**并**复制到剪贴板（clipboard API 失败时回退
+  写进 `localStorage['mikoberry:wallpaper.config.user:<modelId>']`（`{ at: ISO, config: <完整配置对象> }`）**并**复制到剪贴板（clipboard API 失败时回退
   `execCommand`，两者都失败也要把状态如实显示成「记录失败 / 复制失败」）。
+  **键必须带 owner + 模型命名空间**（`storageKey()`，见 §7 存储段）：WE 里所有网页壁纸共用一个 `file://` origin 的
+  localStorage，裸键会让几张壁纸互相顶掉配置。
   未调整时这份内容与 `public/wallpaper.config.json` **逐字节相同**（键顺序沿用 `WALLPAPER`，`JSON.stringify(..., 2)` + 换行）。
   **优先级：内置 `WALLPAPER` < `wallpaper.config.json` < 用户记录**（`loadWallpaperConfig()` 先读文件、再
   `mergeConfig(file, recorded.config)`，`source` 变成 `'user'` 并带 `recordedAt`）。
@@ -294,9 +296,22 @@ src/features/<feature>/
   有则 `mergeConfig(file, recorded.config)`、`source: 'user'` + `recordedAt`）。**绝不 reject**，壁纸必须有画面。
 - 合并规则：只对纯对象递归，数字 / 字符串 / 布尔 / 数组 / `null` 整体替换；`_` 前缀键当注释丢弃；未知键保留
   （方便先加字段再实现）。
-- 优先级：内置 `WALLPAPER` → JSON（出厂默认）→ **用户记录**（`localStorage['wallpaper.config.user']`）→ 抽屉里的临时调整；
+- 优先级：内置 `WALLPAPER` → JSON（出厂默认）→ **用户记录**（`localStorage['mikoberry:wallpaper.config.user:<modelId>']`）→ 抽屉里的临时调整；
   `?model=` 只覆盖模型选择。**用户的记录会盖掉文件里同名字段**，所以给所有人换默认值时改文件只对
   「没记录过 / 点了恢复默认 / 卸载重装」的人生效。
+- **存储键 = `<owner>:<键名>:<modelId>`**（`config.js` 的 `STORAGE_OWNER` / `storageNamespace()` / `storageKey()`）：
+  WE 的所有网页壁纸跑在同一个 `file://` origin 上（实测在
+  `we/ui/wpcache/monitor<N>/base/Default/Local Storage/leveldb`，键前缀只有一个 `_file://`），
+  裸键会被所有壁纸共享 —— 曾经「记录配置」一张就把另外几张的构图 / 背景 / 浮层全顶掉。
+  owner 是纯人眼标记（`mikoberry`，可换成任意固定串，例如随机 id `98ks023n99`），运行时没有任何解析，
+  换它只会让已发布版本的快照变成孤儿，不会让运行中的壁纸出错。
+  模型段取**工厂配置的 `modelId`**（shipped JSON / embed 内联配置），不能取快照里的 `modelId`
+  （读键要用的键，循环），也不能受 `?model=` 影响。
+  `mikoberry:wallpaper.followPrompt.dismissed:<modelId>` 同理；`wallpaper.locale`、`bd2.stats` 是全局偏好，故意不加前后缀。
+  旧键（裸 `wallpaper.config.user`、以及只有模型段的 `wallpaper.config.user:<modelId>`）只在
+  `config.modelId` 与本包一致时被一次性**复制**过来（旧键保留，同模型共用的第二份预设可能还要读）。
+  抽屉的「清除存储」只能清本壁纸的键（`clearWallpaperStorage()`），**不要**再写 `localStorage.clear()`
+  —— 那会连带清掉别的壁纸的快照。
 - 壁纸页在配置 settle 之前**不挂载 `SpineStage`**（否则会按内置 modelId 加载一次、再按文件里的重载一次）。
 - 新增设置的正确做法：先在 `WALLPAPER` 里给默认值 → JSON 里加同名键 → 在 `WallpaperPage` 里读 `config.xxx`。
   不要在组件里写 `?? 某个魔法数`，默认值只允许出现在 `WALLPAPER`。

@@ -155,13 +155,12 @@ const MESSAGES = {
   },
   'comp.clearStorage': { zh: '清除存储', en: 'Clear storage', ja: 'ストレージを消去', ko: '저장소 비우기' },
   'comp.clearStorageNote': {
-    zh: '用于测试：清空后刷新页面，回到壁纸自带的默认配置。',
-    en: 'For testing: clears then reloads, back to the shipped defaults.',
-    ja: 'テスト用：消去後に再読み込みし、壁紙付属の初期値に戻ります。',
-    ko: '테스트용: 비운 후 새로고침하여 기본 설정으로 복귀.',
+    zh: '用于测试：只清掉这张壁纸记录的配置，刷新后回到自带的默认配置。',
+    en: 'For testing: drops this wallpaper’s recorded config, then reloads to the shipped defaults.',
+    ja: 'テスト用：この壁紙の記録だけを消し、再読み込みで付属の初期値に戻ります。',
+    ko: '테스트용: 이 배경화면의 기록만 지우고, 새로고침하면 기본 설정으로 돌아갑니다.',
   },
-  'comp.clearLocal': { zh: '清除 localStorage', en: 'Clear localStorage', ja: 'localStorage を消去', ko: 'localStorage 비우기' },
-  'comp.clearSession': { zh: '清除 sessionStorage', en: 'Clear sessionStorage', ja: 'sessionStorage を消去', ko: 'sessionStorage 비우기' },
+  'comp.clearLocal': { zh: '清除本壁纸配置', en: 'Clear this wallpaper', ja: 'この壁紙の設定を消去', ko: '이 배경화면 설정 비우기' },
 
   // ---- record / flash status ----
   'record.recorded': { zh: '已记录', en: 'Saved', ja: '保存済み', ko: '저장됨' },
