@@ -227,6 +227,7 @@ const BUILTIN_WALLPAPER = {
   //   anchor — 9 anchors (four corners + edge centres + centre); offsetX /
   //            offsetY are measured INWARD from that anchor. A number is a
   //            percentage of the viewport, a string is any CSS length.
+  //            Full-bleed layers (`ambient`, `pointer`, `spotlight`) have none.
   //
   // Audio spectrum and album card need the Wallpaper Engine bridge; in a plain
   // browser they simply stay empty (no fallback data is invented).
@@ -297,6 +298,32 @@ const BUILTIN_WALLPAPER = {
       color: '',
       size: 100,
       intensity: 100,
+    },
+    // Follows the pointer with one lit circle and dims everything around it.
+    // Same input constraint as `pointer`: a WE desktop wallpaper delivers no
+    // mouse events unless mouse interaction is enabled. Until the first event
+    // arrives the mask stays fully transparent, so an event-less host shows the
+    // bare wallpaper instead of a black screen.
+    //
+    // It is a full-bleed CSS layer, so it has NO anchor / offset: `size` is the
+    // circle diameter in real screen pixels (not a percentage — this is the one
+    // control whose size cannot follow the widget scale).
+    spotlight: {
+      enabled: false,
+      size: 420,
+      // Edge softness as a fraction of the radius: 0 = hard rim, 1 = the ramp
+      // is as wide as the circle itself.
+      feather: 0.45,
+      // Opacity of the darkened area outside the circle (0..1).
+      dim: 0.72,
+      // Highlight inside the circle, blended with `screen` so it only lightens
+      // what is already there (0..1). 0 drops the layer.
+      glow: 0.22,
+      darkColor: '#000000',
+      lightColor: '#ffffff',
+      // Follow lag as a time constant in seconds (0..0.5); 0 snaps to the
+      // pointer, larger values give the light weight.
+      smoothing: 0.05,
     },
   },
 }

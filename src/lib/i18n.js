@@ -297,6 +297,42 @@ const MESSAGES = {
     ko: '현재 오프셋이 숫자가 아님(설정에 CSS 길이). 퍼센트로 0 표시, 변경 시 숫자로 기록.',
   },
 
+  // ---- spotlight: a second section inside the pointer tab ----
+  'spotlight.title': { zh: '聚光灯', en: 'Spotlight', ja: 'スポットライト', ko: '스포트라이트' },
+  'spotlight.enable': {
+    zh: '在壁纸上开聚光灯',
+    en: 'Turn the spotlight on',
+    ja: 'スポットライトを有効化',
+    ko: '스포트라이트 켜기',
+  },
+  'spotlight.enableNote': {
+    zh: '亮圈跟随鼠标、圈外压暗；和指针特效一样需要宿主投递鼠标事件',
+    en: 'A lit circle follows the pointer and dims the rest; needs mouse events, like the pointer effects',
+    ja: '光の輪がマウスを追い、外側は暗くなります。ポインタ効果と同じくマウスイベントが必要です',
+    ko: '빛 원이 마우스를 따라가고 바깥은 어두워짐. 포인터 효과처럼 마우스 이벤트 필요',
+  },
+  'spotlight.noPosition': {
+    zh: '聚光灯铺满整个画面，所以没有位置设置；它的「尺寸」是屏幕像素直径，不跟随画面缩放。',
+    en: 'The spotlight covers the whole screen, so it has no position; its "size" is a screen-pixel diameter and does not follow the composition scale.',
+    ja: 'スポットライトは画面全体を覆うため位置設定はありません。「サイズ」は画面上のピクセル直径で、画面の拡大縮小には追従しません。',
+    ko: '스포트라이트는 화면 전체를 덮으므로 위치 설정이 없음. "크기"는 화면 픽셀 지름이라 화면 배율을 따르지 않음.',
+  },
+  'spotlight.shape': { zh: '形状与浓度', en: 'Shape & strength', ja: '形状と濃度', ko: '형태와 농도' },
+  'spotlight.size': { zh: '光圈直径', en: 'Circle diameter', ja: '光の輪の直径', ko: '빛 원 지름' },
+  'spotlight.feather': { zh: '边缘柔化', en: 'Edge softness', ja: '縁のぼかし', ko: '가장자리 부드러움' },
+  'spotlight.dim': { zh: '遮罩浓度', en: 'Dim amount', ja: '暗さの濃度', ko: '어두움 농도' },
+  'spotlight.glow': { zh: '圈内高光', en: 'Inner glow', ja: '内側の光', ko: '내부 광채' },
+  'spotlight.lightGroup': { zh: '颜色与跟随', en: 'Colour & follow', ja: '色と追従', ko: '색과 추적' },
+  'spotlight.darkColor': { zh: '暗部颜色', en: 'Dark colour', ja: '暗部の色', ko: '어두운 색' },
+  'spotlight.lightColor': { zh: '高光颜色', en: 'Glow colour', ja: 'ハイライト色', ko: '하이라이트 색' },
+  'spotlight.smoothing': { zh: '跟随延迟', en: 'Follow lag', ja: '追従の遅れ', ko: '추적 지연' },
+  'spotlight.smoothingNote': {
+    zh: '0 = 立刻贴住鼠标；数值越大光圈越「重」。这个值不改变光圈大小。',
+    en: '0 snaps to the pointer; larger values give the light weight. It never changes the circle size.',
+    ja: '0 で即座に追従。大きいほど光に重みが出ます。輪の大きさは変わりません。',
+    ko: '0이면 즉시 따라감. 값이 클수록 빛이 무거워짐. 원 크기는 변하지 않음.',
+  },
+
   // ---- picker / anchor ----
   'picker.satBright': { zh: '饱和度与亮度（拖动选择）', en: 'Saturation & brightness (drag)', ja: '彩度と明度（ドラッグ選択）', ko: '채도와 밝기 (드래그)' },
   'picker.hue': { zh: '色相（拖动选择）', en: 'Hue (drag)', ja: '色相（ドラッグ選択）', ko: '색상 (드래그)' },
@@ -358,8 +394,13 @@ const MESSAGES = {
   'album.glass': { zh: '毛玻璃', en: 'Glass', ja: 'ガラス', ko: '글래스' },
   'album.vinyl': { zh: '唱片', en: 'Vinyl', ja: 'ビニール', ko: '바이닐' },
   'album.minimal': { zh: '极简', en: 'Minimal', ja: 'ミニマル', ko: '미니멀' },
+  'album.type': { zh: '排版', en: 'Type', ja: 'タイポ', ko: '타이포' },
   'album.bar': { zh: '条形', en: 'Bar', ja: 'バー', ko: '막대' },
-  'album.wall': { zh: '墙面', en: 'Wall', ja: 'ウォール', ko: '월' },
+  'album.cassette': { zh: '磁带', en: 'Cassette', ja: 'カセット', ko: '카세트' },
+  'album.polaroid': { zh: '拍立得', en: 'Polaroid', ja: 'ポラロイド', ko: '폴라로이드' },
+  'album.cd': { zh: '光盘', en: 'CD', ja: 'CD', ko: 'CD' },
+  'album.poster': { zh: '海报', en: 'Poster', ja: 'ポスター', ko: '포스터' },
+  'album.ticket': { zh: '票根', en: 'Ticket', ja: 'チケット', ko: '티켓' },
 
   'ambient.snow': { zh: '飘雪', en: 'Snow', ja: '雪', ko: '눈' },
   'ambient.sakura': { zh: '樱花', en: 'Sakura', ja: '桜', ko: '벚꽃' },

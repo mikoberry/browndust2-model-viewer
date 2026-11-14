@@ -8,9 +8,10 @@
 // independent.
 //
 // Chrome: none by default (plus a plain text line on failure). WallKit control
-// overlays (clock / spectrum / album card / particles / pointer effects) are
-// opt-in through the `overlay` config section and anchored to the viewport, so
-// they are independent of the composition. The composition drawer stays hidden
+// overlays (clock / spectrum / album card / particles / pointer effects /
+// spotlight) are opt-in through the `overlay` config section and anchored to the
+// viewport, so they are independent of the composition. The composition drawer
+// stays hidden
 // until the user clicks the bottom-right button or presses `S`; it only mirrors
 // the two layer adjustments so they can be tuned by eye and copied into config.js.
 //

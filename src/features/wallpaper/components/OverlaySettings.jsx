@@ -8,6 +8,28 @@
 
 import { Group, AnchorPicker, ChipField, ColorField, SliderField, ToggleField } from './settings-fields.jsx'
 import { AMBIENT_SPEED_MIN, AMBIENT_SPEED_MAX } from 'wallkit/components/ambient-fx'
+// Spotlight bounds and defaults come from the component itself: its `size` is a
+// pixel diameter (80..3000), unlike every other widget's percentage, and the
+// 0..1 knobs must not drift from the library's own numbers.
+import {
+  SPOTLIGHT_SIZE_MIN,
+  SPOTLIGHT_SIZE_MAX,
+  SPOTLIGHT_SIZE_DEFAULT,
+  SPOTLIGHT_FEATHER_MIN,
+  SPOTLIGHT_FEATHER_MAX,
+  SPOTLIGHT_FEATHER_DEFAULT,
+  SPOTLIGHT_DIM_MIN,
+  SPOTLIGHT_DIM_MAX,
+  SPOTLIGHT_DIM_DEFAULT,
+  SPOTLIGHT_GLOW_MIN,
+  SPOTLIGHT_GLOW_MAX,
+  SPOTLIGHT_GLOW_DEFAULT,
+  SPOTLIGHT_SMOOTHING_MIN,
+  SPOTLIGHT_SMOOTHING_MAX,
+  SPOTLIGHT_SMOOTHING_DEFAULT,
+  SPOTLIGHT_DARK_DEFAULT,
+  SPOTLIGHT_LIGHT_DEFAULT,
+} from 'wallkit/components/spotlight'
 import { t } from '../../../lib/i18n.js'
 
 // Option lists are rendered as button chips (never a <select>), so labels are
@@ -72,13 +94,21 @@ const lenOf = (value, unit) => {
   return match ? Number(match[1]) : 0
 }
 
+// The list mirrors wallkit's `ALBUM_ART_VARIANTS` (11 layouts). It is spelled
+// out here because each entry also needs a translated label; `wallkit` dropped
+// the old `wall` layout, and an unknown value falls back to `classic` there.
 const ALBUM_VARIANTS = [
   { value: 'classic', label: () => t('album.classic') },
   { value: 'glass', label: () => t('album.glass') },
   { value: 'vinyl', label: () => t('album.vinyl') },
   { value: 'minimal', label: () => t('album.minimal') },
+  { value: 'type', label: () => t('album.type') },
   { value: 'bar', label: () => t('album.bar') },
-  { value: 'wall', label: () => t('album.wall') },
+  { value: 'cassette', label: () => t('album.cassette') },
+  { value: 'polaroid', label: () => t('album.polaroid') },
+  { value: 'cd', label: () => t('album.cd') },
+  { value: 'poster', label: () => t('album.poster') },
+  { value: 'ticket', label: () => t('album.ticket') },
 ]
 
 const AMBIENT_VARIANTS = [
@@ -452,7 +482,13 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
   )
 }
 
-function PointerPanel({ spec, accent, onChange, onReset }) {
+function PointerPanel({ spec, spotlight, accent, onChange, onSpotlightChange, onReset, onResetSpotlight }) {
+  // Percent readout for the 0..1 knobs: the stored value stays a ratio (that is
+  // what wallkit takes), the drawer speaks in percent like the other widgets.
+  const pct = (value, fallback) => {
+    const ratio = Number.isFinite(Number(value)) ? Number(value) : fallback
+    return `${Math.round(ratio * 100)}%`
+  }
   return (
     <>
       <Group title={t('widget.show')} onReset={onReset}>
@@ -511,6 +547,89 @@ function PointerPanel({ spec, accent, onChange, onReset }) {
           />
         </div>
       </Group>
+      {/* The spotlight lives in this tab on purpose: it is the other full-bleed
+          layer driven purely by pointer input, and it is what the trail often
+          pairs with. It keeps its own config key (`overlay.spotlight`), so the
+          two can be enabled independently. */}
+      {spotlight && (
+        <>
+          <Group title={t('spotlight.title')} onReset={onResetSpotlight}>
+            <ToggleField
+              label={t('spotlight.enable')}
+              note={t('spotlight.enableNote')}
+              checked={Boolean(spotlight.enabled)}
+              onChange={(enabled) => onSpotlightChange({ enabled })}
+            />
+            <p className="ws-note">{t('spotlight.noPosition')}</p>
+          </Group>
+          <Group title={t('spotlight.shape')}>
+            <SliderField
+              label={t('spotlight.size')}
+              value={spotlight.size ?? SPOTLIGHT_SIZE_DEFAULT}
+              min={SPOTLIGHT_SIZE_MIN}
+              max={SPOTLIGHT_SIZE_MAX}
+              step={10}
+              suffix="px"
+              onChange={(size) => onSpotlightChange({ size })}
+            />
+            <div className="ws-pair">
+              <SliderField
+                label={t('spotlight.feather')}
+                value={spotlight.feather ?? SPOTLIGHT_FEATHER_DEFAULT}
+                min={SPOTLIGHT_FEATHER_MIN}
+                max={SPOTLIGHT_FEATHER_MAX}
+                step={0.01}
+                readout={pct(spotlight.feather, SPOTLIGHT_FEATHER_DEFAULT)}
+                onChange={(feather) => onSpotlightChange({ feather })}
+              />
+              <SliderField
+                label={t('spotlight.dim')}
+                value={spotlight.dim ?? SPOTLIGHT_DIM_DEFAULT}
+                min={SPOTLIGHT_DIM_MIN}
+                max={SPOTLIGHT_DIM_MAX}
+                step={0.01}
+                readout={pct(spotlight.dim, SPOTLIGHT_DIM_DEFAULT)}
+                onChange={(dim) => onSpotlightChange({ dim })}
+              />
+            </div>
+            <SliderField
+              label={t('spotlight.glow')}
+              value={spotlight.glow ?? SPOTLIGHT_GLOW_DEFAULT}
+              min={SPOTLIGHT_GLOW_MIN}
+              max={SPOTLIGHT_GLOW_MAX}
+              step={0.01}
+              readout={pct(spotlight.glow, SPOTLIGHT_GLOW_DEFAULT)}
+              onChange={(glow) => onSpotlightChange({ glow })}
+            />
+          </Group>
+          <Group title={t('spotlight.lightGroup')}>
+            <ColorField
+              label={t('spotlight.darkColor')}
+              value={spotlight.darkColor ?? ''}
+              fallback={SPOTLIGHT_DARK_DEFAULT}
+              allowInherit={false}
+              onChange={(darkColor) => onSpotlightChange({ darkColor })}
+            />
+            <ColorField
+              label={t('spotlight.lightColor')}
+              value={spotlight.lightColor ?? ''}
+              fallback={SPOTLIGHT_LIGHT_DEFAULT}
+              allowInherit={false}
+              onChange={(lightColor) => onSpotlightChange({ lightColor })}
+            />
+            <SliderField
+              label={t('spotlight.smoothing')}
+              value={spotlight.smoothing ?? SPOTLIGHT_SMOOTHING_DEFAULT}
+              min={SPOTLIGHT_SMOOTHING_MIN}
+              max={SPOTLIGHT_SMOOTHING_MAX}
+              step={0.01}
+              suffix=" s"
+              onChange={(smoothing) => onSpotlightChange({ smoothing })}
+            />
+            <p className="ws-note">{t('spotlight.smoothingNote')}</p>
+          </Group>
+        </>
+      )}
     </>
   )
 }
@@ -540,8 +659,14 @@ export default function OverlaySettings({ tab, overlay, onChange, onReset }) {
     <Panel
       spec={spec}
       accent={overlay.accent}
+      // The pointer tab hosts the spotlight as a second section instead of
+      // getting a tab of its own: both are full-bleed pointer-driven layers.
+      // It stays a separate config key, hence its own change / reset handlers.
+      spotlight={overlay.spotlight}
       onChange={(patch) => onChange(tab, patch)}
+      onSpotlightChange={(patch) => onChange('spotlight', patch)}
       onReset={() => onReset(tab)}
+      onResetSpotlight={() => onReset('spotlight')}
     />
   )
 }

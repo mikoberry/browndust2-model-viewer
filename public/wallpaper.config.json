@@ -138,6 +138,16 @@
       "color": "#d4d6bb",
       "size": 200,
       "intensity": 100
+    },
+    "spotlight": {
+      "enabled": false,
+      "size": 420,
+      "feather": 0.45,
+      "dim": 0.72,
+      "glow": 0.22,
+      "darkColor": "#000000",
+      "lightColor": "#ffffff",
+      "smoothing": 0.05
     }
   }
 }

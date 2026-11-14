@@ -4,8 +4,8 @@
 //      design-canvas units, so anything tuned here can be pasted into the
 //      config verbatim and stays resolution independent;
 //   2. one tab per WallKit control overlay (clock / spectrum / album card /
-//      particles / pointer effects) edits that widget's size, position, colour
-//      and its own options.
+//      particles / pointer effects + spotlight) edits that widget's size,
+//      position, colour and its own options.
 //
 // The wallpaper itself must stay a chrome-free image, so this drawer is closed
 // by default and opened by the bottom-right button or the `S` key.

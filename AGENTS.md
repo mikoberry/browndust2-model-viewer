@@ -10,7 +10,7 @@
 《棕色尘埃2》（BrownDust 2）的 **Spine 模型查看器 + 全屏壁纸**。直接读取仓库里的 `model-library/`
 （skel / atlas / 图集页 PNG / 背景图），**没有后端、HTTP API、数据库、登录或远程服务**。
 壁纸页可以叠加 [WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 /
-指针特效），并可通过 `wallkitWE()` 拿到 Wallpaper Engine 的音频与媒体数据；这两者都是**可选**的，
+指针特效 / 聚光灯），并可通过 `wallkitWE()` 拿到 Wallpaper Engine 的音频与媒体数据；这两者都是**可选**的，
 不装 WE 时页面仍是普通网页。
 
 | 项 | 本项目实际值 |
@@ -149,7 +149,7 @@ src/features/<feature>/
 - 组件靠 props + 回调通信，不因为「参数有点多」就引入全局 store；确实要共享时按 §3 提升到 `lib/`。
 - **壁纸页的 chrome 只能是「按需呼出」**：`WallpaperSettings` 默认收起（`visibility: hidden`，不占 Tab 焦点），
   由右下角手柄或 `S` 键打开、`Esc` / × 关闭。抽屉用 tab 分组：`构图`（背景 / 模型两层 + 鼠标视差 + 入场动画重播）
-  + 五个控件各一个 tab，
+  + 五个控件各一个 tab（聚光灯在「指针」tab 内，是 `overlay.spotlight` 独立配置段），
   顶部是共用主题色（`overlay.accent`）。它的编辑只改页面内存状态，**绝不写回 `config.js`**；
   唯一出口是「记录配置」：生成**完整配置内容**（`_readme` + 全部字段，两层 transform、入场开关与 `overlay` 都用面板当前值），
   写进 `localStorage['wallpaper.config.user']`（`{ at: ISO, config: <完整配置对象> }`）**并**复制到剪贴板（clipboard API 失败时回退

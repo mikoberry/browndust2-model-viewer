@@ -1,5 +1,5 @@
 // WallKit control overlays for the wallpaper route: clock, audio spectrum,
-// album card, ambient particles and pointer effects.
+// album card, ambient particles, pointer effects and the spotlight mask.
 //
 // WallKit is presentation-only: it renders from props and never touches the
 // Spine stage. Everything therefore lives in its own absolutely positioned
@@ -25,6 +25,7 @@ import { Spectrum } from 'wallkit/components/spectrum'
 import { AlbumArt } from 'wallkit/components/album-art'
 import { AmbientFx } from 'wallkit/components/ambient-fx'
 import { PointerFx } from 'wallkit/components/pointer-fx'
+import { Spotlight } from 'wallkit/components/spotlight'
 import {
   useWallpaperAudio,
   useWallpaperBeat,
@@ -145,9 +146,9 @@ function AlbumWidget({ spec, accent, paused }) {
 export default function WallpaperOverlay({ config }) {
   const overlay = config ?? WALLPAPER.overlay
   const paused = useWallpaperPaused()
-  const { accent, clock, spectrum, albumArt, ambient, pointer } = overlay
+  const { accent, clock, spectrum, albumArt, ambient, pointer, spotlight } = overlay
 
-  const anyEnabled = [clock, spectrum, albumArt, ambient, pointer].some((item) => item?.enabled)
+  const anyEnabled = [clock, spectrum, albumArt, ambient, pointer, spotlight].some((item) => item?.enabled)
   if (!anyEnabled) return null
 
   return (
@@ -183,6 +184,21 @@ export default function WallpaperOverlay({ config }) {
       {spectrum?.enabled && <SpectrumWidget spec={spectrum} accent={accent} paused={paused} />}
       {albumArt?.enabled && <AlbumWidget spec={albumArt} accent={accent} paused={paused} />}
       {clock?.enabled && <ClockWidget spec={clock} accent={accent} paused={paused} />}
+      {/* Last, and above the rest by its own z-index (6): the mask is meant to
+          darken the clock and the album card too. Its `size` is a real pixel
+          diameter, not a percentage, so nothing here scales it. */}
+      {spotlight?.enabled && (
+        <Spotlight
+          size={spotlight.size}
+          feather={spotlight.feather}
+          dim={spotlight.dim}
+          glow={spotlight.glow}
+          darkColor={spotlight.darkColor}
+          lightColor={spotlight.lightColor}
+          smoothing={spotlight.smoothing}
+          paused={paused}
+        />
+      )}
     </div>
   )
 }

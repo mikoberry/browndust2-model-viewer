@@ -2,7 +2,7 @@
 
 《棕色尘埃2》（BrownDust 2）的 **Spine 壁纸 / 模型查看器**：React 18 + Vite 5 + `@esotericsoftware/spine-webgl@4.1.56`。
 直接读取仓库里的 `model-library/`，不依赖 Wallpaper Engine 也能跑；壁纸页可选叠加
-[WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 / 指针特效），
+[WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 / 指针特效 / 聚光灯），
 接上 Wallpaper Engine 后频谱与专辑卡会拿到真实的音频 / 媒体数据。
 
 ## 运行
@@ -30,7 +30,8 @@ npm run model:list   # 命令行查看 model-library 扫描结果
 
 ## 壁纸设置
 
-壁纸页右下角手柄 / `S` 键打开设置抽屉，tab 分组：**构图 · 时钟 · 频谱 · 专辑卡 · 氛围 · 指针**。
+壁纸页右下角手柄 / `S` 键打开设置抽屉，tab 分组：**构图 · 时钟 · 频谱 · 专辑卡 · 氛围 · 指针**
+（聚光灯在「指针」tab 内的第二节，配置键仍是独立的 `overlay.spotlight`）。
 改完点「记录配置」存进 `localStorage['wallpaper.config.user']`，此后启动按这份来；
 `wallpaper.config.json` 只是出厂默认值（「恢复首次默认」回到它）。
 
@@ -98,7 +99,7 @@ model-library/        # 唯一素材源，只读
 ## 更多文档
 
 - [壁纸与构图](docs/wallpaper.md) —— 设计画布基准、两层独立变换、入场序列与按段构图、配置文件详解
-- [控件浮层 WallKit](docs/wallkit.md) —— 五个控件、WE 数据桥接、与构图的边界
+- [控件浮层 WallKit](docs/wallkit.md) —— 六个控件、WE 数据桥接、与构图的边界
 - [实现要点](docs/implementation.md) —— Spine 技术坑、构图数学、架构约定
 
 > `AGENTS.md` 是给 coding agent 的约束清单（架构规则、Spine 技术坑、构图数学、执行规则、Git 约定），
