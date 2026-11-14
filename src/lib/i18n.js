@@ -157,6 +157,14 @@ const MESSAGES = {
   },
   'comp.clickEnabled': { zh: '点击人物时播放动画', en: 'Play animation on click', ja: 'クリック時にアニメを再生', ko: '클릭 시 애니메이션 재생' },
   'comp.clickWhich': { zh: '点击后播放的动画', en: 'Animation to play', ja: '再生するアニメ', ko: '재생할 애니메이션' },
+  'comp.perfHud': { zh: '性能读数', en: 'Performance readout', ja: 'パフォーマンス表示', ko: '성능 표시' },
+  'comp.perfHudToggle': { zh: '显示左上角性能面板', en: 'Show the FPS panel', ja: '左上に FPS パネルを表示', ko: '좌측 상단 성능 패널 표시' },
+  'comp.perfHudNote': {
+    zh: '排查卡顿时用：显示帧率、帧时间分位数（p95）、掉帧数与 JS 堆占用。平常请关掉。',
+    en: 'For diagnosing stutter: FPS, frame-time p95, long frames and the JS heap. Leave it off normally.',
+    ja: 'カクつき調査用：FPS、フレーム時間の p95、長いフレーム数、JS ヒープを表示。通常はオフに。',
+    ko: '끊김 진단용: FPS, 프레임 시간 p95, 긴 프레임 수, JS 힙 사용량 표시. 평소에는 꺼두세요.',
+  },
   'comp.clearStorage': { zh: '清除存储', en: 'Clear storage', ja: 'ストレージを消去', ko: '저장소 비우기' },
   'comp.clearStorageNote': {
     zh: '用于测试：清空后刷新页面，回到壁纸自带的默认配置。',

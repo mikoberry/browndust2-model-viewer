@@ -30,6 +30,7 @@ import {
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
 import { ChipField, ColorField, DrawerOpenContext, Group, SliderField, ToggleField } from './settings-fields.jsx'
 import LocaleSwitcher from './LocaleSwitcher.jsx'
+import { readStatsFlag, subscribeStatsFlag, writeStatsFlag } from '../statsFlag.js'
 import { t, useLocale } from '../../../lib/i18n.js'
 
 const SCALE_MIN = 0.25
@@ -249,7 +250,12 @@ function AccentField({ value, onChange }) {
 // falls back to the shipped `wallpaper.config.json`.
 function OtherPanel() {
   const [confirmKey, setConfirmKey] = useState('')
+  const [stats, setStats] = useState(readStatsFlag)
   const timerRef = useRef(0)
+
+  // The HUD switch lives in this tab; keep it in sync if it is changed
+  // elsewhere (a second drawer, a URL opt-in).
+  useEffect(() => subscribeStatsFlag(setStats), [])
 
   useEffect(
     () => () => {
@@ -277,24 +283,29 @@ function OtherPanel() {
   }
 
   return (
-    <Group title={t('comp.clearStorage')} note={t('comp.clearStorageNote')}>
-      <div className="ws-actions">
-        <button
-          type="button"
-          className={`ws-btn${confirmKey === 'local' ? ' is-danger' : ''}`}
-          onClick={() => (confirmKey === 'local' ? clearAndReload('local') : arm('local'))}
-        >
-          {confirmKey === 'local' ? t('common.confirmClear') : t('comp.clearLocal')}
-        </button>
-        <button
-          type="button"
-          className={`ws-btn${confirmKey === 'session' ? ' is-danger' : ''}`}
-          onClick={() => (confirmKey === 'session' ? clearAndReload('session') : arm('session'))}
-        >
-          {confirmKey === 'session' ? t('common.confirmClear') : t('comp.clearSession')}
-        </button>
-      </div>
-    </Group>
+    <>
+      <Group title={t('comp.perfHud')} note={t('comp.perfHudNote')}>
+        <ToggleField label={t('comp.perfHudToggle')} checked={stats} onChange={writeStatsFlag} />
+      </Group>
+      <Group title={t('comp.clearStorage')} note={t('comp.clearStorageNote')}>
+        <div className="ws-actions">
+          <button
+            type="button"
+            className={`ws-btn${confirmKey === 'local' ? ' is-danger' : ''}`}
+            onClick={() => (confirmKey === 'local' ? clearAndReload('local') : arm('local'))}
+          >
+            {confirmKey === 'local' ? t('common.confirmClear') : t('comp.clearLocal')}
+          </button>
+          <button
+            type="button"
+            className={`ws-btn${confirmKey === 'session' ? ' is-danger' : ''}`}
+            onClick={() => (confirmKey === 'session' ? clearAndReload('session') : arm('session'))}
+          >
+            {confirmKey === 'session' ? t('common.confirmClear') : t('comp.clearSession')}
+          </button>
+        </div>
+      </Group>
+    </>
   )
 }
 

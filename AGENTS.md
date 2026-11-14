@@ -455,6 +455,16 @@ src/features/<feature>/
   升版本只改 `package.json` 的 commit sha（`github:mikoberry/wallkit#<sha>`），不要改成 npm 包或 vendor 副本。
 - `wallkitWE()` 只是往 `index.html` 的 `<head>` 顶部注入 classic script（audio / media / pause，`timeline` 默认关）。
   它不改构图、不写 `project.json`；`dist/index.html` 里应能看到 `<!-- wallkit-we:* -->` 标记。
+- **`index.html` 里的「媒体补登记」shim 不能删**。WE 的媒体状态一次页面加载只推一次，embed 产物首屏压着
+  36MB `embed-assets.js`，那一次推送容易错过（表现为整块专辑卡片不出现、`__wallkitMedia` 全空，切歌才恢复）。
+  shim 在 `load` 与 1.5/4/9/20s 时若数据仍空就重注册三个监听器；已有时 `empty()` 命中即 return，是 no-op。
+  诊断对象 `__BD2_MEDIA__`（`nav` / `armedAt` / `hits`）一并保留。详见 `docs/we-file-access.md` §10.4。
+- **性能读数默认关闭**（`features/wallpaper/components/StatsHud.jsx`），开关在抽屉「其他」标签，状态由
+  `statsFlag.js` 唯一持有（`localStorage['bd2.stats']` + 内存副本 + `bd2:stats-change` 事件），
+  显式存储值优先于 URL（否则 `?stats=1` 会让开关关不掉）。关闭时组件 `return null`、不启 rAF，零开销。
+  `cpu` 指标来自 `SpineStage` 每 500ms 上报的 `__BD2_STAGE_STATS__`，**改渲染循环时别去掉这次上报**——
+  vsync 锁 60 时它是唯一能看出主线程余量的数。实测基线：4070 / 1440p / overscan 1.5 下 `cpu ≈1.5ms`、
+  `p95 16.8ms`、`buf 3840×2160`；瓶颈在填充率而非 JS，4K 时 `buf` 会到 `5760×3240`。
 
 ### WE 部署（`npm run build:we` / `build:we:embed`）
 

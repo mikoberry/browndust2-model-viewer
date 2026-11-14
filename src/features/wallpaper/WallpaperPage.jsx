@@ -27,6 +27,7 @@ import SpineStage from '../../lib/spine/SpineStage.jsx'
 import { pickDefaultAnimation, pickDefaultExpression, resolveSequence } from '../../lib/animation.js'
 import { assetUrl } from '../../lib/assets.js'
 import WallpaperSettings from './components/WallpaperSettings.jsx'
+import StatsHud from './components/StatsHud.jsx'
 import SettingsBoundary from './components/SettingsBoundary.jsx'
 import WallpaperOverlay from './components/WallpaperOverlay.jsx'
 import FollowPrompt from './components/FollowPrompt.jsx'
@@ -606,6 +607,11 @@ export default function WallpaperPage() {
       {/* Viewport-anchored, so the composition scale never moves the widgets.
           Renders nothing when every `overlay.*.enabled` is false. */}
       {ready && <WallpaperOverlay config={overlayTweaks} />}
+
+      {/* Opt-in FPS / frame-time / heap readout (`?stats=1`, `#stats`, or
+          localStorage 'bd2.stats' = '1'). Renders nothing otherwise, so
+          viewers never see it. */}
+      <StatsHud />
 
       {/* Full-screen warm-up cover: hides the cold first frames (model texture
           upload, backdrop decodes) and fades out once the scene can start

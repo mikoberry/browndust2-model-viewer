@@ -404,9 +404,14 @@ export default function SpineStage(props) {
     let lastProgress = 0
     let fpsClock = lastTime
     let frames = 0
+    let costSum = 0
 
     const frame = (now) => {
       rafId = requestAnimationFrame(frame)
+      // CPU cost of this callback: skeleton update plus the draw submission.
+      // GPU work is asynchronous, so this is the number that says whether a
+      // weak CPU can keep up — a vsync-locked 60 fps still burns this much.
+      const costStart = performance.now()
       const live = liveRef.current
       const dt = Math.min((now - lastTime) / 1000, 0.1)
       lastTime = now
@@ -591,9 +596,20 @@ export default function SpineStage(props) {
       }
 
       frames += 1
+      costSum += performance.now() - costStart
       if (now - fpsClock >= 500) {
-        live.onStats?.({ fps: Math.round((frames * 1000) / (now - fpsClock)) })
+        const stats = {
+          fps: Math.round((frames * 1000) / (now - fpsClock)),
+          // Average CPU milliseconds per frame over the same window.
+          cpu: costSum / frames,
+        }
+        live.onStats?.(stats)
+        // Read by the opt-in stats HUD (wallpaper feature). Two float writes per
+        // 500 ms: cheap enough to leave unconditional, and it keeps this module
+        // free of any dependency on the feature layer.
+        if (typeof window !== 'undefined') window.__BD2_STAGE_STATS__ = stats
         frames = 0
+        costSum = 0
         fpsClock = now
       }
     }
