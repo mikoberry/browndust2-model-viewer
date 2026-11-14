@@ -7,9 +7,11 @@ dist/
 .tmp-*
 
 # 背景图库 model-library/backdrops/<6 位角色 ID>/
-# 只有本地已有模型（model-library/<角色>/<皮肤>/*.skel）的角色才纳入 git，
-# 其余桶与 _misc/ 只留在本地给扫描器读。新增角色后在这里补一行 negate，
-# 当前白名单可以用 `npm run backdrops:ids` 打印出来核对。
+# 只保留「本地已有模型」（model-library/<角色>/<皮肤>/*.skel）的角色，其余桶既不进 git
+# 也不留在磁盘；需要哪个角色就从上游拉回来：
+#   npm run backdrops:add -- 003501   # 复制该桶并自动补白名单
+#   npm run backdrops:prune           # 删除无模型的桶并清理白名单
+#   npm run backdrops:ids             # 打印当前应入库的 ID
 /model-library/backdrops/*
 !/model-library/backdrops/001201/
 !/model-library/backdrops/001206/

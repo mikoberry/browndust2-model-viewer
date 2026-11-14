@@ -71,12 +71,12 @@ model-library/
   backdrops/
     067601/                        # 按 6 位角色 ID 分桶，文件名里的 ID 即关联键
       char067601_back1.png
-    _misc/                         # 文件名没有 6 位 ID 的散图
 ```
 
 - dev 由 Vite 插件按 `/models/<磁盘相对路径>` 直接读源文件；build 只输出 manifest 引用到的文件。
-- `backdrops/` 只有「本地有模型的角色」那批桶入库（见 `.gitignore`），其余桶和 `_misc/` 仅本地保留；
-  新增角色后用 `npm run backdrops:ids` 打印白名单再补 negate 行。
+- `backdrops/` **只保留本地有模型的角色的桶**，既不入库也不留盘的多余桶没必要下载。
+  加完新模型后跑 `npm run backdrops:add -- <6 位 ID>` 从上游补齐该桶并自动补进 `.gitignore` 白名单；
+  `npm run backdrops:prune` 反向清理（删无模型的桶 + 收缩白名单）。
 
 ## 目录
 

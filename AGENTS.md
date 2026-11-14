@@ -254,18 +254,19 @@ src/features/<feature>/
 本项目唯一的「数据层」是构建期扫描出的素材清单（虚拟模块 `virtual:model-library`），以及一个运行期读取的
 `public/wallpaper.config.json`；没有 HTTP API / 后端。
 
-- 目录为 `model-library/<角色>/<皮肤>/` 两级，扫描器递归任意深度；当前 26 套（Olivier 4 / Wilhelmina 3 / Ren_Yamashiro 2 / Tenka_Izumo 2 / Liatris 4 / Glacia 3 / Levia 3 / Sylvia 5），全部 Spine 4.1.11。
-- 背景图库 `model-library/backdrops/<6 位角色 ID>/`，共 172 个桶 / 1059 张 / 428MB，按文件名与模型 stem 里的 **6 位角色 ID** 关联；
+- 目录为 `model-library/<角色>/<皮肤>/` 两级，扫描器递归任意深度；当前 15 套（Olivier 4 / Wilhelmina 3 / Liatris 4 / Ren_Yamashiro 2 / Tenka_Izumo 2），全部 Spine 4.1.11。
+- 背景图库 `model-library/backdrops/<6 位角色 ID>/`，按文件名与模型 stem 里的 **6 位角色 ID** 关联；
   目录结构纯粹为人服务——扫描器递归全库、只认文件名，所以分桶、改名、加层级都不影响关联。
   命名混用 `char067601_back1` / `003401 back2` / `000303_back1` / `back 1`，必须用正则匹配，不能按空格或下划线切分。
   `backN` 才是完整场景；`-N` / `_N` 分片、`*move` 低清版、`_L` / `_R` 局部层都不可用。
 - 每个 manifest 文件都带 `source`（相对 `model-library/` 的磁盘路径）与多段 `url`。dev 由插件中间件按 `/models/*` 直读源目录；
-  build 只 `emitFile` manifest 引用的文件，不会把 428MB 背景库整包打进 `dist/`。URL 段单独 encode，
+  build 只 `emitFile` manifest 引用的文件，不会把整库背景打进 `dist/`。URL 段单独 encode，
   `emitFile` 的 `fileName` 必须 `decodeURIComponent`（背景文件名含空格）。
 - `model-library/` 只读；源素材不做重编码，`.atlas` 里的页名与磁盘文件名天然一致。
-- `.gitignore` 用 `backdrops/*` + 逐桶 negate 控制入库：**只有本地有模型的角色（26 个 ID）那批桶进 git**，
-  其余桶与 `_misc/` 只在本地供扫描器读。新增角色后跑 `npm run backdrops:ids` 打印白名单再补一行 negate。
-  因此 clone 后背景是不全的：只覆盖当前已入库的 26 个角色，换壁纸到别的角色需要本地补图。
+- **背景只留「本地有模型」的桶**：无用桶既不入库也不留盘，做哪个角色就把哪个拉回来。
+  `scripts/backdrops.mjs` 一个脚本管三件事——`ids` 打印应有 ID、`add <id>` 从上游复制该桶并补 `.gitignore` 白名单、
+  `prune` 删无模型的桶并收缩白名单。上游默认 `F:/live2d/.../assets/ui/skill_cutscene_background`，可用 `BD2_BACKDROP_SRC` 覆盖。
+  因此 clone 后背景只覆盖当前已入库的 15 个角色，换壁纸到别的角色要先 `backdrops:add`。
 
 ### 运行期配置文件（`public/wallpaper.config.json`）
 
@@ -501,11 +502,10 @@ src/features/<feature>/
 ## 15. 常见改动路径（Common Patterns）
 
 - **加模型**：把 `.skel` / `.json` + `.atlas` + 全部图集页 PNG 放进 `model-library/<角色>/<皮肤>/`，
-  把背景图按 6 位角色 ID 放进 `model-library/backdrops/<id>/`，刷新即可；
-  用 `npm run model:list` 核对图集页是否齐全。不要改 `src/` 去硬编码模型列表。
-  新角色还想把背景入库时，跑 `npm run backdrops:ids` 拿白名单并在 `.gitignore` 补一行 negate。
-- **迁移 / 重整背景目录**：`node scripts/migrate-backdrops.mjs --dry-run` 先看，再不带参数执行；
-  它只做移动、不改文件名（关联键），可重复执行。
+  刷新即可；用 `npm run model:list` 核对图集页是否齐全。不要改 `src/` 去硬编码模型列表。
+  背景随后跑 `npm run backdrops:add -- <6 位角色 ID>`：复制该桶并自动补 `.gitignore` 白名单。
+- **清背景 / 换角色**：`npm run backdrops:prune` 会删掉无模型的桶并收缩白名单（先加 `-- --dry-run` 看清单），
+  只删 `model-library/backdrops/` 下的桶，不碰上游。
 - **改壁纸**：默认配置只改 `public/wallpaper.config.json`（唯一事实来源；`config.js` 静态 import 它，
   兜底值自动跟随）。这些都不参与调试页。
   **注意**：客户端一旦「记录配置」，那份 `localStorage` 快照会盖掉文件里的同名字段（见 §7 优先级），

@@ -12,7 +12,9 @@
     "deploy:we": "node scripts/deploy-weproject.mjs",
     "preview": "vite preview",
     "model:list": "node scripts/scan-model-library.mjs",
-    "backdrops:ids": "node scripts/migrate-backdrops.mjs --ids"
+    "backdrops:ids": "node scripts/backdrops.mjs ids",
+    "backdrops:add": "node scripts/backdrops.mjs add",
+    "backdrops:prune": "node scripts/backdrops.mjs prune"
   },
   "dependencies": {
     "@esotericsoftware/spine-webgl": "4.1.56",
