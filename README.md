@@ -58,6 +58,31 @@ WE 里所有网页壁纸共用同一个 `file://` origin 的 localStorage，用�
 （`mikoberry:wallpaper.followPrompt.dismissed:<modelId>`）都带模型后缀，语言 `wallpaper.locale` 与性能面板
 `bd2.stats` 则故意保持全局共享。同一个模型的两个工程会共用同一份记录（这是有意的）。
 
+### 显示变体（同一角色的多套画面）
+
+BD2 一个角色常有两个待机循环（`loop` / `loop_2`）和配套的两张背景。把每套写成 `variants` 的一项，
+抽屉里就会出现切换按钮：第一个 chip 永远是「基础」（= 顶层配置本身，`variant: ''`），
+后面是各变体，所以**只要 1 个变体就有得切**，不必为凑数复制一份基础配置：
+
+```json
+"variant": "loop2",
+"variants": [
+  { "id": "loop",  "label": "常服", "animation": "loop",   "backdrop": "char021391 back1.png" },
+  { "id": "loop2", "label": "礼装", "animation": "loop_2", "backdrop": "char021391 back2.png" }
+]
+```
+
+- 变体是**覆盖集**：只写它改动的键，其余继承基础配置（可覆盖 `animation` / `backdrop` /
+  两层 transform / `parallax` / `sequence` / `entrance` / `clickAnimation` / `zoom` / `speed`）。
+- **例外：`entrance.autoplay`（启动时播放）是全局的**，写在顶层、对全部变体生效；变体里写了也会被忽略。
+  `entrance.blend` 与逐段构图仍然逐套独立。
+- `variant` 是启动时用哪一套；`''` 或写了不存在的 id 就退回基础构图。
+- **`design` / `fit` 和 `modelId` 不能按变体改**：设计画布是所有偏移的单位，跟着变会把整套数值
+  重新解释一遍。变体换背景时图片按 `fit` 铺在同一张画布上（比例不符会裁边）。
+- 最省事的做法是在 `/spine-viewer` 的「构图」tab 里配：顶部「显示变体」可以新增 / 改名 /
+  设为启动默认 / 删除（「基础」本身也能当启动默认，改回来就是 `variant: ""`），
+  下面所有滑块只写入当前选中的那一套。详见 [docs/display-variants.md](docs/display-variants.md)。
+
 ### 按人物保存配置（人物配置库）
 
 `wallpaper.presets.json`（仓库根目录，不进 dist）是手工维护的**人物配置库**（代码不读它）：给每个人物调好构图后，
@@ -218,6 +243,7 @@ model-library/        # 唯一素材源，只读
 ## 更多文档
 
 - [壁纸与构图](docs/wallpaper.md) —— 设计画布基准、两层独立变换、入场序列与按段构图、配置文件详解
+- [显示变体](docs/display-variants.md) —— 多套画面（循环 + 背景）的数据形状、可覆盖键、后台配置与写回
 - [控件浮层 WallKit](docs/wallkit.md) —— 六个控件、WE 数据桥接、与构图的边界
 - [实现要点](docs/implementation.md) —— Spine 技术坑、构图数学、架构约定
 - [手动导入 WE 工程](docs/we-manual-import.md) —— 只构建不部署、WE 编辑器自己导入、手工维护 `project.json`

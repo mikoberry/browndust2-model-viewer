@@ -14,6 +14,7 @@ import { pickDefaultAnimation, pickDefaultExpression, pickEntranceSequence } fro
 import { assetUrl } from '../../lib/assets.js'
 import { pickBackdrop } from '../../lib/backdrops.js'
 import { resolveDesign, resolveLayerTransform } from '../../lib/composition.js'
+import { applyVariant, normalizeVariants, resolveVariantId } from '../../lib/variants.js'
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
 
@@ -106,6 +107,79 @@ const mergeClips = (base, raw) => {
   return out
 }
 
+// The config keys this panel edits. They belong to a DISPLAY VARIANT (each set of
+// `loop` + backdrop keeps its own framing); `design` is deliberately absent —
+// the canvas is global, or every offset in the file would be reinterpreted on a
+// switch. Everything else in `compose` (on / layer / layerKey / clip / solo) is
+// pure UI state and never leaves the viewer.
+const VIEW_KEYS = [
+  'backdrop',
+  'backdropTransform',
+  'modelTransform',
+  'entrance',
+  'sequence',
+  'animation',
+  'expression',
+  'animationStart',
+  'clickAnimation',
+]
+const VIEW_KEY_SET = new Set(VIEW_KEYS)
+
+// The editable slice of the panel state — i.e. the snapshot stored for a variant.
+const viewOf = (state) => {
+  const out = {}
+  for (const key of VIEW_KEYS) out[key] = state[key]
+  return out
+}
+
+// `entrance.autoplay` is GLOBAL (see GLOBAL_NESTED in lib/variants.js): a variant
+// can never carry its own copy. The panel still edits it through the chip being
+// shown, so the value has to be mirrored onto EVERY stored view at once —
+// otherwise switching chips would show a checkbox the exported file can never
+// reproduce (it only ever writes the top-level one).
+const withAutoplay = (view, autoplay) =>
+  view?.entrance && 'autoplay' in view.entrance
+    ? { ...view, entrance: { ...view.entrance, autoplay } }
+    : view
+
+// Split an onPatch payload into "config values" (routed to the object being
+// edited) and "UI only" (routed to compose alone).
+function splitPatch(patch) {
+  const ui = {}
+  const view = {}
+  for (const [key, value] of Object.entries(patch)) {
+    if (VIEW_KEY_SET.has(key)) view[key] = value
+    else ui[key] = value
+  }
+  return { ui, view }
+}
+
+// A config document -> the flat shape the sliders use. `prev` supplies fallbacks
+// so a partial file (or a variant that only overrides two keys) still produces a
+// complete view.
+const configToView = (raw, prev = COMPOSE_DEFAULTS) => ({
+  backdrop: typeof raw?.backdrop === 'string' ? raw.backdrop : prev.backdrop,
+  backdropTransform: mergeLayer(prev.backdropTransform, raw?.backdropTransform),
+  modelTransform: mergeLayer(prev.modelTransform, raw?.modelTransform),
+  animation: animToOption(raw?.animation),
+  expression: animToOption(raw?.expression),
+  animationStart: toFinite(raw?.animationStart, 0),
+  clickAnimation: {
+    enabled: raw?.clickAnimation?.enabled === true,
+    name: typeof raw?.clickAnimation?.name === 'string' ? raw.clickAnimation.name : '',
+  },
+  entrance: {
+    autoplay: raw?.entrance?.autoplay !== false,
+    blend: toFinite(raw?.entrance?.blend, prev.entrance.blend),
+    clips: mergeClips(prev.entrance.clips, raw?.entrance?.clips),
+  },
+  sequence: Array.isArray(raw?.sequence)
+    ? raw.sequence.filter((name) => typeof name === 'string').join(', ')
+    : typeof raw?.sequence === 'string'
+      ? raw.sequence
+      : '',
+})
+
 function EmptyLibrary() {
   return (
     <div className="empty-library">
@@ -156,6 +230,26 @@ export default function ViewerPage({ onGoWallpaper }) {
 
   // ---- composition preview -----------------------------------------------
   const [compose, setCompose] = useState(COMPOSE_DEFAULTS)
+  // ---- display variants ---------------------------------------------------
+  // One model, several alternative looks (`loop` on back1, `loop_2` on back2).
+  // `baseView` is what 「基础」 edits; every variant stores a COMPLETE view of the
+  // same shape, so switching is a straight copy instead of a merge — otherwise a
+  // variant that omitted a key would inherit whatever the previously selected
+  // one happened to hold. Hand-written minimal overrides are folded in with
+  // `applyVariant` on load, so they arrive here complete too.
+  const [baseView, setBaseView] = useState(() => viewOf(COMPOSE_DEFAULTS))
+  const [variants, setVariants] = useState([])
+  const [editing, setEditing] = useState('')
+  // Which variant the file's `variant` key points at — written back by 「设为默认」.
+  const [defaultVariant, setDefaultVariant] = useState('')
+  const baseViewRef = useRef(baseView)
+  baseViewRef.current = baseView
+  const variantsRef = useRef(variants)
+  variantsRef.current = variants
+  const editingRef = useRef('')
+  editingRef.current = editing
+  const composeRef = useRef(compose)
+  composeRef.current = compose
   const [fileConfig, setFileConfig] = useState(null)
   const fileConfigRef = useRef(null)
   fileConfigRef.current = fileConfig
@@ -174,39 +268,47 @@ export default function ViewerPage({ onGoWallpaper }) {
       .then((raw) => {
         if (!alive || !raw) return
         setFileConfig(raw)
-        // The model usually loads after this fetch, but a cached asset can win
-        // the race. If one is already on screen and it is the config's model,
-        // re-apply the config's animation picks so the stage plays what the
-        // panel shows (handleLoaded had no config to read at that point).
-        const current = infoRef.current
-        if (current && raw.modelId === current.modelId) {
-          const names = new Set(current.animations.map((item) => item.name))
-          if (typeof raw.animation === 'string' && names.has(raw.animation)) setAnimation(raw.animation)
-          if (typeof raw.expression === 'string' && names.has(raw.expression)) setExpression(raw.expression)
-        }
+        // Variants: the file may carry minimal overrides, so fold each one onto
+        // the base with `applyVariant` and store the resulting COMPLETE view.
+        const parsed = normalizeVariants(raw.variants)
+        const base = configToView(raw)
+        const list = parsed.map((item) => ({
+          id: item.id,
+          label: item.label ?? '',
+          view: configToView(applyVariant(raw, item)),
+        }))
+        const initial = resolveVariantId(raw, list)
+        const initialView = initial ? list.find((item) => item.id === initial)?.view : null
+        setBaseView(base)
+        setVariants(list)
+        setDefaultVariant(initial)
+        setEditing(initial)
         setCompose((prev) => ({
           ...prev,
-          backdrop: typeof raw.backdrop === 'string' ? raw.backdrop : prev.backdrop,
-          // `design` may be null (follow the image) or { width, height }.
+          ...base,
+          ...(initialView ?? {}),
+          // `design` is global (never per variant): null = follow the image.
           design:
             toFinite(raw.design?.width, 0) > 0 && toFinite(raw.design?.height, 0) > 0
               ? { width: toFinite(raw.design.width, 0), height: toFinite(raw.design.height, 0) }
               : null,
-          backdropTransform: mergeLayer(prev.backdropTransform, raw.backdropTransform),
-          modelTransform: mergeLayer(prev.modelTransform, raw.modelTransform),
-          animation: animToOption(raw.animation),
-          expression: animToOption(raw.expression),
-          animationStart: toFinite(raw.animationStart, 0),
-          clickAnimation: {
-            enabled: raw.clickAnimation?.enabled === true,
-            name: typeof raw.clickAnimation?.name === 'string' ? raw.clickAnimation.name : '',
-          },
-          entrance: {
-            autoplay: raw.entrance?.autoplay !== false,
-            blend: toFinite(raw.entrance?.blend, prev.entrance.blend),
-            clips: mergeClips(prev.entrance.clips, raw.entrance?.clips),
-          },
         }))
+        // The model usually loads after this fetch, but a cached asset can win
+        // the race. If one is already on screen and it is the config's model,
+        // re-apply the ACTIVE variant's animation picks so the stage plays what
+        // the panel shows (handleLoaded had no config to read at that point).
+        const current = infoRef.current
+        if (current && raw.modelId === current.modelId) {
+          const active = initial ? parsed.find((item) => item.id === initial) : null
+          const activeConfig = active ? applyVariant(raw, active) : raw
+          const names = new Set(current.animations.map((item) => item.name))
+          if (typeof activeConfig.animation === 'string' && names.has(activeConfig.animation)) {
+            setAnimation(activeConfig.animation)
+          }
+          if (typeof activeConfig.expression === 'string' && names.has(activeConfig.expression)) {
+            setExpression(activeConfig.expression)
+          }
+        }
       })
       .catch(() => {})
     return () => {
@@ -216,32 +318,117 @@ export default function ViewerPage({ onGoWallpaper }) {
 
   useEffect(() => () => window.clearTimeout(flashTimerRef.current), [])
 
+  // Pin the animation / expression a panel view asks for onto the shared stage.
+  // `animation` / `expression` are NOT per-target values: one skeleton is on
+  // screen, so writing them into `compose` only moves the dropdown — the playing
+  // track is `animation` / `expression` state, and only these setters move it.
+  // Hence both pathways (editing a field, and switching the edited variant) have
+  // to call this with the WHOLE view. Sentinels resolve against the current
+  // model's clip list, so a variant tuned on another model degrades to the
+  // default pick instead of pinning a name that does not exist.
+  const applyAnimPicks = useCallback((view) => {
+    const animations = infoRef.current?.animations ?? []
+    if ('animation' in view) {
+      setAnimation(
+        view.animation === ANIM_AUTO
+          ? pickDefaultAnimation(animations)
+          : view.animation === ANIM_OFF
+            ? ''
+            : view.animation,
+      )
+    }
+    if ('expression' in view) {
+      setExpression(
+        view.expression === ANIM_AUTO
+          ? pickDefaultExpression(animations)
+          : view.expression === ANIM_OFF
+            ? ''
+            : view.expression,
+      )
+    }
+  }, [])
+
   const updateCompose = useCallback(
     (patch) => {
       setCompose((prev) => ({ ...prev, ...patch }))
+      // Config values land on whatever is being edited (base or the active
+      // variant); UI-only keys stay in compose.
+      const { view } = splitPatch(patch)
+      if (Object.keys(view).length) {
+        // A global key reaches every look, not just the chip being edited.
+        const autoplay =
+          view.entrance && typeof view.entrance.autoplay === 'boolean' ? view.entrance.autoplay : undefined
+        if (autoplay !== undefined) {
+          setBaseView((prev) => withAutoplay(prev, autoplay))
+          setVariants((list) => list.map((item) => ({ ...item, view: withAutoplay(item.view, autoplay) })))
+        }
+        const id = editingRef.current
+        if (id) {
+          setVariants((list) =>
+            list.map((item) => (item.id === id ? { ...item, view: { ...item.view, ...view } } : item)),
+          )
+        } else {
+          setBaseView((prev) => ({ ...prev, ...view }))
+        }
+      }
       // The composition preview shares `animation` / `expression` with the main
       // viewer stage, so pinning one from the panel plays it immediately.
       // `follow: false` rides along from the panel but is meaningless here.
-      if ('animation' in patch) {
-        setAnimation(
-          patch.animation === ANIM_AUTO
-            ? pickDefaultAnimation(info?.animations ?? [])
-            : patch.animation === ANIM_OFF
-              ? ''
-              : patch.animation,
-        )
-      }
-      if ('expression' in patch) {
-        setExpression(
-          patch.expression === ANIM_AUTO
-            ? pickDefaultExpression(info?.animations ?? [])
-            : patch.expression === ANIM_OFF
-              ? ''
-              : patch.expression,
-        )
+      // `follow: false` rides along from the panel but is meaningless here.
+      applyAnimPicks(view)
+    },
+    [applyAnimPicks],
+  )
+
+  // ---- variant actions -----------------------------------------------------
+  // Switching the edit target is a copy of the stored view, not a merge: every
+  // variant keeps a COMPLETE set of values, so what you see is exactly what that
+  // chip holds. The view's `animation` / `expression` must also reach the stage —
+  // otherwise the chip swaps the dropdowns and the backdrop while the skeleton
+  // keeps looping the previous look.
+  const handleEditingChange = useCallback(
+    (id) => {
+      const target = id
+        ? variantsRef.current.find((item) => item.id === id)?.view
+        : baseViewRef.current
+      setEditing(id)
+      if (!target) return
+      setCompose((prev) => ({ ...prev, ...target }))
+      applyAnimPicks(target)
+    },
+    [applyAnimPicks],
+  )
+
+  // A new variant starts as a copy of what is on screen, so it is immediately
+  // previewable and tweakable (no "inherits everything until you touch it").
+  const handleVariantAdd = useCallback(() => {
+    const list = variantsRef.current
+    let n = list.length + 1
+    while (list.some((item) => item.id === `v${n}`)) n += 1
+    const id = `v${n}`
+    setVariants((prev) => [...prev, { id, label: `变体 ${n}`, view: viewOf(composeRef.current) }])
+    setEditing(id)
+  }, [])
+
+  const handleVariantRename = useCallback((id, label) => {
+    setVariants((list) => list.map((item) => (item.id === id ? { ...item, label } : item)))
+  }, [])
+
+  // 「设为默认」 only decides which chip the wallpaper OPENS on (`variant` key).
+  const handleVariantDefault = useCallback((id) => setDefaultVariant(id), [])
+
+  const handleVariantRemove = useCallback(
+    (id) => {
+      setVariants((list) => list.filter((item) => item.id !== id))
+      setDefaultVariant((prev) => (prev === id ? '' : prev))
+      if (editingRef.current === id) {
+        setEditing('')
+        setCompose((prev) => ({ ...prev, ...baseViewRef.current }))
+        // Falling back to the base look has to move the playing track too.
+        applyAnimPicks(baseViewRef.current)
       }
     },
-    [info],
+    [applyAnimPicks],
   )
 
   const availableNames = useMemo(
@@ -299,9 +486,16 @@ export default function ViewerPage({ onGoWallpaper }) {
     () => pickBackdrop(selected, compose.backdrop),
     [selected, compose.backdrop],
   )
+  // The canvas is measured off the BASE backdrop, never the edited variant's:
+  // that is what the wallpaper does (`design` is not a variant key), so a variant
+  // showing another image must not resize the canvas under the preview.
+  const designBackdrop = useMemo(
+    () => pickBackdrop(selected, baseView.backdrop),
+    [selected, baseView.backdrop],
+  )
   const composeDesign = useMemo(
-    () => resolveDesign(composeBackdrop, compose.design),
-    [composeBackdrop, compose.design],
+    () => resolveDesign(designBackdrop, compose.design),
+    [designBackdrop, compose.design],
   )
   // The image actually drawn, which for a clip can be its own backdrop.
   const previewBackdrop = useMemo(
@@ -412,16 +606,26 @@ export default function ViewerPage({ onGoWallpaper }) {
     setError(null)
     setProgress({ time: 0, duration: 0, percent: 0 })
     // Entrance clip names are per model, so the sequence text follows the load
-    // instead of whatever the previous model needed.
+    // instead of whatever the previous model needed. Variants keep their own
+    // chains on purpose (that is the whole point of a per-variant entrance), so
+    // only the base and the object currently being edited are re-seeded.
     const names = pickEntranceSequence(nextInfo.animations)
+    const sequence = names.join(', ')
     setStageClip('')
     setCompose((prev) => ({
       ...prev,
-      sequence: names.join(', '),
+      sequence,
       clip: names[0] ?? '',
       follow: true,
       solo: false,
     }))
+    setBaseView((prev) => ({ ...prev, sequence }))
+    if (editingRef.current) {
+      const id = editingRef.current
+      setVariants((list) =>
+        list.map((item) => (item.id === id ? { ...item, view: { ...item.view, sequence } } : item)),
+      )
+    }
   }, [])
 
   const handleError = useCallback((err) => {
@@ -673,6 +877,19 @@ export default function ViewerPage({ onGoWallpaper }) {
           // modelId the file still holds — so it always follows the selection.
           fileConfig: fileConfig ? { ...fileConfig, modelId: selected?.id ?? fileConfig.modelId } : fileConfig,
           flash: composeFlash,
+          // Display variants: which one the panel edits, plus the actions that
+          // create / rename / delete them and pick the file's startup one.
+          variants,
+          editing,
+          defaultVariant,
+          // The base look, kept separate from `compose` (which holds the chip
+          // being edited) — the copied JSON emits this for the top-level keys.
+          baseView,
+          onEditingChange: handleEditingChange,
+          onVariantAdd: handleVariantAdd,
+          onVariantRename: handleVariantRename,
+          onVariantDefault: handleVariantDefault,
+          onVariantRemove: handleVariantRemove,
           onPatch: updateCompose,
           onDetect: handleComposeDetect,
           onReplay: handleComposeReplay,

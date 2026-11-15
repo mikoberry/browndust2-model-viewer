@@ -20,6 +20,7 @@
 
 import { useEffect, useState } from 'react'
 import { FACE_ANIM } from '../../../lib/animation.js'
+import { variantLabel } from '../../../lib/variants.js'
 
 const round2 = (value) => Math.round(value * 100) / 100
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
@@ -175,48 +176,86 @@ function BackdropSelect({ label, value, options, onChange, allowInherit = false 
 // The config file is the thing being edited, so it is what gets emitted: every
 // key of the shipped file, with the tuned values overwritten. Key order is kept,
 // which makes the pasted result diff-clean against public/wallpaper.config.json.
-function buildConfigText(fileConfig, state) {
-  const layer = (item) => ({
-    scale: round2(item?.scale ?? 1),
-    offsetX: Math.round(item?.offsetX ?? 0),
-    offsetY: Math.round(item?.offsetY ?? 0),
-  })
+const layerOf = (item) => ({
+  scale: round2(item?.scale ?? 1),
+  offsetX: Math.round(item?.offsetX ?? 0),
+  offsetY: Math.round(item?.offsetY ?? 0),
+})
+
+// Panel view -> config keys. Shared by the live state and by every variant, so a
+// variant writes exactly what the sliders show: sentinels become null / '', the
+// sequence text becomes an array, offsets are rounded to whole design pixels.
+function viewToConfig(view) {
   const clips = {}
-  for (const [name, clip] of Object.entries(state.entrance.clips)) {
+  for (const [name, clip] of Object.entries(view?.entrance?.clips ?? {})) {
+    if (!name) continue
     clips[name] = {
-      backdrop: clip.backdrop ?? '',
-      backdropTransform: layer(clip.backdropTransform),
-      modelTransform: layer(clip.modelTransform),
+      backdrop: clip?.backdrop ?? '',
+      backdropTransform: layerOf(clip?.backdropTransform),
+      modelTransform: layerOf(clip?.modelTransform),
     }
   }
+  return {
+    backdrop: view?.backdrop,
+    backdropTransform: layerOf(view?.backdropTransform),
+    modelTransform: layerOf(view?.modelTransform),
+    animation: optionToAnim(view?.animation),
+    expression: optionToAnim(view?.expression),
+    // Only written when actually trimming, so untouched configs stay clean.
+    ...(Number(view?.animationStart) > 0 ? { animationStart: round2(Number(view.animationStart)) } : {}),
+    clickAnimation: {
+      enabled: view?.clickAnimation?.enabled === true,
+      name: view?.clickAnimation?.name ?? '',
+    },
+    entrance: {
+      autoplay: view?.entrance?.autoplay !== false,
+      blend: round2(view?.entrance?.blend ?? 0),
+      clips,
+    },
+    sequence: String(view?.sequence ?? '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  }
+}
+
+// A variant's config slice. `entrance.autoplay` is GLOBAL (`GLOBAL_NESTED` in
+// lib/variants.js): only the top level is allowed to carry it, and the reader
+// would drop a variant's copy anyway. `blend` and the per-clip framing stay, so
+// each look still owns its own cutscene.
+function variantConfigOf(view) {
+  const out = viewToConfig(view)
+  if (out.entrance) {
+    const { autoplay, ...rest } = out.entrance
+    out.entrance = rest
+  }
+  return out
+}
+
+// `variants` are the per-look overrides; each one is a COMPLETE panel view, so it
+// is emitted as a full set of config keys (`design` is deliberately absent — the
+// canvas is global, see lib/variants.js). `defaultVariant` becomes the file's
+// `variant` key: the one the wallpaper opens on.
+//
+// The TOP-LEVEL keys come from `baseView`, never from `state`: `state` is
+// whatever chip is being edited, so emitting it as the base baked the active
+// variant into the base — after one tuning session both look identical and the
+// base's own backdrop / animation were gone. `design` stays with `state` because
+// it is global (and therefore never differs between chips).
+function buildConfigText(fileConfig, baseView, state, variants, defaultVariant) {
   const payload = {
     ...(fileConfig ?? {}),
-    backdrop: state.backdrop,
+    ...viewToConfig(baseView),
     // null = follow the backdrop's native size (the shipped default).
     design: state.design
       ? { width: Math.round(state.design.width), height: Math.round(state.design.height) }
       : null,
-    backdropTransform: layer(state.backdropTransform),
-    modelTransform: layer(state.modelTransform),
-    animation: optionToAnim(state.animation),
-    expression: optionToAnim(state.expression),
-    // Only written when actually trimming, so untouched configs stay clean.
-    ...(Number(state.animationStart) > 0
-      ? { animationStart: round2(Number(state.animationStart)) }
-      : {}),
-    clickAnimation: {
-      enabled: state.clickAnimation?.enabled === true,
-      name: state.clickAnimation?.name ?? '',
-    },
-    entrance: {
-      autoplay: state.entrance.autoplay !== false,
-      blend: round2(state.entrance.blend),
-      clips,
-    },
-    sequence: state.sequence
-      .split(',')
-      .map((name) => name.trim())
-      .filter(Boolean),
+    variant: defaultVariant || '',
+    variants: (variants ?? []).map((item) => ({
+      id: item.id,
+      ...(item.label ? { label: item.label } : {}),
+      ...variantConfigOf(item.view),
+    })),
   }
   return `${JSON.stringify(payload, null, 2)}\n`
 }
@@ -228,12 +267,35 @@ export default function CompositionPanel({
   animations,
   playingSequence,
   fileConfig,
+  // Complete panel view of the BASE look. Kept apart from `state` so the base
+  // half of the emitted JSON does not inherit whatever chip is being edited.
+  baseView,
   flash,
+  variants,
+  editing,
+  defaultVariant,
+  onEditingChange,
+  onVariantAdd,
+  onVariantRename,
+  onVariantDefault,
+  onVariantRemove,
   onPatch,
   onDetect,
   onReplay,
   onCopy,
 }) {
+  const variantList = variants ?? []
+  const editingVariant = editing ? variantList.find((item) => item.id === editing) ?? null : null
+  // Is the thing being edited the one the wallpaper opens on? `''` is the base,
+  // so it can be the default too (a file without variants has `variant: ''`).
+  const isDefaultTarget = editingVariant ? defaultVariant === editingVariant.id : !defaultVariant
+  // Local draft so typing a Chinese label does not fight the state round-trip
+  // mid-composition; re-synced whenever the edited variant (or its label) moves.
+  const [labelDraft, setLabelDraft] = useState('')
+  useEffect(() => {
+    setLabelDraft(editingVariant ? variantLabel(editingVariant, 'zh') : '')
+  }, [editing, editingVariant?.label])
+
   const isEntrance = state.layer === 'entrance'
   const layerKey = state.layerKey === 'backdrop' ? 'backdrop' : 'model'
   const options = (backdrops ?? []).filter((item) => item.usable !== false)
@@ -296,7 +358,78 @@ export default function CompositionPanel({
       {state.on && (
         <>
           <div className="section-head">
-            <h3>设计画布</h3>
+            <h3>显示立绘</h3>
+            <span className="badge">{editingVariant ? variantLabel(editingVariant, 'zh') : '基础'}</span>
+          </div>
+          <p className="hint">
+            同一套模型的多套画面（各自的背景 / 构图 / 入场）。下面所有数值只写入当前选中的这一套；
+            设计画布是全局的，不随立绘变化。
+          </p>
+          <div className="seg-row seg-wrap" role="group" aria-label="显示立绘">
+            <button
+              type="button"
+              className={`btn${!editing ? ' is-on' : ''}`}
+              onClick={() => onEditingChange('')}
+              title="基础配置：没有立绘时壁纸显示的就是它"
+            >
+              基础
+            </button>
+            {variantList.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`btn${editing === item.id ? ' is-on' : ''}`}
+                onClick={() => onEditingChange(item.id)}
+                title={item.id}
+              >
+                {defaultVariant === item.id ? '★ ' : ''}
+                {variantLabel(item, 'zh')}
+              </button>
+            ))}
+            <button type="button" className="btn" onClick={onVariantAdd} title="以当前显示的画面为副本新建一套">
+              + 新增
+            </button>
+          </div>
+          {/* The base is a look too, so it can be the startup one (`variant: ''`).
+              Keeping this row outside the `editingVariant` block is what makes
+              the choice reversible: once a variant was marked as default, there
+              used to be no button left to hand it back to the base. */}
+          <div className="seg-row">
+            <button
+              type="button"
+              className={`btn btn-mini${isDefaultTarget ? ' is-on' : ''}`}
+              onClick={() => onVariantDefault(editingVariant ? editingVariant.id : '')}
+              title="壁纸启动时打开这一套（写回文件的 variant）；「基础」对应 variant 为空"
+            >
+              {isDefaultTarget ? '启动默认' : '设为启动默认'}
+            </button>
+            {editingVariant && (
+              <button
+                type="button"
+                className="btn btn-mini"
+                onClick={() => onVariantRemove(editingVariant.id)}
+                title="删除这一套；全部删掉也是合法的（等价于只有基础）"
+              >
+                删除该立绘
+              </button>
+            )}
+          </div>
+          {editingVariant && (
+            <input
+              className="full-input"
+              type="text"
+              value={labelDraft}
+              placeholder="立绘名称（显示在壁纸抽屉的按钮上）"
+              aria-label="立绘名称"
+              onChange={(event) => {
+                setLabelDraft(event.target.value)
+                onVariantRename(editingVariant.id, event.target.value)
+              }}
+            />
+          )}
+
+          <div className="section-head">
+            <h3>设计画布（全局）</h3>
             <span className="badge">
               {Math.round(design.width)} × {Math.round(design.height)}
             </span>
@@ -514,11 +647,12 @@ export default function CompositionPanel({
                 onPatch({ entrance: { ...state.entrance, autoplay: event.target.checked } })
               }
             />
-            启动时自动播放
+            启动时自动播放（全部立绘共用）
           </label>
           <p className="hint">
             勾选 = 壁纸加载完成后自动放一遍，右下角设置按钮上方还会多一个播放按钮，随时可以重放。
             不勾选 = 打开就是「构图（循环时）」，不出现播放按钮（这里的「播放完整入场」照样能用）。
+            这个开关是全局的：它不属于某一套立绘，改一次全部立绘一起生效；上面的序列与逐段构图仍然各套独立。
           </p>
           <p className="hint">
             {soloing
@@ -604,7 +738,11 @@ export default function CompositionPanel({
           <div className="section-head">
             <h3>写回壁纸</h3>
           </div>
-          <button type="button" className="btn full-btn" onClick={() => onCopy(buildConfigText(fileConfig, state))}>
+          <button
+            type="button"
+            className="btn full-btn"
+            onClick={() => onCopy(buildConfigText(fileConfig, baseView, state, variantList, defaultVariant))}
+          >
             复制完整配置
           </button>
           <p className="hint">

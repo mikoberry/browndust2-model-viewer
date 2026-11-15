@@ -60,6 +60,18 @@ export {
   normalizeRect,
 } from '../../lib/composition.js'
 
+// Display variants (which loop / backdrop pair is on screen), shared with the
+// debug viewer so both resolve the same one. See src/lib/variants.js.
+export {
+  VARIANT_KEYS,
+  normalizeVariants,
+  variantOverrides,
+  findVariant,
+  resolveVariantId,
+  applyVariant,
+  variantLabel,
+} from '../../lib/variants.js'
+
 const BUILTIN_WALLPAPER = {
   // Exact model id (see `npm run model:list`). Exact match -> partial match ->
   // first model, so changing the library never blanks the page.
@@ -175,6 +187,28 @@ const BUILTIN_WALLPAPER = {
   // names (cut_A/cut_B/…, then loop_2) — handy when you keep switching models.
   sequence: ['cut_A', 'cut_B', 'loop_2'],
 
+  // Display variants: alternative "looks" for the SAME model, switchable from
+  // the drawer. Each entry only carries the keys it OVERRIDES (usually
+  // `animation` + `backdrop`, optionally `sequence` / `entrance` / transforms);
+  // everything it omits falls back to the base values above. `variant` names the
+  // one the wallpaper opens on; '' = the base composition.
+  //
+  //   "variant": "loop2",
+  //   "variants": [
+  //     { "id": "loop",  "label": "常服", "animation": "loop",
+  //       "backdrop": "char021391 back1.png" },
+  //     { "id": "loop2", "label": "礼装", "animation": "loop_2",
+  //       "backdrop": "char021391 back2.png" }
+  //   ]
+  //
+  // `modelId`, `design` and `fit` are deliberately NOT variant keys: the design
+  // canvas is what every offset in this file is measured in, so letting a
+  // variant change it would reinterpret all of them on a switch. Tune variants
+  // in the debug viewer's 构图 tab. One variant (or none) is fine — the drawer
+  // only shows the switch when there is something to switch between.
+  variant: '',
+  variants: [],
+
   // Click-to-play: while `enabled`, clicking the model plays `name` ONCE (a
   // one-shot reaction like a poke / cut_B jab) and then hands track 0 back to
   // `animation` (the idle loop). `name` must be one of the model's animations,
@@ -196,6 +230,9 @@ const BUILTIN_WALLPAPER = {
   //              wallpaper "opens" with its cutscene). false = start directly on
   //              the resting composition; a round play button above the
   //              settings button then starts it on demand.
+  //              GLOBAL: unlike the rest of `entrance`, a display variant may
+  //              never override it (see GLOBAL_NESTED in lib/variants.js) — the
+  //              switch belongs to the wallpaper, not to one look.
   //   blend    — seconds of cross-fade between two clips (0 = hard cut)
   //   clips    — keyed by ANIMATION NAME; each entry may set
   //                backdrop          image pick ('auto' / 'none' / filename part),

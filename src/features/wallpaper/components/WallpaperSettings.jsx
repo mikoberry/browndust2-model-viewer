@@ -26,6 +26,7 @@ import {
   clearWallpaperStorage,
   readRecordedConfig,
   saveRecordedConfig,
+  variantLabel,
 } from '../config.js'
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
 import { ChipField, ColorField, DrawerOpenContext, Group, SliderField, ToggleField } from './settings-fields.jsx'
@@ -67,6 +68,58 @@ function formatOffset(percent, pixels) {
 // design.width for X and design.height for Y.
 const offsetToPercent = (pixels, basis) => (basis > 0 ? (pixels / basis) * 100 : 0)
 const offsetFromPercent = (percent, basis) => (percent / 100) * basis
+
+// Display variants: the same model, several alternative "looks" (in BD2 terms
+// usually one idle loop + one backdrop each — `loop` on back1, `loop_2` on
+// back2). The config carries them as a list of OVERRIDES, so a variant only
+// stores what it changes; switching is instant (the model is already loaded).
+//
+// Hand-rolled chips instead of `ChipField` only because of the "base" case: with
+// `variant: ''` no chip is active and ChipField would claim the value is not in
+// the preset.
+//
+// The BASE counts as one look: it is the top-level config, i.e. what the build
+// shows when no variant is chosen, and the panel in `/spine-viewer` edits it as
+// the 「基础」 chip. So the first chip is 「基础」 and one variant is already
+// enough to have something to switch between (`variant: ''`). With no variants
+// at all there is nothing to switch, and the group stays hidden.
+function VariantGroup({ variants, variantId, onChange }) {
+  const { locale } = useLocale()
+  const list = Array.isArray(variants) ? variants : []
+  if (!list.length) return null
+  // '' (or an id that no longer exists) means the top-level config is drawing.
+  const baseActive = !list.some((item) => item.id === variantId)
+  return (
+    <Group title={t('comp.variant')} note={t('comp.variantNote')}>
+      <div className="ws-chips" role="group" aria-label={t('comp.variant')}>
+        <button
+          type="button"
+          className={`ws-chip${baseActive ? ' is-active' : ''}`}
+          aria-pressed={baseActive}
+          title="variant: ''"
+          onClick={() => onChange('')}
+        >
+          {t('comp.variantBase')}
+        </button>
+        {list.map((item) => {
+          const active = item.id === variantId
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`ws-chip${active ? ' is-active' : ''}`}
+              aria-pressed={active}
+              title={item.id}
+              onClick={() => onChange(item.id)}
+            >
+              {variantLabel(item, locale)}
+            </button>
+          )
+        })}
+      </div>
+    </Group>
+  )
+}
 
 function LayerGroup({ title, note, spec, design, onChange, onReset }) {
   return (
@@ -211,15 +264,15 @@ function ClickAnimationGroup({ clickAnimation, animations, onChange, onReset }) 
     .filter((item) => typeof item === 'string' && item && !/^_face\d+$/i.test(item) && !/^loop(_\d+)?$/i.test(item))
     .map((item) => ({ value: item, label: item }))
   return (
-    <Group
-      title={t('comp.clickTitle')}
-      onReset={onReset}
-      note={t('comp.clickNote')}
-    >
+    <Group title={t('comp.clickTitle')} onReset={onReset}>
       <ToggleField label={t('comp.clickEnabled')} checked={enabled} onChange={(value) => onChange({ enabled: value })} />
+      {/* The note rides on the picker's label — it explains what clicking the
+          model does, so it reads as one line with 「点击后播放的动画」 instead of
+          trailing the whole section. */}
       {enabled && (
         <ChipField
           label={t('comp.clickWhich')}
+          hint={t('comp.clickNote')}
           value={name}
           options={options}
           onChange={(value) => onChange({ name: value })}
@@ -305,40 +358,72 @@ function OtherPanel() {
 }
 
 // Full config document, ready to become the user's snapshot (and, pasted back,
-// to replace wallpaper.config.json): every key of the live config, with the two
-// layer transforms, the entrance autoplay switch and the overlay block
-// overwritten by what the drawer is showing right now. Key order follows the
-// built-in object, so the clipboard content is diff-stable against the shipped
-// file.
-function configPayload(config, spec, overlay, autoplay, clickAnimation) {
+// to replace wallpaper.config.json): every key of the BASE document, with the
+// look the drawer is currently showing written into whichever set owns it.
+// Key order follows the built-in object, so the clipboard content is
+// diff-stable against the shipped file.
+//
+// Ownership matters: with a display variant active the sliders / autoplay /
+// click-clip are showing THAT variant, so all of them are recorded onto the
+// variant and the base's own numbers are left untouched (`...config` already
+// carries them). Baking them into the top level too is what made two variants
+// come back identical after a reload — every recorded snapshot flattened the
+// base onto whatever was on screen.
+//
+// `overlay` is the exception: it is not a variant key (host chrome, not a look),
+// so it always lands on the top level.
+function configPayload(config, spec, overlay, autoplay, clickAnimation, variantId) {
   const layer = (item) => ({
     scale: round2(item.scale),
     offsetX: Math.round(item.offsetX),
     offsetY: Math.round(item.offsetY),
   })
   const parallax = spec.parallax ?? {}
-  return {
-    _readme: CONFIG_README,
-    ...config,
+  const parallaxValue = {
+    enabled: parallax.enabled !== false,
+    backdrop: round2(parallax.backdrop ?? 0),
+    model: round2(parallax.model ?? 0),
+  }
+  // The tunable slice of ONE look. `entrance` is deliberately NOT here: its
+  // `autoplay` is a GLOBAL key (see lib/variants.js), so it is written once on
+  // the top level below, while `blend` / `clips` stay with the look they belong
+  // to (they already ride along on the variant itself).
+  const lookOf = () => ({
     backdropTransform: layer(spec.backdrop),
     modelTransform: layer(spec.model),
-    parallax: {
-      enabled: parallax.enabled !== false,
-      backdrop: round2(parallax.backdrop ?? 0),
-      model: round2(parallax.model ?? 0),
-    },
-    // Spread first so `blend` / `clips` keep their place in the file; only the
-    // switch is authoritative here.
-    entrance: {
-      ...(config.entrance ?? {}),
-      autoplay: autoplay !== false,
-    },
+    parallax: parallaxValue,
     clickAnimation: {
       enabled: clickAnimation?.enabled === true,
       name: clickAnimation?.name ?? '',
     },
-    overlay,
+  })
+  // A variant may never carry `entrance.autoplay`; the reader drops it, so
+  // writing one would only make the file disagree with itself.
+  const withoutAutoplay = (entrance) => {
+    if (!entrance || typeof entrance !== 'object') return entrance
+    const { autoplay: _ignored, ...rest } = entrance
+    return rest
   }
+  const list = Array.isArray(config.variants) ? config.variants : []
+  const active = variantId && list.some((item) => item?.id === variantId) ? variantId : ''
+  const payload = {
+    _readme: CONFIG_README,
+    ...config,
+    overlay,
+    variant: active,
+  }
+  // One switch for the whole wallpaper: recorded here, whatever look is on
+  // screen, so flipping it while a variant is active changes the base too.
+  payload.entrance = { ...(config.entrance ?? {}), autoplay: autoplay !== false }
+  if (list.length) {
+    payload.variants = list.map((item) => {
+      const next = { ...item, ...(item?.id === active ? lookOf() : {}) }
+      if (next.entrance) next.entrance = withoutAutoplay(next.entrance)
+      return next
+    })
+  }
+  if (!active) Object.assign(payload, lookOf())
+  return payload
 }
 
 const TABS = [
@@ -361,13 +446,17 @@ export default function WallpaperSettings({
   source,
   clickAnimation,
   animations,
+  variants,
+  variantId,
   onChange,
   onClickChange,
   onOverlayChange,
   onAccentChange,
   onAutoplayChange,
+  onVariantChange,
   onReplaySequence,
   onReset,
+  onRecorded,
   onClose,
 }) {
   const [flash, setFlash] = useState('')
@@ -402,7 +491,7 @@ export default function WallpaperSettings({
   // The same text also goes to the clipboard, for the case where the tune
   // should become the new factory default of a build.
   const handleRecord = async () => {
-    const payload = configPayload(config, spec, overlay, autoplay, clickAnimation)
+    const payload = configPayload(config, spec, overlay, autoplay, clickAnimation, variantId)
     const text = `${JSON.stringify(payload, null, 2)}\n`
     const at = new Date()
     const stored = saveRecordedConfig(payload, at.toISOString())
@@ -431,6 +520,10 @@ export default function WallpaperSettings({
       setRecordedNow(true)
       setConfirmRestore(false)
     }
+    // Hand the document back to the page so the in-memory config becomes what
+    // was just recorded. Otherwise the chips keep reading the pre-record values
+    // and every toggle you changed looks like it reverted on the next switch.
+    onRecorded?.(payload, stored)
     const parts = [stored ? t('record.recorded') : t('record.recordFail'), copied ? t('record.copied') : t('record.copyFail')]
     setFlash(
       stored
@@ -518,6 +611,7 @@ export default function WallpaperSettings({
       <div className="ws-body" role="tabpanel">
         {tab === 'composition' ? (
           <>
+            <VariantGroup variants={variants} variantId={variantId} onChange={onVariantChange} />
             <LayerGroup
               title={t('comp.backdrop')}
               spec={spec.backdrop}
@@ -537,17 +631,20 @@ export default function WallpaperSettings({
               onChange={(patch) => onChange('parallax', patch)}
               onReset={() => onReset('parallax')}
             />
-            <SequenceGroup
-              sequence={sequence}
-              autoplay={autoplay}
-              onAutoplayChange={onAutoplayChange}
-              onReplay={onReplaySequence}
-            />
             <ClickAnimationGroup
               clickAnimation={clickAnimation}
               animations={animations}
               onChange={onClickChange}
               onReset={() => onReset('clickAnimation')}
+            />
+            {/* Entrance last (user request): the static look is what gets tuned
+                most, and this group is the only one that also has a global
+                switch. */}
+            <SequenceGroup
+              sequence={sequence}
+              autoplay={autoplay}
+              onAutoplayChange={onAutoplayChange}
+              onReplay={onReplaySequence}
             />
             {enabledWidgets.length === 0 && (
               <p className="ws-note">{t('drawer.noWidgets')}</p>

@@ -17,12 +17,12 @@
     "alignY": 0.5
   },
   "backdropTransform": {
-    "scale": 1.05,
+    "scale": 0.41,
     "offsetX": 0,
     "offsetY": 0
   },
   "modelTransform": {
-    "scale": 1.35,
+    "scale": 0.67,
     "offsetX": 240,
     "offsetY": 27
   },
@@ -38,6 +38,66 @@
     "cut_A",
     "cut_B",
     "loop_2"
+  ],
+  "variant": "v1",
+  "variants": [
+    {
+      "id": "v1",
+      "label": "变体 1",
+      "backdrop": "char021391 back1.png",
+      "backdropTransform": {
+        "scale": 1.33,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "modelTransform": {
+        "scale": 2.13,
+        "offsetX": 240,
+        "offsetY": 648
+      },
+      "animation": "loop",
+      "expression": null,
+      "clickAnimation": {
+        "enabled": true,
+        "name": "cut_B"
+      },
+      "entrance": {
+        "blend": 0.9,
+        "clips": {
+          "cut_A": {
+            "backdrop": "char001297_back1.webp",
+            "backdropTransform": {
+              "scale": 1.21,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.1,
+              "offsetX": 0,
+              "offsetY": 65
+            }
+          },
+          "cut_B": {
+            "backdrop": "char021391 back2.png",
+            "backdropTransform": {
+              "scale": 1.2,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.75,
+              "offsetX": 365,
+              "offsetY": -16
+            }
+          }
+        }
+      },
+      "sequence": [
+        "cut_A",
+        "cut_B",
+        "loop_2"
+      ]
+    }
   ],
   "clickAnimation": {
     "enabled": true,
@@ -91,6 +151,8 @@
       "use24Hour": true,
       "tilt": true,
       "beat": true,
+      "beatIntensity": 100,
+      "beatCurve": 1,
       "labels": {
         "locale": "zh-CN",
         "aria": "当前时间与日期"

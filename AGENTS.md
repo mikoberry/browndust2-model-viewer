@@ -113,6 +113,7 @@ src/
       useSpineAsset.js           # 资源加载 + 运行时对象构建
       clipLayers.js              # 把"分层/变体"动画折进主动画（纯函数，可纯 Node 复算）
     composition.js               # 设计画布几何（唯一来源，无 DOM，可纯 Node 复算）
+    variants.js                  # 显示变体：白名单 / 归一化 / 覆盖合并（纯函数，两个 feature 共用）
     backdrops.js                 # 背景挑选（'auto' 规则，两个 feature 共用）
     animation.js                 # 默认动画 / 表情挑选 + 入场序列识别（两个 feature 共用）
     assets.js                    # BASE_URL 资源 URL + 格式化
@@ -427,6 +428,41 @@ src/features/<feature>/
 - 改默认配置**只改 `public/wallpaper.config.json`**（唯一事实来源，打包后仍可改、无需重建）：
   `config.js` 顶部静态 import 该 JSON 并 `mergeConfig` 进 `WALLPAPER`，兜底值自动跟随、不会漂移
   （`build:home` 的 `MODEL_ONLY` 也从这份 JSON 读 `modelId`）。新增字段仍要在 `BUILTIN_WALLPAPER` 留键并给默认值。
+- **显示变体（`variant` / `variants`）**：同一模型的几套画面（通常 `loop` + `back1`、`loop_2` + `back2`），
+  抽屉 chips 切换。实现在 `lib/variants.js`（纯函数，可 Node 复算）：
+  - 变体是**覆盖集**，白名单 `VARIANT_KEYS` 之外的键一律忽略。`modelId` / `design` / `fit` / `overlay` /
+    `letterbox` / `overscan` **永远不进白名单**：设计画布是所有偏移的单位，按变体变会把整份配置重新解释一遍。
+  - `WallpaperPage` 里 `design` 一律由 **baseConfig.backdrop + baseConfig.design** 求得（`designBackdrop`），
+    与当前变体无关；变体换背景只换 `<img>`，不改画布。后台预览同理（`ViewerPage` 的 `designBackdrop`），
+    否则调试页看到的构图会和壁纸不一致。
+  - **切变体不重载模型**，`handleLoaded` 不会再触发。`animation` / `expression` 靠 `WallpaperPage` 里那条
+    `[config.animation, config.expression, info]` 的 effect 重新落轨道；删掉它就会「切了变体还播上一套的循环」。
+  - 加载幕只 gate 首次（`clipsWarmRef`）：**不要**把 `setClipsReady(false)` 加回去，否则切变体会整屏再黑一次。
+  - 抽屉 chips 不写 localStorage（和其它控件一致）；「记录配置」把 `variant` 写进文件，并把
+    两层 transform / `parallax` / `clickAnimation` 写进**该变体**，不烘进 base 顶层
+    （`configPayload` 里 `lookOf()` 是唯一入口：只有编辑「基础」时才 `Object.assign` 到顶层）。
+    **两边都写就会在记录一次快照后把基础压成屏幕上那套，重载后两套一模一样。** `overlay` 例外，永远写顶层。
+  - **`entrance.autoplay` 是全局键，例外于「变体各自独立」**：它描述「这张壁纸要不要自动放开场」，
+    不是「这套画面长什么样」。`variantOverrides()` 通过 `GLOBAL_NESTED` 从任何变体的 `entrance` 里
+    丢掉它，读取时顶层永远胜出；`entrance.blend` / `clips` 仍是逐套的。因此抽屉的 `configPayload`
+    把 autoplay 写顶层、变体里剥掉，后台 `VariantConfigOf` 导出时同样剥掉，`ViewerPage.updateCompose`
+    用 `withAutoplay()` 同步写进 `baseView` + 所有变体 view（否则切 chip 会看到文件无法表达的值）。
+    不要把它改回「写进当前变体」——那正是「取消勾选后两边看着都关了、但只存了一套」的来源。
+  - **记录后必须立刻生效**：`WallpaperSettings` 的 `onRecorded(payload, stored)` 回调把文档交回
+    `WallpaperPage`（`setLoaded`），否则内存里还是记录前的 `config`，切走 chip 再切回来会看到
+    「刚取消的勾选又勾上了」——存储其实是对的，只是被旧值盖住。别再改成「记录后提示重载」。
+  - **「基础」本身就是一套画面，抽屉里也占一个 chip**（`variant: ''` = 顶层字段，和后台的「基础」chip 同一份）；
+    因此 `variants` 只要有 1 项 chip 行就出现，不要恢复「≥2 项才显示」那种门槛——那会逼用户为了能切换
+    去复制一份基础配置。`comp.variantBase` 是它的四语言标签。
+  - 后台（`CompositionPanel` + `ViewerPage`）存的是**完整视图快照**（`viewOf(compose)`），不是部分覆盖：
+    切换是拷贝而非合并，避免「没写的键继承了上一套」。`VIEW_KEYS` 是唯一分流依据，UI 键
+    （`on` / `layer` / `layerKey` / `clip` / `follow` / `solo` / `design`）绝不能进变体。
+  - 写回由 `viewToConfig()` 统一转换（sentinel → `null` / `''`、`sequence` 文本 → 数组、偏移取整），
+    base 与每个变体走同一套，别在别处再拼一份 JSON。**顶层字段必须取自 `baseView`，不能取 `state`**：
+    `state` 是「当前正在编辑的那个 chip」，拿它当 base 会把变体烘进基础（一次调参后两套一模一样，
+    基础原来的背景 / 循环全丢）。`design` 是全局的，仍从 `state` 取。
+  - **差分型兄弟动画不在变体能力内**：`cut_B_coat` / `cut_A_water` / `loop_bowl` 这类被 `clipLayers`
+    折进 base 的素材无法靠切变体播出来，那要先给折叠逻辑加解包开关（单独排期，风险高）。
 
 ## 10. 路由（Routing）
 

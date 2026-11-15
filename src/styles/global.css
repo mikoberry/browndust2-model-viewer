@@ -1829,6 +1829,15 @@ code {
   color: rgba(255, 255, 255, 0.72);
 }
 
+/* A short "what this field does" note that belongs to the label: same line,
+   dimmer, one small gap after the label text. Wraps with it if needed. */
+.wallpaper-settings .ws-field-hint {
+  margin-left: calc(8px * var(--ui-scale));
+  color: rgba(255, 255, 255, 0.4);
+  font-size: calc(11px * var(--ui-scale));
+  font-style: normal;
+}
+
 .wallpaper-settings .ws-field-readout {
   color: rgba(255, 255, 255, 0.42);
   font-size: calc(11px * var(--ui-scale));

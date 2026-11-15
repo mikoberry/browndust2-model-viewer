@@ -99,6 +99,14 @@ const MESSAGES = {
 
   // ---- composition tab ----
   'comp.title': { zh: '构图', en: 'Layout', ja: '構図', ko: '구도' },
+  'comp.variant': { zh: '显示立绘', en: 'Display artwork', ja: '立ち絵表示', ko: '일러스트 표시' },
+  'comp.variantNote': {
+    zh: '同一模型的多套立绘，点击即时切换',
+    en: 'Alternate looks for this model, instant switch',
+    ja: '同じモデルの立ち絵を即時切り替え',
+    ko: '같은 모델의 일러스트를 즉시 전환',
+  },
+  'comp.variantBase': { zh: '基础', en: 'Base', ja: 'ベース', ko: '기본' },
   'comp.scale': { zh: '缩放', en: 'Scale', ja: '拡大縮小', ko: '배율' },
   'comp.offsetX': { zh: '水平偏移', en: 'Offset X', ja: '水平オフセット', ko: '가로 오프셋' },
   'comp.offsetY': { zh: '垂直偏移', en: 'Offset Y', ja: '垂直オフセット', ko: '세로 오프셋' },
@@ -125,10 +133,10 @@ const MESSAGES = {
   'comp.seqEmpty': { zh: '未配置（直接播放循环动画）', en: 'Not set (plays the loop)', ja: '未設定（ループを再生）', ko: '미설정 (루프 재생)' },
   'comp.replay': { zh: '重新播放', en: 'Replay', ja: '再再生', ko: '다시 재생' },
   'comp.autoplayOnNote': {
-    zh: '勾选「启动时播放」：加载完成后自动放一遍，右下角设置按钮上方会出现播放按钮，随时可重放。',
-    en: 'With "Play on start" on: plays once after load, and a play button appears above the settings gear.',
-    ja: '「起動時に再生」オン：読み込み後に一度再生し、設定ボタンの上に再生ボタンが現れます。',
-    ko: '"시작 시 재생" 켜기: 로드 후 한 번 재생하고 설정 버튼 위에 재생 버튼이 나타납니다.',
+    zh: '勾选「启动时播放」：加载完成后自动放一遍，右下角设置按钮上方会出现播放按钮，随时可重放。这是全局开关，对全部变体生效。',
+    en: 'With "Play on start" on: plays once after load, and a play button appears above the settings gear. Global switch — applies to every variant.',
+    ja: '「起動時に再生」オン：読み込み後に一度再生し、設定ボタンの上に再生ボタンが現れます。全体共通のスイッチで、すべての見せ方に適用されます。',
+    ko: '"시작 시 재생" 켜기: 로드 후 한 번 재생하고 설정 버튼 위에 재생 버튼이 나타납니다. 전체 공통 스위치로 모든 화면에 적용됩니다.',
   },
   'comp.autoplayOffNote': {
     zh: '不自动播放：打开就是上面的「构图」，设置按钮上方不显示播放按钮（这里的「重新播放」仍可用）。',
@@ -138,10 +146,10 @@ const MESSAGES = {
   },
   'comp.clickTitle': { zh: '点击触发动画', en: 'Click to play', ja: 'クリックで再生', ko: '클릭 재생' },
   'comp.clickNote': {
-    zh: '开启后，点击人物会播放一次所选动画（如 cut_B），播完自动回到循环动画。需要宿主能投递鼠标事件（WE 里要开「鼠标交互」）。',
-    en: 'When on, clicking the model plays the chosen animation once (e.g. cut_B), then returns to the loop. Needs mouse events (enable "mouse interaction" in Wallpaper Engine).',
-    ja: 'オンにすると、モデルをクリックした際に選んだアニメを一度再生（例：cut_B）し、その後ループに戻ります。マウスイベントが必要（WE で「マウス操作」を有効化）。',
-    ko: '켜면 모델 클릭 시 선택한 애니메이션을 한 번 재생(예: cut_B) 후 루프로 복귀. 마우스 이벤트 필요(WE에서 "마우스 상호작용" 활성화).',
+    zh: '点击人物播放一次动画，需开启「鼠标交互」',
+    en: 'Click plays it once — needs "mouse interaction"',
+    ja: 'クリックで一度再生（「マウス操作」が必要）',
+    ko: '클릭 시 한 번 재생 ("마우스 상호작용" 필요)',
   },
   'comp.clickEnabled': { zh: '点击人物时播放动画', en: 'Play animation on click', ja: 'クリック時にアニメを再生', ko: '클릭 시 애니메이션 재생' },
   'comp.clickWhich': { zh: '点击后播放的动画', en: 'Animation to play', ja: '再生するアニメ', ko: '재생할 애니메이션' },

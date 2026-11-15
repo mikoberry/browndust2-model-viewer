@@ -189,12 +189,18 @@ export function ToggleField({ label, note, checked, onChange }) {
 // in a CEF host where the dropdown list is an OS-level popup, and opening one
 // takes the whole wallpaper window down. Nothing inside the drawer may rely on
 // a popup — buttons and checkboxes only.
-export function ChipField({ label, value, options, onChange }) {
+// `hint` is a short explanation that belongs to the label itself (it sits right
+// after it on the same line) instead of the dimmed trailing note a Group renders
+// at the bottom of the section — e.g. "点击后播放的动画 · 需开启「鼠标交互」".
+export function ChipField({ label, hint, value, options, onChange }) {
   const known = options.some((option) => option.value === value)
   return (
     <div className="ws-field">
       <div className="ws-field-head">
-        <span className="ws-field-label">{label}</span>
+        <span className="ws-field-label">
+          {label}
+          {hint && <em className="ws-field-hint">{hint}</em>}
+        </span>
         {!known && <span className="ws-field-readout">{value}（{t('common.notInPreset')}）</span>}
       </div>
       <div className="ws-chips" role="group" aria-label={label}>

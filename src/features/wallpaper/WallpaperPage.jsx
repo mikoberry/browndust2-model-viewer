@@ -45,6 +45,9 @@ import {
   resolveEntrance,
   clipFraming,
   resolveParallax,
+  normalizeVariants,
+  resolveVariantId,
+  applyVariant,
   FOLLOW_DISMISS_KEY,
   storageKey,
 } from './config.js'
@@ -81,18 +84,36 @@ export default function WallpaperPage() {
   }, [])
 
   const ready = Boolean(loaded)
-  const config = loaded?.config ?? WALLPAPER
+  // `baseConfig` is the document as loaded (shipped file + the user's snapshot).
+  // `config` is what actually renders: the base with the ACTIVE variant's
+  // overrides applied. Only the drawing-side keys differ — `modelId`, `design`
+  // and `fit` are not variant keys, so the model and the design canvas stay put
+  // when a variant swaps the loop / backdrop (see lib/variants.js).
+  const baseConfig = loaded?.config ?? WALLPAPER
+  const variants = useMemo(() => normalizeVariants(baseConfig.variants), [baseConfig])
+  const configVariantId = useMemo(() => resolveVariantId(baseConfig, variants), [baseConfig, variants])
+  // `null` = follow the config; the drawer's chips set an override for this
+  // session (「记录配置」 writes the chosen one back as the file's `variant`).
+  const [variantOverride, setVariantOverride] = useState(null)
+  const variantId = variantOverride ?? configVariantId
+  const activeVariant = useMemo(
+    () => variants.find((item) => item.id === variantId) ?? null,
+    [variants, variantId],
+  )
+  const config = useMemo(() => applyVariant(baseConfig, activeVariant), [baseConfig, activeVariant])
 
   const model = useMemo(() => {
     const override = new URLSearchParams(window.location.search).get('model') ?? ''
     return resolveWallpaperModel(models, override, config.modelId)
   }, [config])
-  // The design canvas always follows the GLOBAL `backdrop` pick. A clip may show
-  // a different image, but the canvas — and therefore every design-pixel number
-  // in the config — must not change when a shot swaps, or the whole composition
-  // would jump.
-  const baseBackdrop = useMemo(() => pickBackdrop(model, config.backdrop), [model, config])
-  const design = useMemo(() => resolveDesign(baseBackdrop, config.design), [baseBackdrop, config])
+  // The design canvas always follows the GLOBAL `backdrop` / `design` of the base
+  // config — never a variant's. A variant may show a different image, but the
+  // canvas is what every design-pixel number in the config is measured in; if a
+  // switch resized it, the whole composition (and every tuned offset) would be
+  // silently reinterpreted. `design: null` therefore keeps the BASE image's
+  // native size even when a variant draws something else.
+  const designBackdrop = useMemo(() => pickBackdrop(model, baseConfig.backdrop), [model, baseConfig])
+  const design = useMemo(() => resolveDesign(designBackdrop, baseConfig.design), [designBackdrop, baseConfig])
   // Both adjustments resolve to design-canvas pixels, so the numbers below are
   // independent of the screen. The backdrop uses a CSS transform; the model
   // applies the SAME tuple inside the WebGL camera (see SpineStage).
@@ -230,7 +251,7 @@ export default function WallpaperPage() {
   // also counts as ready, so the cover always comes off.
   const [backdropReady, setBackdropReady] = useState(false)
   useEffect(() => {
-    const url = baseBackdrop ? assetUrl(baseBackdrop.url) : ''
+    const url = designBackdrop ? assetUrl(designBackdrop.url) : ''
     if (!url) {
       setBackdropReady(true) // no backdrop configured: nothing to wait for
       return undefined
@@ -246,9 +267,19 @@ export default function WallpaperPage() {
     return () => {
       alive = false
     }
-  }, [baseBackdrop])
+  }, [designBackdrop])
 
   const [clipsReady, setClipsReady] = useState(false)
+  // Once the scene has opened, a later change (switching a display variant swaps
+  // the clip backdrops) must NOT re-arm the warm-up gate: `sceneReady` going
+  // false again would bring the full-screen loading cover back over a wallpaper
+  // that is already on screen. Decoding still happens — the backdrop stack
+  // decodes each incoming image before mounting it — it just no longer blocks.
+  const clipsWarmRef = useRef(false)
+  const markClipsReady = useCallback(() => {
+    clipsWarmRef.current = true
+    setClipsReady(true)
+  }, [])
   useEffect(() => {
     const { clips } = entrance
     const urls = Object.keys(clips)
@@ -256,19 +287,19 @@ export default function WallpaperPage() {
       .filter(Boolean)
       .map((picked) => assetUrl(picked.url))
     if (!urls.length) {
-      setClipsReady(true)
+      markClipsReady()
       return undefined
     }
     let alive = true
     let done = 0
-    setClipsReady(false)
+    if (!clipsWarmRef.current) setClipsReady(false)
     for (const url of urls) {
       const img = new Image()
       img.src = url
       const settle = () => {
         if (!alive) return
         done += 1
-        if (done >= urls.length) setClipsReady(true)
+        if (done >= urls.length) markClipsReady()
       }
       // `new Image()` alone only fetches bytes; decode() also warms the decoded
       // bitmap so the visual swap is a pure compositor operation.
@@ -278,7 +309,7 @@ export default function WallpaperPage() {
     return () => {
       alive = false
     }
-  }, [entrance, model, config.backdrop])
+  }, [entrance, model, config.backdrop, markClipsReady])
 
   const [loadFailed, setLoadFailed] = useState(false)
   const sceneReady =
@@ -320,6 +351,10 @@ export default function WallpaperPage() {
   // button, or the drawer's 重新播放) always wins over the flag.
   // The drawer may flip the switch live; `null` = follow the config file, so a
   // reloaded config is never shadowed by a stale copy of itself.
+  // The switch is GLOBAL by design: `entrance.autoplay` is not a variant key
+  // (lib/variants.js strips it), so every look reads the same value and the
+  // override can safely stay set while the user switches chips — there is only
+  // one value to differ from. `blend` / per-clip framing stay per-variant.
   const [autoplayOverride, setAutoplayOverride] = useState(null)
   const autoplay = autoplayOverride ?? entrance.autoplay
   // Gated on the warm-up gate: before the scene is ready (and armed) the
@@ -480,6 +515,19 @@ export default function WallpaperPage() {
   const configClickRef = useRef(configClickAnimation)
   configClickRef.current = configClickAnimation
 
+  // 「记录配置」 makes the snapshot live immediately: the in-memory document
+  // becomes exactly what was just written. Without it the drawer keeps reading
+  // the PRE-record config, so a switch you just turned off flipped back the
+  // moment you left that chip and returned (the other chip still carried its own
+  // value) — even though the stored snapshot was already correct.
+  const handleRecorded = useCallback((nextConfig, stored) => {
+    setLoaded((prev) => ({
+      ...(prev ?? {}),
+      config: nextConfig,
+      source: stored ? 'user' : (prev?.source ?? 'builtin'),
+    }))
+  }, [])
+
   const resetTweaks = useCallback((target) => {
     const base = configTweaksRef.current
     const overlayBase = configOverlayRef.current
@@ -554,6 +602,20 @@ export default function WallpaperPage() {
     // A failed asset must not hold the loading cover up forever.
     setLoadFailed(true)
   }, [])
+
+  // Switching a display variant changes props only — the model is already
+  // loaded, so `handleLoaded` will never fire again and track 0 would keep the
+  // previous loop. Re-derive it from the now-active config with the same rule: a
+  // pinned name that the model does not have falls back to the auto pick, and ''
+  // disables the track.
+  useEffect(() => {
+    if (!info) return
+    const names = new Set(info.animations.map((item) => item.name))
+    const pick = (value, fallback) =>
+      value === '' ? '' : typeof value === 'string' && names.has(value) ? value : fallback
+    setAnimation(pick(config.animation, pickDefaultAnimation(info.animations)))
+    setExpression(pick(config.expression, pickDefaultExpression(info.animations)))
+  }, [config.animation, config.expression, info])
 
   return (
     <div className="wallpaper-page" style={{ backgroundColor: config.letterbox }}>
@@ -718,7 +780,9 @@ export default function WallpaperPage() {
         <WallpaperSettings
           open={settingsOpen}
           design={design}
-          config={config}
+          // The BASE document: 「记录配置」 rewrites that one, storing the active
+          // variant separately instead of baking its values into the base.
+          config={baseConfig}
           spec={tweaks}
           overlay={overlayTweaks}
           sequence={sequence}
@@ -726,6 +790,9 @@ export default function WallpaperPage() {
           source={loaded?.source ?? 'builtin'}
           clickAnimation={clickTweak}
           animations={info?.animations ?? []}
+          variants={variants}
+          variantId={variantId}
+          onVariantChange={setVariantOverride}
           onChange={updateTweaks}
           onClickChange={updateClick}
           onOverlayChange={updateOverlay}
@@ -733,6 +800,11 @@ export default function WallpaperPage() {
           onAutoplayChange={setAutoplayOverride}
           onReplaySequence={replaySequence}
           onReset={resetTweaks}
+          // A recording becomes the live document right away. Without this the
+          // drawer keeps reading the PRE-record config, so a value you just
+          // switched off came back the moment you left the chip and returned
+          // (the variant still carried its old value) until a full reload.
+          onRecorded={handleRecorded}
           onClose={() => setSettingsOpen(false)}
         />
       </SettingsBoundary>

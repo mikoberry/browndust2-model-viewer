@@ -499,8 +499,8 @@
       },
       "parallax": {
         "enabled": true,
-        "backdrop": 1.5,
-        "model": 3
+        "backdrop": -1,
+        "model": 1.5
       },
       "animation": null,
       "expression": null,
