@@ -152,10 +152,19 @@ function LayerFields({ title, spec, design, onChange }) {
 
 // Backdrop picker shared by the global pick and every clip. `''` is only offered
 // for clips ("keep the global pick"); the global select always owns a value.
-function BackdropSelect({ label, value, options, onChange, allowInherit = false }) {
+// `inheritHint` names the picture that "keep the global pick" currently resolves
+// to. Without it the option was a trap on a display variant: the variant has its
+// own global backdrop, so leaving a clip on inherit pointed it at the VARIANT's
+// picture instead of the shot's own one (reported as "cut B still shows cut A's
+// background" when the variant's global backdrop is cut A's).
+function BackdropSelect({ label, value, options, onChange, allowInherit = false, inheritHint = '' }) {
   return (
     <select className="full-select" value={value} aria-label={label} onChange={(event) => onChange(event.target.value)}>
-      {allowInherit && <option value="">跟随全局背景</option>}
+      {allowInherit && (
+        <option value="">
+          {inheritHint ? `跟随全局背景（${inheritHint}）` : '跟随全局背景'}
+        </option>
+      )}
       <option value="auto">自动（最高分辨率完整场景）</option>
       <option value="none">无背景</option>
       {/* Keep a hand-written name (e.g. a non-usable backdrop) visible instead of
@@ -549,6 +558,7 @@ export default function CompositionPanel({
                     value={clip?.backdrop ?? ''}
                     options={options}
                     allowInherit
+                    inheritHint={state.backdrop}
                     onChange={(backdrop) => patchClip({ backdrop })}
                   />
                   {!clip && (
@@ -639,6 +649,10 @@ export default function CompositionPanel({
               播放完整入场
             </button>
           </div>
+          <p className="hint">
+            最后一段只是「结束信号」：一播到它就把动画交回 `animation`、构图回到「循环时」，它自己的构图不生效——
+            所以填待机的动画名，且这个名字不要在前面出现过，否则前面播到同名的段就直接结束了。
+          </p>
           <label className="check-row">
             <input
               type="checkbox"
