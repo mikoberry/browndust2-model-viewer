@@ -19,6 +19,24 @@ import { mergeClipLayers } from './clipLayers.js'
 const POLL_MS = 30
 const LOAD_TIMEOUT_MS = 60_000
 
+// Spine's Downloader decodes data URIs with atob(), i.e. one char per byte
+// (latin1). That is fine for ASCII atlases, but BD2 atlases are not always
+// ASCII: `cutscene_char021291` carries UTF-8 region names such as `레이어 67`,
+// which atob() turns into mojibake that can never match the skeleton's own
+// (correctly UTF-8) region names — showing up as
+// `Region not found in atlas: 레이어 67 (mesh attachment: 레이어 67)`.
+// Only installed for the embedded (file://) build; the request path uses
+// XHR/responseText, which the host already decodes correctly.
+function decodeUtf8DataUri(dataUri) {
+  const MARKER = 'base64,'
+  const at = dataUri.indexOf(MARKER)
+  if (!dataUri.startsWith('data:') || at < 0) return dataUri
+  const binary = atob(dataUri.slice(at + MARKER.length))
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+  return new TextDecoder('utf-8').decode(bytes)
+}
+
 export function readAssetInfo(asset) {
   const { data } = asset
   // Multi-part shots were folded into their base animation at load time; the
@@ -71,9 +89,18 @@ export function useSpineAsset(context, model) {
       // (data: images do not taint the canvas, so the WebGL upload is safe).
       // Keys are relative to the model folder, which is what the loads below
       // use once Spine prepends its own pathPrefix.
+      let embedded = 0
       for (const file of [model.skeleton, model.atlas, ...(model.pages ?? [])]) {
         const dataUri = embeddedAsset(file.source)
-        if (dataUri) manager.setRawDataURI(file.file, dataUri)
+        if (!dataUri) continue
+        manager.setRawDataURI(file.file, dataUri)
+        embedded++
+      }
+      // Text assets (atlas, json skeleton) come back from the table as base64,
+      // so make sure they decode as UTF-8 instead of latin1. See
+      // decodeUtf8DataUri above.
+      if (embedded && manager.downloader?.dataUriToString) {
+        manager.downloader.dataUriToString = decodeUtf8DataUri
       }
       if (model.skeleton.kind === 'json') manager.loadJson(model.skeleton.file)
       else manager.loadBinary(model.skeleton.file)

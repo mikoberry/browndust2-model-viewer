@@ -41,8 +41,10 @@ const MIME = {
   '.jpeg': 'image/jpeg',
   '.webp': 'image/webp',
   '.json': 'application/json;charset=utf-8',
-  // Spine's data-URI path decodes text with atob(), i.e. latin1. BD2 atlases are
-  // plain ASCII, so this is lossless for them.
+  // Spine's data-URI path decodes text with atob(), i.e. one char per byte
+  // (latin1). BD2 atlases are usually ASCII but not always (some carry UTF-8
+  // region names), so the runtime re-decodes text assets as UTF-8 — see
+  // decodeUtf8DataUri in src/lib/spine/useSpineAsset.js.
   '.atlas': 'text/plain;charset=utf-8',
   '.skel': 'application/octet-stream',
 }
