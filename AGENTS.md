@@ -3,7 +3,7 @@
 给在本仓库工作的 coding agent 的说明。**动手改代码前先读完本文件**。
 章节组织参考 bulletproof-react 的 AGENTS.md（概览 → 命令 → 结构 → 规范 → 组件 → 状态 → 数据层 → 错误处理 → 验证 → 工作流），
 **只保留本项目适用的部分**。本文件只写会直接导致改错东西的约束；完整使用说明、配置表与目录结构见
-[README.md](README.md)，两者冲突时以 README 与源码为准。
+[README.md](README.md)（英文，默认）与 [README.zh-CN.md](README.zh-CN.md)（中文），两者冲突时以 README 与源码为准。
 
 ## 1. 项目概览（Project Overview）
 
@@ -646,5 +646,7 @@ src/features/<feature>/
 
 ## 16. 参考文档
 
-- [README.md](README.md) — 唯一对外文档：运行、路由、壁纸配置表、两层变换单位规则、目录结构。
+- [README.md](README.md) — 唯一对外文档（**英文，默认**）：AI 开发与免责声明、运行、路由、壁纸配置表、
+  两层变换单位规则、目录结构。中文版是同目录的 [README.zh-CN.md](README.zh-CN.md)。
+- **改 README 时两份都要改**（结构、章节标题、表格一一对应），先改英文再同步中文；`docs/` 仍只有中文。
 - 早期 WE / wallkit 方案的设计文档（`docs/asset-research.md`、`docs/design-cutscene-wilhelmina.md`）**已删除**，不要再引用。
