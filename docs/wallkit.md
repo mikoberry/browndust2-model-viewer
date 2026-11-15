@@ -23,7 +23,7 @@
 | 时钟 | `overlay.clock` | 无（自己每秒 tick 一次） | **开**，`minimal` 布局、左下角 |
 | 音频频谱 | `overlay.spectrum` | WE 音频帧 | 关 |
 | 专辑卡 | `overlay.albumArt` | WE 媒体信息 | 关 |
-| 氛围粒子 | `overlay.ambient` | 无（飘雪 / 樱花 / 气泡 …） | 关 |
+| 氛围粒子 | `overlay.ambient` | 无（飘雪 / 樱花 / 气泡 / 繁星 …） | 关 |
 | 天气光照 | `overlay.light` | 无（指针只让它偏移一点） | 关 |
 | 指针特效 | `overlay.pointer` | 指针事件（自己监听 window） | 关 |
 | 聚光灯 | `overlay.spotlight` | 指针事件（自己监听 window） | 关 |
@@ -63,7 +63,7 @@
   `size` 是光池半径（px），配置里写 `0` = 跟随变体预设（每个变体自带 1100–2400 的一档），
   `WallpaperOverlay` 里换成 `undefined` 再传——因为非正半径会让整条 `radial-gradient` 失效，光会整层消失。
   `rays`（多少光走成光束）与 `flare`（镜头光斑倍率）是**分配**而非亮度：`overcast` 没有光束、
-  只有 `beach` 有光斑，抽屉里按变体隐藏这两个滑块。整盏灯唯一亮度旋钮是 `intensity`（一次乘光池 / 热点 / 光束）。
+  只有 `clear-sky` 有光斑，抽屉里按变体隐藏这两个滑块。整盏灯唯一亮度旋钮是 `intensity`（一次乘光池 / 热点 / 光束）。
   和聚光灯相反，它**第一帧就在**：没有指针输入的壁纸照样有天气，`follow` 只是加分项。
 - **取景框四角文字（`labels`）是开关 + 固定文案**：配置里只有 `overlay.frame.labels: true|false`，
   文案是应用层的常量 `FRAME_LABELS`（`WallpaperOverlay.jsx`，现在是 `AUTO / 4K · 60P / F/2.8 / ISO 400`）。
@@ -81,6 +81,10 @@
 - **`accent`** 是主题色，作用于频谱 / 粒子 / 指针特效；时钟与专辑卡的文字色为空时跟随 `accent`
   （时钟 `color`、专辑卡 `textColor` 可单独覆盖）。聚光灯不读 `accent`，它自带
   `darkColor` / `lightColor`（默认纯黑 / 纯白）。
+- **氛围的 `stars` 是唯一不位移的形态**：星点钉在画面上只闪不落，`speed` 只调闪烁频率，
+  `density` 100% = 200 颗、封顶 240（库里的全局上限）；固有色 `#e8efff`，深色背景最好看。
+  抽屉的形态列表读 `AMBIENT_VARIANTS`、颜色回退读 `ambientPresetColor()`，两者都在 wallkit 里，
+  上游再加形态时只需到 `src/lib/i18n.js` 补一条四语言标签。
 
 ## Wallpaper Engine 数据桥接
 

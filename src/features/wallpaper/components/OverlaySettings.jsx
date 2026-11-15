@@ -7,7 +7,15 @@
 // variant in the library shows up here without a second source of truth.
 
 import { Group, AnchorPicker, ChipField, ColorField, SliderField, ToggleField } from './settings-fields.jsx'
-import { AMBIENT_SPEED_MIN, AMBIENT_SPEED_MAX } from 'wallkit/components/ambient-fx'
+// The ambient form list and its innate colours are owned by wallkit. Reading
+// both from the library means a newly added form (e.g. `stars`) shows up here
+// without a second source of truth drifting out of sync.
+import {
+  AMBIENT_VARIANTS,
+  AMBIENT_SPEED_MIN,
+  AMBIENT_SPEED_MAX,
+} from 'wallkit/components/ambient-fx'
+import { ambientPresetColor } from 'wallkit/core'
 // Light bounds, defaults and the per-variant presets come from the component
 // itself, for the same reason as the spotlight numbers below: the drawer must
 // not invent a second source of truth for a range the library owns. Note that
@@ -166,34 +174,19 @@ const ALBUM_SPECTRUM_OPTIONS = [
   { value: 'off', label: () => t('album.spectrumOff') },
 ]
 
-const AMBIENT_VARIANTS = [
-  { value: 'snow', label: () => t('ambient.snow') },
-  { value: 'sakura', label: () => t('ambient.sakura') },
-  { value: 'bubble', label: () => t('ambient.bubble') },
-  { value: 'steam', label: () => t('ambient.steam') },
-  { value: 'rain', label: () => t('ambient.rain') },
-  { value: 'fog', label: () => t('ambient.fog') },
-  { value: 'leaves', label: () => t('ambient.leaves') },
-]
-
-// Each variant's INNATE colour in wallkit (bubble has none — it follows the
-// accent). Shown as the colour field's fallback so the swatch always matches
-// what an empty `color` actually renders.
-const AMBIENT_FIXED_COLORS = {
-  snow: '#dbe9ff',
-  sakura: '#f5b8cd',
-  steam: '#eef1f4',
-  rain: '#a8c0dc',
-  fog: '#dfe6ee',
-  leaves: '#d98a4f',
-}
+// Chip labels are resolved through t() at render time, so switching the locale
+// retranslates them; the identifiers are the library's own list.
+const AMBIENT_OPTIONS = AMBIENT_VARIANTS.map((value) => ({
+  value,
+  label: () => t(`ambient.${value}`),
+}))
 
 const LIGHT_VARIANTS = [
   { value: 'sun', label: () => t('light.sun') },
   { value: 'moon', label: () => t('light.moon') },
   { value: 'dusk', label: () => t('light.dusk') },
   { value: 'overcast', label: () => t('light.overcast') },
-  { value: 'beach', label: () => t('light.beach') },
+  { value: 'clear-sky', label: () => t('light.clear-sky') },
 ]
 
 const POINTER_TRAIL_VARIANTS = [
@@ -535,13 +528,15 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
             <ChipField
               label={t('widget.form')}
               value={spec.variant}
-              options={AMBIENT_VARIANTS}
+              options={AMBIENT_OPTIONS}
               onChange={(variant) => onChange({ variant })}
             />
             <ColorField
               label={t('widget.color')}
               value={spec.color ?? ''}
-              fallback={AMBIENT_FIXED_COLORS[spec.variant] ?? accent}
+              // bubble has no innate colour and falls through to the accent;
+              // every other form (stars included) uses its own preset tint.
+              fallback={ambientPresetColor(spec.variant) || accent}
               onChange={(color) => onChange({ color })}
             />
             <SliderField
@@ -553,6 +548,9 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
               suffix="%"
               onChange={(speed) => onChange({ speed })}
             />
+            {/* stars is the one form with no motion at all: its `speed` knob
+                only changes how fast the pinned points twinkle. */}
+            {spec.variant === 'stars' && <p className="ws-note">{t('ambient.starsNote')}</p>}
           </Group>
           <Group title={t('widget.density')}>
             <div className="ws-pair">
@@ -604,7 +602,7 @@ const percentOf = (value, fallback) => {
 //     variant ships its own wash radius), so the radius slider only appears
 //     once the user opts out of the preset;
 //   * `rays` / `flare` do not exist on every variant — `overcast` has no shafts
-//     and only `beach` carries a lens-flare chain — so they are hidden instead
+//     and only `clear-sky` carries a lens-flare chain — so they are hidden instead
 //     of being sliders that would do nothing;
 //   * the anchor places the LIGHT CENTRE and the shaft direction is derived
 //     from it, so there is no angle control to put next to it.
@@ -717,7 +715,7 @@ function LightPanel({ spec, accent, onChange, onReset }) {
                 label={t('light.smoothing')}
                 value={spec.smoothing ?? 0.12}
                 min={0}
-                max={1}
+                max={5}
                 step={0.01}
                 suffix=" s"
                 onChange={(smoothing) => onChange({ smoothing })}

@@ -359,10 +359,10 @@ const BUILTIN_WALLPAPER = {
     },
     // A directional light over the whole picture (wallkit `LightFx`): sunlight,
     // moonlight, dusk or a flat overcast sky. Pure CSS gradients — one wide wash,
-    // a hotspot, a masked fan of shafts and (on `beach`) a lens-flare chain —
+    // a hotspot, a masked fan of shafts and (on `clear-sky`) a lens-flare chain —
     // sitting at z-index 2, above the ambient particles and below every control.
     //
-    //   variant   — 'sun' | 'moon' | 'dusk' | 'overcast' | 'beach'
+    //   variant   — 'sun' | 'moon' | 'dusk' | 'overcast' | 'clear-sky'
     //   anchor    — where the LIGHT CENTRE sits, one of the nine anchors. It is a
     //               point, not a box corner: the shafts always throw away from it,
     //               so there is no angle key that could contradict the source.
@@ -376,7 +376,7 @@ const BUILTIN_WALLPAPER = {
     //               drawer's "follow the preset" switch writes this 0).
     //   rays      — how much of the light is shafts rather than a flat pool
     //               (0..1). `overcast` has none to scale.
-    //   flare     — multiplier on the variant's lens flare (0..1); only `beach`
+    //   flare     — multiplier on the variant's lens flare (0..1); only `clear-sky`
     //               ships one.
     //   follow    — how far the light travels towards the pointer (0..1, 0 pins
     //               it to the anchor).
