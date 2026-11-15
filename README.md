@@ -188,9 +188,12 @@ yourself), build without deploying:
 npm run build:home:embed     # output in dist/, no WE directory touched
 ```
 
-Then in WE choose "Create wallpaper" and drop in `dist/index.html`, and fill the panel text with an explicit target:
+Then in WE choose "Create wallpaper" and drop in `dist/index.html`, and fill the panel text
+(`project:latest` adopts the folder you touched last under `myprojects` — resuming work, no path to
+remember; add `--created` when you want the newest folder instead):
 
 ```bash
+npm run project:latest
 npm run project:gen   -- --target "F:/.../wallpaper_engine/projects/myprojects/your-new-project"
 npm run project:check -- --target "F:/.../wallpaper_engine/projects/myprojects/your-new-project"
 ```

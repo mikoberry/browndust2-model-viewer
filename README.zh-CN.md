@@ -170,9 +170,11 @@ Spine 读 skel/atlas 的 XHR、读图集页的 `<img>` 全部被拦 → 黑屏�
 npm run build:home:embed     # 产物在 dist/，不碰任何 WE 目录
 ```
 
-然后在 WE 里「创建壁纸」拖入 `dist/index.html`，再用手动指定的目标目录补面板文案：
+然后在 WE 里「创建壁纸」拖入 `dist/index.html`，再补面板文案（`project:latest` 会自动采用
+`myprojects` 下你上次动过的那个文件夹，接着做不用记路径；想挑最新建的那个加 `--created`）：
 
 ```bash
+npm run project:latest
 npm run project:gen   -- --target "F:/.../wallpaper_engine/projects/myprojects/你的新工程"
 npm run project:check -- --target "F:/.../wallpaper_engine/projects/myprojects/你的新工程"
 ```

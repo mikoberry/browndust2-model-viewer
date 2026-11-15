@@ -49,6 +49,7 @@ npm run build:we:embed # 自包含构建（素材 base64）+ 部署 —— 仅 W
 npm run deploy:we      # 只复制现有 dist/，不重新构建（产物形态原样带过去）
 npm run project:gen    # 从 project.config.js 重新生成 WE 工程目录里的 project.json，不用重新构建
 npm run project:check  # 只报告 project.json 与配置的漂移，不写盘
+npm run project:latest # 找 myprojects 下「最近改动（mtime）」的文件夹，按同一套规则生成/合并它的 project.json
 npm run verify:embed   # 纯 Node 自检 embed 产物（无 module/crossorigin、素材完整）
 npm run preview        # 预览构建产物
 ```
@@ -78,6 +79,7 @@ scripts/
   verify-embed.mjs               # 纯 Node 自检 embed 产物，不需要浏览器
   project-manifest.mjs           # project.json 唯一生成点：读 project.config.js → defineProject + mergeProject
   gen-project.mjs                # npm run project:gen / project:check：单独重生成或校验 project.json
+  adopt-latest.mjs               # npm run project:latest：取 myprojects 里最近改动的目录，套用同一套 project.json 生成规则
   deploy-weproject.mjs           # 把 dist/ 复制成 WE 工程文件夹，并合并写出 project.json
 src/
   main.jsx                       # Vite 入口（index.html 引用 /src/main.jsx，位置不要动）
@@ -553,8 +555,11 @@ src/features/<feature>/
 - `build:we` = 普通构建 + 部署（默认）；`build:we:embed` = 自包含构建 + 部署（beta WE 黑屏时用）。
 - **只构建不部署**：`npm run build:home:embed`（产物只在 `dist/`，不碰任何 WE 目录）。用户想用 WE
   编辑器自己「创建壁纸」导入、再自己管 `project.json` 时走这条，随后用
+  `npm run project:latest`（自动取 `myprojects` 下**最近改动过**、也就是你上次在做的那个文件夹 —— 语义是
+  「接着上次继续」；刚建好还没放东西的空文件夹可能比部署过的旧项目还「旧」，那种情况用 `--created` 改按创建时间）或
   `npm run project:gen -- --target "<新工程目录>"` 合并面板文案；完整流程见
   [docs/we-manual-import.md](docs/we-manual-import.md)。
+  `--list` 先看候选（表头会写明按哪种时间排序）、`--dry` 只看差异不写盘。
 
 - `scripts/deploy-weproject.mjs` 默认目标
   `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用

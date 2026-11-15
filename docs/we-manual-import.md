@@ -43,6 +43,15 @@ npm run build:home:embed
 ### 3.1 推荐：跑生成器合并
 
 ```bash
+npm run project:latest             # 自动采用 myprojects 下最近改动过的文件夹（= 接着上次做）
+npm run project:latest -- --list   # 先看看候选，不写盘
+npm run project:latest -- --dry    # 只报告会改什么
+npm run project:latest -- --created  # 按创建时间挑（刚建好、还没放东西的空文件夹用这个）
+```
+
+不想让它自己挑目录时，仍然可以显式指定：
+
+```bash
 npm run project:gen -- --target "F:/SteamLibrary/steamapps/common/wallpaper_engine/projects/myprojects/你的新工程名"
 ```
 
