@@ -27,14 +27,14 @@
         "alignY": 0.5
       },
       "backdropTransform": {
-        "scale": 1.05,
+        "scale": 1.2,
         "offsetX": 0,
         "offsetY": 0
       },
       "modelTransform": {
-        "scale": 1.35,
-        "offsetX": 240,
-        "offsetY": 27
+        "scale": 1.5,
+        "offsetX": 259,
+        "offsetY": 38
       },
       "parallax": {
         "enabled": true,
@@ -48,6 +48,71 @@
         "cut_A",
         "cut_B",
         "loop_2"
+      ],
+      "variant": "",
+      "variants": [
+        {
+          "id": "v1",
+          "label": "变体 1",
+          "backdrop": "char021391 back1.png",
+          "backdropTransform": {
+            "scale": 1.25,
+            "offsetX": 0,
+            "offsetY": 0
+          },
+          "modelTransform": {
+            "scale": 1,
+            "offsetX": 96,
+            "offsetY": 108
+          },
+          "animation": "loop",
+          "expression": null,
+          "clickAnimation": {
+            "enabled": true,
+            "name": "cut_A"
+          },
+          "entrance": {
+            "blend": 0.9,
+            "clips": {
+              "cut_A": {
+                "backdrop": "char001297_back1.webp",
+                "backdropTransform": {
+                  "scale": 1.21,
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "modelTransform": {
+                  "scale": 1.1,
+                  "offsetX": 0,
+                  "offsetY": 65
+                }
+              },
+              "cut_B": {
+                "backdrop": "char021391 back2.png",
+                "backdropTransform": {
+                  "scale": 1.2,
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "modelTransform": {
+                  "scale": 1.75,
+                  "offsetX": 365,
+                  "offsetY": -16
+                }
+              }
+            }
+          },
+          "sequence": [
+            "cut_A",
+            "cut_B",
+            "loop_2"
+          ],
+          "parallax": {
+            "enabled": true,
+            "backdrop": 2,
+            "model": 2
+          }
+        }
       ],
       "clickAnimation": {
         "enabled": true,
@@ -73,14 +138,14 @@
           "cut_B": {
             "backdrop": "char021391 back2.png",
             "backdropTransform": {
-              "scale": 1.2,
+              "scale": 1.45,
               "offsetX": 0,
               "offsetY": 0
             },
             "modelTransform": {
-              "scale": 1.75,
-              "offsetX": 365,
-              "offsetY": -16
+              "scale": 2,
+              "offsetX": 384,
+              "offsetY": -5
             }
           }
         }
@@ -101,6 +166,8 @@
           "use24Hour": true,
           "tilt": true,
           "beat": true,
+          "beatIntensity": 100,
+          "beatCurve": 1,
           "labels": {
             "locale": "zh-CN",
             "aria": "当前时间与日期"
@@ -128,7 +195,7 @@
           "spectrum": "on",
           "anchor": "center-left",
           "offsetX": 4,
-          "offsetY": 4,
+          "offsetY": -5,
           "size": 150,
           "labels": {
             "aria": "正在播放"
@@ -162,6 +229,21 @@
           "darkColor": "#000000",
           "lightColor": "#ffffff",
           "smoothing": 0.05
+        },
+        "frame": {
+          "enabled": false,
+          "variant": "corners",
+          "inset": 28,
+          "thickness": 1.5,
+          "length": 56,
+          "size": 1,
+          "color": "",
+          "grid": "none",
+          "ticks": true,
+          "rec": "rec",
+          "timecode": false,
+          "labels": false,
+          "theme": "light"
         }
       }
     },
@@ -357,6 +439,66 @@
         "cut_B",
         "loop_2"
       ],
+      "variant": "",
+      "variants": [
+        {
+          "id": "v1",
+          "label": "v1",
+          "backdrop": "char021201_back1_upscayl_2x_upscayl-standard-4x.webp",
+          "backdropTransform": {
+            "scale": 1.1,
+            "offsetX": 0,
+            "offsetY": 0
+          },
+          "modelTransform": {
+            "scale": 1.25,
+            "offsetX": 0,
+            "offsetY": 0
+          },
+          "animation": "loop",
+          "expression": null,
+          "clickAnimation": {
+            "enabled": true,
+            "name": "cut_A"
+          },
+          "entrance": {
+            "blend": 0.9,
+            "clips": {
+              "cut_A": {
+                "backdrop": "char021201_back1_upscayl_2x_upscayl-standard-4x.webp",
+                "backdropTransform": {
+                  "scale": 1.05,
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "modelTransform": {
+                  "scale": 1.29,
+                  "offsetX": 0,
+                  "offsetY": 0
+                }
+              },
+              "cut_B": {
+                "backdrop": "char021201_back4_upscayl_2x_upscayl-standard-4x.webp",
+                "backdropTransform": {
+                  "scale": 2.13,
+                  "offsetX": 77,
+                  "offsetY": 194
+                },
+                "modelTransform": {
+                  "scale": 1.24,
+                  "offsetX": 0,
+                  "offsetY": 259
+                }
+              }
+            }
+          },
+          "sequence": [
+            "cut_A",
+            "cut_B",
+            "loop_2"
+          ]
+        }
+      ],
       "clickAnimation": {
         "enabled": true,
         "name": "cut_B"
@@ -409,11 +551,12 @@
           "use24Hour": true,
           "tilt": true,
           "beat": true,
+          "beatIntensity": 100,
+          "beatCurve": 1,
           "labels": {
             "locale": "zh-CN",
             "aria": "当前时间与日期"
-          },
-          "beatCurve": 1
+          }
         },
         "spectrum": {
           "enabled": true,
@@ -425,6 +568,7 @@
           "offsetX": 0,
           "offsetY": 0,
           "size": 100,
+          "barCount": 128,
           "intensity": 100,
           "curve": 1
         },
@@ -433,6 +577,7 @@
           "variant": "classic",
           "color": "",
           "textColor": "",
+          "spectrum": "auto",
           "anchor": "center-right",
           "offsetX": 2,
           "offsetY": 0,
@@ -469,6 +614,21 @@
           "darkColor": "#000000",
           "lightColor": "#ffffff",
           "smoothing": 0.05
+        },
+        "frame": {
+          "enabled": false,
+          "variant": "corners",
+          "inset": 28,
+          "thickness": 1.5,
+          "length": 56,
+          "size": 1,
+          "color": "",
+          "grid": "none",
+          "ticks": false,
+          "rec": "off",
+          "timecode": false,
+          "labels": false,
+          "theme": "light"
         }
       }
     },
