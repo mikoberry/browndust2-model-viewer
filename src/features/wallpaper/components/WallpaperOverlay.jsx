@@ -26,6 +26,7 @@ import { AlbumArt } from 'wallkit/components/album-art'
 import { AmbientFx } from 'wallkit/components/ambient-fx'
 import { PointerFx } from 'wallkit/components/pointer-fx'
 import { Spotlight } from 'wallkit/components/spotlight'
+import { Frame, formatTimecode } from 'wallkit/components/frame'
 import {
   useWallpaperAudio,
   useWallpaperBeat,
@@ -159,12 +160,58 @@ function AlbumWidget({ spec, accent, paused }) {
   )
 }
 
+// WallKit's `Frame` holds no timer on purpose — a paused wallpaper must not show
+// a readout that keeps running — so the clock lives here: one tick per second,
+// frozen while the host has the wallpaper paused. Seconds are ACCUMULATED rather
+// than derived from a start timestamp, so a pause produces no jump when playback
+// resumes. `formatTimecode` only formats; at 1 Hz the frame digit stays 00,
+// which is as honest as a per-second clock gets.
+function useFrameSeconds(enabled, paused) {
+  const [seconds, setSeconds] = useState(0)
+
+  useEffect(() => {
+    if (!enabled || paused) return undefined
+    const id = setInterval(() => setSeconds((value) => value + 1), 1000)
+    return () => clearInterval(id)
+  }, [enabled, paused])
+
+  return seconds
+}
+
+// `rec` is stored as a three-state string because a JSON config cannot say
+// "dot, but no word" with a boolean. `true` alone would draw the dot and no
+// caption, which is why WallKit leaves the copy to the caller.
+const FRAME_REC = { off: false, dot: true, rec: 'REC' }
+
+// The viewfinder is a picture-level layer: no anchor, no children, nothing to
+// position. It draws ABOVE the other widgets by its own z-index (7 vs the
+// spotlight's 6) — instrumentation should not dim with the exposure.
+function FrameWidget({ spec, paused }) {
+  const seconds = useFrameSeconds(spec.timecode === true, paused)
+  return (
+    <Frame
+      variant={spec.variant}
+      inset={spec.inset}
+      thickness={spec.thickness}
+      length={spec.length}
+      size={spec.size}
+      color={spec.color || undefined}
+      grid={spec.grid}
+      ticks={spec.ticks}
+      rec={FRAME_REC[spec.rec] ?? false}
+      timecode={spec.timecode === true ? formatTimecode(seconds) : ''}
+      theme={spec.theme}
+      paused={paused}
+    />
+  )
+}
+
 export default function WallpaperOverlay({ config }) {
   const overlay = config ?? WALLPAPER.overlay
   const paused = useWallpaperPaused()
-  const { accent, clock, spectrum, albumArt, ambient, pointer, spotlight } = overlay
+  const { accent, clock, spectrum, albumArt, ambient, pointer, spotlight, frame } = overlay
 
-  const anyEnabled = [clock, spectrum, albumArt, ambient, pointer, spotlight].some((item) => item?.enabled)
+  const anyEnabled = [clock, spectrum, albumArt, ambient, pointer, spotlight, frame].some((item) => item?.enabled)
   if (!anyEnabled) return null
 
   return (
@@ -215,6 +262,10 @@ export default function WallpaperOverlay({ config }) {
           paused={paused}
         />
       )}
+      {/* Last, and above the rest: the viewfinder is the outermost layer of the
+          picture (its own z-index 7). It decorates the frame of the shot, so it
+          must not be dimmed by the spotlight under it. */}
+      {frame?.enabled && <FrameWidget spec={frame} paused={paused} />}
     </div>
   )
 }

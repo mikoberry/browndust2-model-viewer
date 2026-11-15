@@ -22,6 +22,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   CONFIG_README,
+  WALLPAPER,
   clearRecordedConfig,
   clearWallpaperStorage,
   readRecordedConfig,
@@ -304,7 +305,15 @@ function AccentField({ value, onChange }) {
 // Storage is shared with every other WE wallpaper on the `file://` origin, so a
 // blanket localStorage.clear() would reset the others too — hence the scoped
 // helper. sessionStorage is never written by this project, so it gets no button.
-function OtherPanel() {
+//
+// It also hosts the viewfinder (`overlay.frame`). `Frame` is a picture-level
+// decoration — it has no anchor and no size, so it has no tab of its own while
+// every real widget does; the "other" tab is where the non-widget layers live.
+// A snapshot recorded before `frame` existed has no such key, hence the
+// fallback to the built-in defaults (the sliders must show the values the
+// renderer actually uses).
+function OtherPanel({ frame, onFrameChange, onResetFrame }) {
+  const spec = { ...(WALLPAPER.overlay.frame ?? {}), ...(frame ?? {}) }
   const [confirming, setConfirming] = useState(false)
   const [stats, setStats] = useState(readStatsFlag)
   const timerRef = useRef(0)
@@ -339,6 +348,125 @@ function OtherPanel() {
 
   return (
     <>
+      <Group
+        title={t('frame.title')}
+        onReset={onResetFrame}
+        note={spec.enabled ? undefined : t('widget.enableHint')}
+      >
+        <ToggleField
+          label={t('frame.enable')}
+          checked={Boolean(spec.enabled)}
+          onChange={(enabled) => onFrameChange({ enabled })}
+        />
+        <p className="ws-note">{t('frame.noAnchor')}</p>
+      </Group>
+      {spec.enabled && (
+        <>
+          <Group title={t('frame.edge')}>
+            <ChipField
+              label={t('frame.variant')}
+              value={spec.variant ?? 'corners'}
+              options={[
+                { value: 'corners', label: t('frame.variantCorners') },
+                { value: 'frame', label: t('frame.variantFrame') },
+                { value: 'bracket', label: t('frame.variantBracket') },
+                { value: 'film', label: t('frame.variantFilm') },
+              ]}
+              onChange={(variant) => onFrameChange({ variant })}
+            />
+            <ChipField
+              label={t('frame.grid')}
+              value={spec.grid ?? 'none'}
+              options={[
+                { value: 'none', label: t('frame.gridNone') },
+                { value: 'thirds', label: t('frame.gridThirds') },
+                { value: 'cross', label: t('frame.gridCross') },
+              ]}
+              onChange={(grid) => onFrameChange({ grid })}
+            />
+            <ChipField
+              label={t('frame.rec')}
+              value={spec.rec ?? 'off'}
+              options={[
+                { value: 'off', label: t('frame.recOff') },
+                { value: 'dot', label: t('frame.recDot') },
+                { value: 'rec', label: t('frame.recText') },
+              ]}
+              onChange={(rec) => onFrameChange({ rec })}
+            />
+            <ToggleField
+              label={t('frame.ticks')}
+              checked={spec.ticks === true}
+              onChange={(ticks) => onFrameChange({ ticks })}
+            />
+            <ToggleField
+              label={t('frame.timecode')}
+              note={t('frame.timecodeNote')}
+              checked={spec.timecode === true}
+              onChange={(timecode) => onFrameChange({ timecode })}
+            />
+          </Group>
+          <Group title={t('frame.sizeGroup')}>
+            <div className="ws-pair">
+              <SliderField
+                label={t('frame.size')}
+                value={spec.size ?? 1}
+                min={0.5}
+                max={3}
+                step={0.05}
+                readout={`${Math.round((spec.size ?? 1) * 100)}%`}
+                onChange={(size) => onFrameChange({ size })}
+              />
+              <SliderField
+                label={t('frame.inset')}
+                value={spec.inset ?? 28}
+                min={0}
+                max={240}
+                step={2}
+                suffix="px"
+                onChange={(inset) => onFrameChange({ inset })}
+              />
+            </div>
+            <div className="ws-pair">
+              <SliderField
+                label={t('frame.thickness')}
+                value={spec.thickness ?? 1.5}
+                min={0.5}
+                max={8}
+                step={0.5}
+                suffix="px"
+                onChange={(thickness) => onFrameChange({ thickness })}
+              />
+              <SliderField
+                label={t('frame.length')}
+                value={spec.length ?? 56}
+                min={0}
+                max={240}
+                step={2}
+                suffix="px"
+                onChange={(length) => onFrameChange({ length })}
+              />
+            </div>
+            <div className="ws-pair">
+              <ColorField
+                label={t('widget.color')}
+                value={spec.color ?? ''}
+                fallback="#ffffff"
+                onChange={(color) => onFrameChange({ color })}
+              />
+              <ChipField
+                label={t('frame.lineTheme')}
+                value={spec.theme === 'dark' ? 'dark' : 'light'}
+                options={[
+                  { value: 'light', label: t('frame.lineLight') },
+                  { value: 'dark', label: t('frame.lineDark') },
+                ]}
+                onChange={(theme) => onFrameChange({ theme })}
+              />
+            </div>
+          </Group>
+        </>
+      )}
       <Group title={t('comp.perfHud')} note={t('comp.perfHudNote')}>
         <ToggleField label={t('comp.perfHudToggle')} checked={stats} onChange={writeStatsFlag} />
       </Group>
@@ -651,7 +779,11 @@ export default function WallpaperSettings({
             )}
           </>
         ) : tab === 'other' ? (
-          <OtherPanel />
+          <OtherPanel
+            frame={overlay?.frame}
+            onFrameChange={(patch) => onOverlayChange('frame', patch)}
+            onResetFrame={() => onReset('frame')}
+          />
         ) : (
           <OverlaySettings tab={tab} overlay={overlay} onChange={onOverlayChange} onReset={onReset} />
         )}

@@ -96,7 +96,12 @@
         "cut_A",
         "cut_B",
         "loop_2"
-      ]
+      ],
+      "parallax": {
+        "enabled": true,
+        "backdrop": 2,
+        "model": 2
+      }
     }
   ],
   "clickAnimation": {
@@ -214,6 +219,20 @@
       "darkColor": "#000000",
       "lightColor": "#ffffff",
       "smoothing": 0.05
+    },
+    "frame": {
+      "enabled": true,
+      "variant": "corners",
+      "inset": 28,
+      "thickness": 1.5,
+      "length": 56,
+      "size": 1,
+      "color": "",
+      "grid": "none",
+      "ticks": true,
+      "rec": "rec",
+      "timecode": false,
+      "theme": "light"
     }
   }
 }

@@ -10,7 +10,7 @@
 《棕色尘埃2》（BrownDust 2）的 **Spine 模型查看器 + 全屏壁纸**。直接读取仓库里的 `model-library/`
 （skel / atlas / 图集页 PNG / 背景图），**没有后端、HTTP API、数据库、登录或远程服务**。
 壁纸页可以叠加 [WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 /
-指针特效 / 聚光灯），并可通过 `wallkitWE()` 拿到 Wallpaper Engine 的音频与媒体数据；这两者都是**可选**的，
+指针特效 / 聚光灯 / 取景框），并可通过 `wallkitWE()` 拿到 Wallpaper Engine 的音频与媒体数据；这两者都是**可选**的，
 不装 WE 时页面仍是普通网页。
 
 | 项 | 本项目实际值 |
@@ -166,7 +166,8 @@ src/features/<feature>/
 - 组件靠 props + 回调通信，不因为「参数有点多」就引入全局 store；确实要共享时按 §3 提升到 `lib/`。
 - **壁纸页的 chrome 只能是「按需呼出」**：`WallpaperSettings` 默认收起（`visibility: hidden`，不占 Tab 焦点），
   由右下角手柄或 `S` 键打开、`Esc` / × 关闭。抽屉用 tab 分组：`构图`（背景 / 模型两层 + 鼠标视差 + 入场动画重播）
-  + 五个控件各一个 tab（聚光灯在「指针」tab 内，是 `overlay.spotlight` 独立配置段），
+  + 五个控件各一个 tab（聚光灯在「指针」tab 内，是 `overlay.spotlight` 独立配置段；
+  取景框 `overlay.frame` 在「其他」tab 里，和性能读数 / 清除存储同处），
   顶部是共用主题色（`overlay.accent`）。它的编辑只改页面内存状态，**绝不写回 `config.js`**；
   唯一出口是「记录配置」：生成**完整配置内容**（`_readme` + 全部字段，两层 transform、入场开关与 `overlay` 都用面板当前值），
   写进 `localStorage['mikoberry:wallpaper.config.user:<modelId>']`（`{ at: ISO, config: <完整配置对象> }`）**并**复制到剪贴板（clipboard API 失败时回退
@@ -317,9 +318,15 @@ src/features/<feature>/
 - 新增设置的正确做法：先在 `WALLPAPER` 里给默认值 → JSON 里加同名键 → 在 `WallpaperPage` 里读 `config.xxx`。
   不要在组件里写 `?? 某个魔法数`，默认值只允许出现在 `WALLPAPER`。
 - `overlay` 段是 WallKit 控件浮层的唯一开关（`accent` + `clock` / `spectrum` / `albumArt` / `ambient` /
-  `pointer` 五组，各自 `enabled`）。改它只影响浮层，不影响构图；`theme` 按 WallKit 约定指**文字色**
-  （`light` = 浅色文字，配深色壁纸）。加新控件时同步三处：`WALLPAPER.overlay`、
+  `pointer` / `spotlight` / `frame`，各自 `enabled`）。改它只影响浮层，不影响构图；`theme` 按 WallKit 约定指**文字色**
+  （`light` = 浅色文字，配深色壁纸；`frame` 的 `theme` 同义，指取景线的明暗）。加新控件时同步三处：`WALLPAPER.overlay`、
   `public/wallpaper.config.json`、`WallpaperOverlay.jsx`，并保持「记录配置」内容与文件的字节等价。
+- **`Frame`（取景框）是画面级装饰，不是控件**：铺满定位上下文（`position: absolute; inset: 0`）、没有 `anchor`、
+  不接受 children、不改任何布局；自身 `z-index: 7`，在聚光灯（6）之上——取景线不该跟着曝光压暗。
+  它**不计时**（WallKit 硬约束：暂停的壁纸不能显示还在走的读数），所以 `timecode` 收的是已格式化字符串，
+  时钟在应用层：`WallpaperOverlay` 的 `useFrameSeconds()` 每秒累加、`paused` 时停、再用 `formatTimecode()` 格式化。
+  别把 `setInterval` 挪进组件，也别改成从时间戳现算（暂停恢复会跳）。`rec` 存三态字符串
+  （`off` / `dot` / `rec` → `false` / `true` / `'REC'`），因为 JSON 布尔表达不了「只要红点不要字」。
 
 ## 8. Spine 运行时约束（Runtime Constraints，实测，不要凭直觉改）
 

@@ -1,7 +1,7 @@
 # 控件浮层（WallKit）
 
 壁纸页可以叠加 [WallKit](https://github.com/mikoberry/wallkit) 的控件：时钟、音频频谱、专辑卡、氛围粒子、
-指针特效、聚光灯。分工是**WallKit 只做展示**（纯 props、不感知背景），本项目提供背景层并把宿主数据喂给它。
+指针特效、聚光灯，以及画面级的取景框。分工是**WallKit 只做展示**（纯 props、不感知背景），本项目提供背景层并把宿主数据喂给它。
 
 ## 依赖与构建
 
@@ -15,7 +15,7 @@
 自己编译它的 JSX。升级只改这一行的 commit sha。组件 CSS 由组件自身 import（`wallkit/styles` 提供
 `--wallkit-*` 主题变量），不并入 `global.css`。
 
-## 六个控件
+## 六个控件 + 取景框
 
 | 控件 | 配置键 | 需要的数据 | 默认 |
 | --- | --- | --- | --- |
@@ -25,13 +25,15 @@
 | 氛围粒子 | `overlay.ambient` | 无（飘雪 / 樱花 / 气泡 …） | 关 |
 | 指针特效 | `overlay.pointer` | 指针事件（自己监听 window） | 关 |
 | 聚光灯 | `overlay.spotlight` | 指针事件（自己监听 window） | 关 |
+| 取景框 | `overlay.frame` | 无（纯 CSS，不计时） | 关 |
 
 全部由 `wallpaper.config.json` 的 `overlay` 段控制，逐项 `enabled`；全关时 `WallpaperOverlay` 直接返回 `null`，
 页面恢复成纯壁纸。改完刷新即生效，也可以直接在壁纸页的**设置抽屉**里调（控件各占一个 tab，实时预览），
 调好点「记录配置」就存进本机。**每个 tab 只露出「显示」这一组开关，勾选后才展开它自己的外观 / 位置 /
 响应等子设置**——没开的控件看不见也调不了，摆一堆控件只会让面板变长。**聚光灯没有单独 tab**：它和指针
 特效同为「铺满全屏、只吃指针事件」的一层，所以放在「指针」tab 里的第二节，但配置仍是独立的
-`overlay.spotlight`，两者可以分开开关；它自己的子设置同样跟着它的开关走。
+`overlay.spotlight`，两者可以分开开关；它自己的子设置同样跟着它的开关走。**取景框也没有单独 tab**：
+它铺满整个画面、不认 `anchor`（画面级装饰，不包裹任何控件），所以和性能读数 / 清除存储一起放在「其他」tab 里。
 
 ```json
 "overlay": {
@@ -41,15 +43,18 @@
   "albumArt": { "enabled": true, "variant": "classic", "anchor": "top-left", "offsetX": 4, "offsetY": 4 },
   "ambient": { "enabled": true, "variant": "sakura", "density": 100 },
   "pointer": { "enabled": true, "trailVariant": "glow", "clickVariant": "ripple" },
-  "spotlight": { "enabled": true, "size": 420, "feather": 0.45, "dim": 0.72, "glow": 0.22, "smoothing": 0.05 }
+  "spotlight": { "enabled": true, "size": 420, "feather": 0.45, "dim": 0.72, "glow": 0.22, "smoothing": 0.05 },
+  "frame": { "enabled": true, "variant": "corners", "inset": 28, "thickness": 1.5, "grid": "thirds", "rec": "dot" }
 }
 ```
 
 几条容易踩的约定：
 
 - **`anchor` + `offsetX` / `offsetY`**：9 个锚点（四角 + 四边中点 + 居中），偏移从锚点**向内**计；数字是视口百分比，
-  字符串是任意 CSS 长度（`'100px'`）。`0` 恒等于贴边。**铺满全屏的三层没有这套参数**：
-  `ambient` / `pointer` / `spotlight` 不认 `anchor`，位置由「铺满视口」决定。
+  字符串是任意 CSS 长度（`'100px'`）。`0` 恒等于贴边。**铺满全屏的几层没有这套参数**：
+  `ambient` / `pointer` / `spotlight` / `frame` 不认 `anchor`，位置由「铺满视口」决定。
+  取景框更彻底：它连 `size` 也没有——`inset`（离画面边的距离）、`thickness`（线宽）、`length`（角臂长）
+  是画面像素，统一由 `size` 倍率缩放。
 - **`size` / `width` / `height`**：控件尺寸。频谱与专辑卡还接受 `width` / `height` 精确覆盖盒子。
   **频谱的抽屉面板只给 `width` / `height`**：wallkit 里显式的宽高会完全覆盖 `size` 缩放，两个都写死时
   `size` 是死参数（旧面板正是这个坑），所以尺寸只有两个轴——线性样式 `100vw` / `14vh` 这类「沿边色带」，
@@ -89,14 +94,16 @@ npm run project:check   # 只报告漂移，不写盘
   `project.json`：用 `style` 的 0 份）。能用的标签：`img` / `br` / `h3`–`h6` / `a` / `b` / `center` /
   `p` / `small` / `hr` / `font` / `li` / `ul`；上色只能写 `<font color=#RRGGBB>`。所以
   `div` / `span` / `background-color` / 圆角 / 边框全部无效——想「醒目」只能靠标题层级 + 颜色 + `<hr>` 分隔。
-- 暂停由 `useWallpaperPaused()` 分发：时钟停止 tick、频谱 / 粒子 / 指针特效 / 聚光灯冻结。
+- 暂停由 `useWallpaperPaused()` 分发：时钟停止 tick、频谱 / 粒子 / 指针特效 / 聚光灯冻结，
+  取景框的录制点停止闪、时间码停走（计时器在应用层 `useFrameSeconds()`，wallkit 的 `Frame` 不计时）。
 
 ## 与构图的边界
 
 - 浮层在 `.wallpaper-overlay` 里（`position: absolute; inset: 0; z-index: 5`），**在 `.wallpaper-design` 之外**，
   锚定的是**视口**：改 `fit` 或缩放设计画布都不会移动 / 放大控件。
 - 层级：背景与模型 < 浮层（5）< 构图手柄（6）< 设置抽屉（7）。`AmbientFx` 在浮层内部压在最下面
-  （ambient 1 → 频谱 3 → 指针 4 → 时钟 / 专辑 5 → 聚光灯 6），雪从时钟背后穿过，聚光灯的遮罩则把时钟一起压暗。
+  （ambient 1 → 频谱 3 → 指针 4 → 时钟 / 专辑 5 → 聚光灯 6 → 取景框 7），雪从时钟背后穿过，聚光灯的遮罩则把时钟一起压暗，
+  取景线在最上面——它是画在画面上的仪表，不该跟着曝光一起变暗。
 - 浮层不参与构图计算，也不改变「画面永不响应指针」这条规则：`PointerFx` / `Spotlight` 只是装饰覆盖层，默认关闭。
 - WE 桌面壁纸默认不投递鼠标事件：想让指针特效或聚光灯在实机看到，要在 WE 里为该壁纸开启鼠标交互。
   两者收不到事件时都不会兜底——指针特效画布留空，聚光灯遮罩保持全透明（不会把桌面压黑）。

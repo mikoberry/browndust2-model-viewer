@@ -393,6 +393,42 @@ const BUILTIN_WALLPAPER = {
       // pointer, larger values give the light weight.
       smoothing: 0.05,
     },
+    // REC-style viewfinder drawn around the whole picture (wallkit `Frame`).
+    // A PICTURE-level decoration, not a widget: it takes no `anchor`, wraps
+    // nothing and sits above every control (its own z-index 7, one above the
+    // spotlight's 6). Nothing here moves the composition or the other widgets.
+    //
+    //   variant   — 'corners' (four brackets) | 'frame' (hairline + safe area) |
+    //               'bracket' (top / bottom rails) | 'film' (side rails +
+    //               perforations). The variant only decides the EDGE; the rest
+    //               are orthogonal switches on purpose (no 4×5 matrix of HUDs).
+    //   inset     — gutter between the picture edge and the line, in px
+    //   thickness — hairline weight in px; 1.5 reads crisp at desktop DPR,
+    //               1px tends to smear across two device pixels
+    //   length    — corner bracket arm length in px (ignored by frame / film)
+    //   size      — uniform multiplier for every length and the type size
+    //   color     — '#rrggbb' override; empty = follow `theme`
+    //   grid      — 'none' | 'thirds' | 'cross'
+    //   ticks     — tick ruler under the bottom edge
+    //   rec       — 'off' | 'dot' | 'rec'; only the string form draws the word
+    //   timecode  — true = HH:MM:SS:00 counted from load (stops while paused).
+    //               wallkit's Frame holds no timer on purpose, so the clock is
+    //               ours: a frozen wallpaper must not show a running readout.
+    //   theme     — 'light' = light line (for dark artwork), 'dark' = dark line
+    frame: {
+      enabled: false,
+      variant: 'corners',
+      inset: 28,
+      thickness: 1.5,
+      length: 56,
+      size: 1,
+      color: '',
+      grid: 'none',
+      ticks: false,
+      rec: 'off',
+      timecode: false,
+      theme: 'light',
+    },
   },
 }
 

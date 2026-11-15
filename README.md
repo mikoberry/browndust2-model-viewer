@@ -2,7 +2,7 @@
 
 《棕色尘埃2》（BrownDust 2）的 **Spine 壁纸 / 模型查看器**：React 18 + Vite 5 + `@esotericsoftware/spine-webgl@4.1.56`。
 直接读取仓库里的 `model-library/`，不依赖 Wallpaper Engine 也能跑；壁纸页可选叠加
-[WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 / 指针特效 / 聚光灯），
+[WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 / 指针特效 / 聚光灯 / 取景框），
 接上 Wallpaper Engine 后频谱与专辑卡会拿到真实的音频 / 媒体数据。
 
 ## 运行
@@ -45,8 +45,9 @@ Wallpaper Engine **2.8.797 beta**（CEF 156，默认禁止 file:// 读本地文�
 
 ## 壁纸设置
 
-壁纸页右下角手柄 / `S` 键打开设置抽屉，tab 分组：**构图 · 时钟 · 频谱 · 专辑卡 · 氛围 · 指针**
-（聚光灯在「指针」tab 内的第二节，配置键仍是独立的 `overlay.spotlight`）。
+壁纸页右下角手柄 / `S` 键打开设置抽屉，tab 分组：**构图 · 时钟 · 频谱 · 专辑卡 · 氛围 · 指针 · 其他**
+（聚光灯在「指针」tab 内的第二节，配置键仍是独立的 `overlay.spotlight`；
+取景框在「其他」tab 里，配置键是 `overlay.frame`——它铺满整个画面、没有位置锚点，所以不单独占 tab）。
 改完点「记录配置」存进 `localStorage['mikoberry:wallpaper.config.user:<modelId>']`，此后启动按这份来；
 `wallpaper.config.json` 只是出厂默认值（「恢复首次默认」回到它）。
 
