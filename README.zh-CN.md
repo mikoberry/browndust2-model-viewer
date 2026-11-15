@@ -4,7 +4,7 @@
 
 《棕色尘埃2》（Brown Dust 2）的 **Spine 壁纸 / 模型查看器**：React 18 + Vite 5 + `@esotericsoftware/spine-webgl@4.1.56`。
 直接读取仓库里的 `model-library/`，不依赖 Wallpaper Engine 也能跑；壁纸页可选叠加
-[WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 / 指针特效 / 聚光灯 / 取景框），
+[WallKit](https://github.com/mikoberry/wallkit) 的控件浮层（时钟 / 频谱 / 专辑卡 / 氛围粒子 / 天气光照 / 指针特效 / 聚光灯 / 取景框），
 接上 Wallpaper Engine 后频谱与专辑卡会拿到真实的音频 / 媒体数据。
 
 ---
@@ -62,7 +62,7 @@ Wallpaper Engine **2.8.797 beta**（CEF 156，默认禁止 file:// 读本地文�
 
 ## 壁纸设置
 
-壁纸页右下角手柄 / `S` 键打开设置抽屉，tab 分组：**构图 · 时钟 · 频谱 · 专辑卡 · 氛围 · 指针 · 其他**
+壁纸页右下角手柄 / `S` 键打开设置抽屉，tab 分组：**构图 · 时钟 · 频谱 · 专辑卡 · 氛围 · 光照 · 指针 · 其他**
 （聚光灯在「指针」tab 内的第二节，配置键仍是独立的 `overlay.spotlight`；
 取景框在「其他」tab 里，配置键是 `overlay.frame`——它铺满整个画面、没有位置锚点，所以不单独占 tab；
 四角参数文字只有一个开关（`overlay.frame.labels`），文案是固定的预设值，因为 WE 的壁纸窗口拿不到键盘焦点）。

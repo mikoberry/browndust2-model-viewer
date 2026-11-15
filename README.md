@@ -5,8 +5,8 @@
 A **Spine wallpaper / model viewer** for *Brown Dust 2* — React 18 + Vite 5 + `@esotericsoftware/spine-webgl@4.1.56`.
 It reads `model-library/` directly, so it runs without Wallpaper Engine; the wallpaper page can optionally layer
 the [WallKit](https://github.com/mikoberry/wallkit) overlay widgets (clock / spectrum / album art / ambient particles /
-pointer effects / spotlight / viewfinder), and once hosted inside Wallpaper Engine the spectrum and album art receive
-real audio and media data.
+weather light / pointer effects / spotlight / viewfinder), and once hosted inside Wallpaper Engine the spectrum and
+album art receive real audio and media data.
 
 ---
 
@@ -70,7 +70,7 @@ static-imports that JSON) — editing the defaults means editing the JSON.
 ## Wallpaper settings
 
 The handle in the bottom-right corner (or the `S` key) opens the settings drawer. Tabs:
-**Composition · Clock · Spectrum · Album art · Ambient · Pointer · Other**
+**Composition · Clock · Spectrum · Album art · Ambient · Light · Pointer · Other**
 (the spotlight is the second section inside "Pointer" and keeps its own `overlay.spotlight` key; the viewfinder lives
 in "Other" as `overlay.frame` — it covers the whole picture and has no position anchor, so it doesn't get a tab;
 its corner readouts have a single switch (`overlay.frame.labels`) over a fixed preset copy, since Wallpaper Engine

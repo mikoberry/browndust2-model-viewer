@@ -1676,8 +1676,9 @@ code {
   pointer-events: none;
 }
 
-/* Tab bar: composition + one tab per WallKit widget. Six short labels fit one
-   row at this width; the row still scrolls if a longer name is added. */
+/* Tab bar: composition + one tab per WallKit widget. The eight short labels
+   still fit one row at this width; the row scrolls if a longer name is added,
+   so a new layer never forces the drawer itself to grow. */
 .wallpaper-settings .ws-tabs {
   display: flex;
   flex: 0 0 auto;

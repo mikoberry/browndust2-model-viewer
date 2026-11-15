@@ -170,6 +170,21 @@
       "intensity": 100,
       "speed": 100
     },
+    "light": {
+      "enabled": false,
+      "variant": "sun",
+      "anchor": "top-left",
+      "offsetX": 0,
+      "offsetY": 0,
+      "intensity": 100,
+      "size": 0,
+      "rays": 1,
+      "flare": 1,
+      "follow": 0.45,
+      "smoothing": 0.12,
+      "sway": 16,
+      "color": ""
+    },
     "pointer": {
       "enabled": false,
       "trail": true,

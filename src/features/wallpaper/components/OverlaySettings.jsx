@@ -8,6 +8,32 @@
 
 import { Group, AnchorPicker, ChipField, ColorField, SliderField, ToggleField } from './settings-fields.jsx'
 import { AMBIENT_SPEED_MIN, AMBIENT_SPEED_MAX } from 'wallkit/components/ambient-fx'
+// Light bounds, defaults and the per-variant presets come from the component
+// itself, for the same reason as the spotlight numbers below: the drawer must
+// not invent a second source of truth for a range the library owns. Note that
+// these `*_MIN` / `*_MAX` are the RECOMMENDED slider range, not a clamp — the
+// component deliberately accepts values outside them (a 4K wash may need a
+// bigger radius, and `intensity` has no ceiling at all).
+import {
+  LIGHT_PRESETS,
+  LIGHT_VARIANT_DEFAULT,
+  LIGHT_INTENSITY_MIN,
+  LIGHT_INTENSITY_MAX,
+  LIGHT_INTENSITY_DEFAULT,
+  LIGHT_SIZE_MIN,
+  LIGHT_SIZE_MAX,
+  LIGHT_RAYS_MIN,
+  LIGHT_RAYS_MAX,
+  LIGHT_FLARE_MIN,
+  LIGHT_FLARE_MAX,
+  LIGHT_FLARE_DEFAULT,
+  LIGHT_FOLLOW_MIN,
+  LIGHT_FOLLOW_MAX,
+  LIGHT_FOLLOW_DEFAULT,
+  LIGHT_SWAY_MIN,
+  LIGHT_SWAY_MAX,
+  LIGHT_SWAY_DEFAULT,
+} from 'wallkit/components/light-fx'
 // Spotlight bounds and defaults come from the component itself: its `size` is a
 // pixel diameter (80..3000), unlike every other widget's percentage, and the
 // 0..1 knobs must not drift from the library's own numbers.
@@ -161,6 +187,14 @@ const AMBIENT_FIXED_COLORS = {
   fog: '#dfe6ee',
   leaves: '#d98a4f',
 }
+
+const LIGHT_VARIANTS = [
+  { value: 'sun', label: () => t('light.sun') },
+  { value: 'moon', label: () => t('light.moon') },
+  { value: 'dusk', label: () => t('light.dusk') },
+  { value: 'overcast', label: () => t('light.overcast') },
+  { value: 'beach', label: () => t('light.beach') },
+]
 
 const POINTER_TRAIL_VARIANTS = [
   { value: 'glow', label: () => t('pointer.glow') },
@@ -557,13 +591,160 @@ function AmbientPanel({ spec, accent, onChange, onReset }) {
   )
 }
 
+// A stored 0..1 ratio read as a percent — what the drawer shows for every
+// ratio-valued knob, while the config keeps the ratio wallkit expects.
+const percentOf = (value, fallback) => {
+  const ratio = Number.isFinite(Number(value)) ? Number(value) : fallback
+  return `${Math.round(ratio * 100)}%`
+}
+
+// Weather light. Three things about this panel differ from the others, all of
+// them because the component's interface says so:
+//   * `size: 0` is this project's "follow the variant preset" sentinel (each
+//     variant ships its own wash radius), so the radius slider only appears
+//     once the user opts out of the preset;
+//   * `rays` / `flare` do not exist on every variant — `overcast` has no shafts
+//     and only `beach` carries a lens-flare chain — so they are hidden instead
+//     of being sliders that would do nothing;
+//   * the anchor places the LIGHT CENTRE and the shaft direction is derived
+//     from it, so there is no angle control to put next to it.
+function LightPanel({ spec, accent, onChange, onReset }) {
+  const variant = LIGHT_VARIANTS.some((item) => item.value === spec.variant)
+    ? spec.variant
+    : LIGHT_VARIANT_DEFAULT
+  const preset = LIGHT_PRESETS[variant]
+  const hasRays = variant !== 'overcast'
+  const hasFlare = Number(preset?.flare) > 0
+  const sizeAuto = !(Number(spec.size) > 0)
+  return (
+    <>
+      <Group title={t('widget.show')} onReset={onReset} note={spec.enabled ? undefined : t('widget.enableHint')}>
+        <ToggleField
+          label={t('light.enable')}
+          note={t('light.enableNote')}
+          checked={spec.enabled}
+          onChange={(enabled) => onChange({ enabled })}
+        />
+      </Group>
+      {spec.enabled && (
+        <>
+          <Group title={t('widget.appearance')}>
+            <ChipField
+              label={t('light.variant')}
+              value={variant}
+              options={LIGHT_VARIANTS}
+              onChange={(next) => {
+                // Only the variant changes: a pinned radius is the user's own
+                // number and switching preset styles must not overwrite it, and
+                // the colour field follows the preset through its `fallback`.
+                onChange({ variant: next })
+              }}
+            />
+            <ColorField
+              label={t('widget.color')}
+              value={spec.color ?? ''}
+              fallback={preset?.color ?? accent}
+              onChange={(color) => onChange({ color })}
+            />
+            <SliderField
+              label={t('light.intensity')}
+              value={spec.intensity ?? LIGHT_INTENSITY_DEFAULT}
+              min={LIGHT_INTENSITY_MIN}
+              max={LIGHT_INTENSITY_MAX}
+              step={1}
+              suffix="%"
+              onChange={(intensity) => onChange({ intensity })}
+            />
+            <p className="ws-note">{t('light.intensityNote')}</p>
+          </Group>
+          <Group title={t('light.origin')}>
+            <PlacementFields spec={spec} onChange={onChange} />
+            <p className="ws-note">{t('light.originNote')}</p>
+          </Group>
+          <Group title={t('light.shape')}>
+            <ToggleField
+              label={t('light.sizeAuto')}
+              checked={sizeAuto}
+              onChange={(auto) => onChange({ size: auto ? 0 : (preset?.size ?? LIGHT_SIZE_MIN) })}
+            />
+            {!sizeAuto && (
+              <SliderField
+                label={t('light.size')}
+                value={Number(spec.size)}
+                min={LIGHT_SIZE_MIN}
+                max={LIGHT_SIZE_MAX}
+                step={10}
+                suffix=" px"
+                onChange={(size) => onChange({ size })}
+              />
+            )}
+            {hasRays && (
+              <SliderField
+                label={t('light.rays')}
+                value={spec.rays ?? 1}
+                min={LIGHT_RAYS_MIN}
+                max={LIGHT_RAYS_MAX}
+                step={0.01}
+                readout={percentOf(spec.rays, 1)}
+                onChange={(rays) => onChange({ rays })}
+              />
+            )}
+            {hasFlare && (
+              <SliderField
+                label={t('light.flare')}
+                value={spec.flare ?? LIGHT_FLARE_DEFAULT}
+                min={LIGHT_FLARE_MIN}
+                max={LIGHT_FLARE_MAX}
+                step={0.01}
+                readout={percentOf(spec.flare, LIGHT_FLARE_DEFAULT)}
+                onChange={(flare) => onChange({ flare })}
+              />
+            )}
+            <p className="ws-note">{t('light.shapeNote')}</p>
+          </Group>
+          <Group title={t('light.motion')}>
+            <SliderField
+              label={t('light.follow')}
+              value={spec.follow ?? LIGHT_FOLLOW_DEFAULT}
+              min={LIGHT_FOLLOW_MIN}
+              max={LIGHT_FOLLOW_MAX}
+              step={0.01}
+              readout={percentOf(spec.follow, LIGHT_FOLLOW_DEFAULT)}
+              onChange={(follow) => onChange({ follow })}
+            />
+            <div className="ws-pair">
+              <SliderField
+                label={t('light.smoothing')}
+                value={spec.smoothing ?? 0.12}
+                min={0}
+                max={1}
+                step={0.01}
+                suffix=" s"
+                onChange={(smoothing) => onChange({ smoothing })}
+              />
+              <SliderField
+                label={t('light.sway')}
+                value={spec.sway ?? LIGHT_SWAY_DEFAULT}
+                min={LIGHT_SWAY_MIN}
+                max={LIGHT_SWAY_MAX}
+                step={1}
+                suffix="°"
+                onChange={(sway) => onChange({ sway })}
+              />
+            </div>
+            <p className="ws-note">{t('light.motionNote')}</p>
+          </Group>
+        </>
+      )}
+    </>
+  )
+}
+
 function PointerPanel({ spec, spotlight, accent, onChange, onSpotlightChange, onReset, onResetSpotlight }) {
   // Percent readout for the 0..1 knobs: the stored value stays a ratio (that is
   // what wallkit takes), the drawer speaks in percent like the other widgets.
-  const pct = (value, fallback) => {
-    const ratio = Number.isFinite(Number(value)) ? Number(value) : fallback
-    return `${Math.round(ratio * 100)}%`
-  }
+  // See `percentOf` at the top of the file.
+  const pct = percentOf
   return (
     <>
       <Group title={t('widget.show')} onReset={onReset} note={spec.enabled ? undefined : t('widget.enableHint')}>
@@ -728,14 +909,19 @@ const PANELS = {
   spectrum: SpectrumPanel,
   albumArt: AlbumPanel,
   ambient: AmbientPanel,
+  light: LightPanel,
   pointer: PointerPanel,
 }
 
+// Tab order follows the layer stack (ambient 1 → light 2 → spectrum 3 → pointer
+// 4), so the two full-bleed layers that are most often tuned together sit next
+// to each other. The eight labels still fit one row at the drawer's width.
 export const OVERLAY_TABS = [
   { key: 'clock', label: () => t('widget.clock') },
   { key: 'spectrum', label: () => t('widget.spectrum') },
   { key: 'albumArt', label: () => t('widget.album') },
   { key: 'ambient', label: () => t('widget.ambient') },
+  { key: 'light', label: () => t('widget.light') },
   { key: 'pointer', label: () => t('widget.pointer') },
 ]
 

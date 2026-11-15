@@ -357,6 +357,54 @@ const BUILTIN_WALLPAPER = {
       // Percent pace for the whole particle layer (wallkit AMBIENT_SPEED_*).
       speed: 100,
     },
+    // A directional light over the whole picture (wallkit `LightFx`): sunlight,
+    // moonlight, dusk or a flat overcast sky. Pure CSS gradients — one wide wash,
+    // a hotspot, a masked fan of shafts and (on `beach`) a lens-flare chain —
+    // sitting at z-index 2, above the ambient particles and below every control.
+    //
+    //   variant   — 'sun' | 'moon' | 'dusk' | 'overcast' | 'beach'
+    //   anchor    — where the LIGHT CENTRE sits, one of the nine anchors. It is a
+    //               point, not a box corner: the shafts always throw away from it,
+    //               so there is no angle key that could contradict the source.
+    //   offsetX/Y — distance from that point towards the box interior, in % of
+    //               the box. Negative pushes the light outside the frame, which
+    //               is a legal look (a window just out of shot).
+    //   intensity — brightness of the whole light in %, 100 = the preset's own
+    //               strength. One gain over every layer, so dimming it thins the
+    //               light as one thing. No upper bound: the alphas saturate.
+    //   size      — wash radius in px. 0 = use the variant's own radius (the
+    //               drawer's "follow the preset" switch writes this 0).
+    //   rays      — how much of the light is shafts rather than a flat pool
+    //               (0..1). `overcast` has none to scale.
+    //   flare     — multiplier on the variant's lens flare (0..1); only `beach`
+    //               ships one.
+    //   follow    — how far the light travels towards the pointer (0..1, 0 pins
+    //               it to the anchor).
+    //   smoothing — follow lag as a time constant in seconds (0 snaps).
+    //   sway      — how far the shaft fan may lean while the light moves, in
+    //               degrees (signed). 0 keeps it rigid, which reads like a decal
+    //               sliding over the picture instead of a light over a scene.
+    //   color     — '#rrggbb' override for the light colour; empty = preset.
+    //
+    // Unlike the spotlight it is visible from the first frame: a wallpaper with
+    // no mouse input still has weather, so the follow is an enhancement, not the
+    // effect. (A WE desktop wallpaper delivers no mouse events until mouse
+    // interaction is enabled, same constraint as `pointer` / `spotlight`.)
+    light: {
+      enabled: false,
+      variant: 'sun',
+      anchor: 'top-left',
+      offsetX: 0,
+      offsetY: 0,
+      intensity: 100,
+      size: 0,
+      rays: 1,
+      flare: 1,
+      follow: 0.45,
+      smoothing: 0.12,
+      sway: 16,
+      color: '',
+    },
     pointer: {
       enabled: false,
       trail: true,

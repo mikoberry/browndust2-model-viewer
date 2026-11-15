@@ -1,7 +1,8 @@
 # 控件浮层（WallKit）
 
 壁纸页可以叠加 [WallKit](https://github.com/mikoberry/wallkit) 的控件：时钟、音频频谱、专辑卡、氛围粒子、
-指针特效、聚光灯，以及画面级的取景框。分工是**WallKit 只做展示**（纯 props、不感知背景），本项目提供背景层并把宿主数据喂给它。
+天气光照、指针特效、聚光灯，以及画面级的取景框。分工是**WallKit 只做展示**（纯 props、不感知背景），
+本项目提供背景层并把宿主数据喂给它。
 
 ## 依赖与构建
 
@@ -15,7 +16,7 @@
 自己编译它的 JSX。升级只改这一行的 commit sha。组件 CSS 由组件自身 import（`wallkit/styles` 提供
 `--wallkit-*` 主题变量），不并入 `global.css`。
 
-## 六个控件 + 取景框
+## 七个控件 + 取景框
 
 | 控件 | 配置键 | 需要的数据 | 默认 |
 | --- | --- | --- | --- |
@@ -23,6 +24,7 @@
 | 音频频谱 | `overlay.spectrum` | WE 音频帧 | 关 |
 | 专辑卡 | `overlay.albumArt` | WE 媒体信息 | 关 |
 | 氛围粒子 | `overlay.ambient` | 无（飘雪 / 樱花 / 气泡 …） | 关 |
+| 天气光照 | `overlay.light` | 无（指针只让它偏移一点） | 关 |
 | 指针特效 | `overlay.pointer` | 指针事件（自己监听 window） | 关 |
 | 聚光灯 | `overlay.spotlight` | 指针事件（自己监听 window） | 关 |
 | 取景框 | `overlay.frame` | 无（纯 CSS，不计时） | 关 |
@@ -42,6 +44,7 @@
   "spectrum": { "enabled": true, "variant": "bars", "width": "100vw", "height": "14vh", "anchor": "bottom-center" },
   "albumArt": { "enabled": true, "variant": "classic", "anchor": "top-left", "offsetX": 4, "offsetY": 4 },
   "ambient": { "enabled": true, "variant": "sakura", "density": 100 },
+  "light": { "enabled": true, "variant": "dusk", "anchor": "top-left", "intensity": 100, "size": 0, "rays": 1, "follow": 0.45, "sway": 16 },
   "pointer": { "enabled": true, "trailVariant": "glow", "clickVariant": "ripple" },
   "spotlight": { "enabled": true, "size": 420, "feather": 0.45, "dim": 0.72, "glow": 0.22, "smoothing": 0.05 },
   "frame": { "enabled": true, "variant": "corners", "inset": 28, "thickness": 1.5, "grid": "thirds", "rec": "dot" }
@@ -55,6 +58,13 @@
   `ambient` / `pointer` / `spotlight` / `frame` 不认 `anchor`，位置由「铺满视口」决定。
   取景框更彻底：它连 `size` 也没有——`inset`（离画面边的距离）、`thickness`（线宽）、`length`（角臂长）
   是画面像素，统一由 `size` 倍率缩放。
+- **光照的 `anchor` 不是「给这一层找位置」**：它放的是**光源中心**（一个点），光束永远背离它射出，
+  所以没有第二个角度参数能跟它自相矛盾；偏移沿用同一套符号规则，负数可以把光源推到画面外（画外的窗）。
+  `size` 是光池半径（px），配置里写 `0` = 跟随变体预设（每个变体自带 1100–2400 的一档），
+  `WallpaperOverlay` 里换成 `undefined` 再传——因为非正半径会让整条 `radial-gradient` 失效，光会整层消失。
+  `rays`（多少光走成光束）与 `flare`（镜头光斑倍率）是**分配**而非亮度：`overcast` 没有光束、
+  只有 `beach` 有光斑，抽屉里按变体隐藏这两个滑块。整盏灯唯一亮度旋钮是 `intensity`（一次乘光池 / 热点 / 光束）。
+  和聚光灯相反，它**第一帧就在**：没有指针输入的壁纸照样有天气，`follow` 只是加分项。
 - **取景框四角文字（`labels`）是开关 + 固定文案**：配置里只有 `overlay.frame.labels: true|false`，
   文案是应用层的常量 `FRAME_LABELS`（`WallpaperOverlay.jsx`，现在是 `AUTO / 4K · 60P / F/2.8 / ISO 400`）。
   不做格式化、不计时（所以暂停前后一模一样）；抽屉里只给开关，因为 WE 的壁纸窗口拿不到键盘焦点
@@ -99,7 +109,7 @@ npm run project:check   # 只报告漂移，不写盘
   `project.json`：用 `style` 的 0 份）。能用的标签：`img` / `br` / `h3`–`h6` / `a` / `b` / `center` /
   `p` / `small` / `hr` / `font` / `li` / `ul`；上色只能写 `<font color=#RRGGBB>`。所以
   `div` / `span` / `background-color` / 圆角 / 边框全部无效——想「醒目」只能靠标题层级 + 颜色 + `<hr>` 分隔。
-- 暂停由 `useWallpaperPaused()` 分发：时钟停止 tick、频谱 / 粒子 / 指针特效 / 聚光灯冻结，
+- 暂停由 `useWallpaperPaused()` 分发：时钟停止 tick、频谱 / 粒子 / 指针特效 / 聚光灯 / 光照冻结，
   取景框的录制点停止闪、时间码停走（计时器在应用层 `useFrameSeconds()`，wallkit 的 `Frame` 不计时）。
 
 ## 与构图的边界
@@ -107,7 +117,8 @@ npm run project:check   # 只报告漂移，不写盘
 - 浮层在 `.wallpaper-overlay` 里（`position: absolute; inset: 0; z-index: 5`），**在 `.wallpaper-design` 之外**，
   锚定的是**视口**：改 `fit` 或缩放设计画布都不会移动 / 放大控件。
 - 层级：背景与模型 < 浮层（5）< 构图手柄（6）< 设置抽屉（7）。`AmbientFx` 在浮层内部压在最下面
-  （ambient 1 → 频谱 3 → 指针 4 → 时钟 / 专辑 5 → 聚光灯 6 → 取景框 7），雪从时钟背后穿过，聚光灯的遮罩则把时钟一起压暗，
+  （ambient 1 → 光照 2 → 频谱 3 → 指针 4 → 时钟 / 专辑 5 → 聚光灯 6 → 取景框 7），雪从时钟背后穿过，
+  光照把画面打亮但不糊住文字，聚光灯的遮罩则把时钟一起压暗，
   取景线在最上面——它是画在画面上的仪表，不该跟着曝光一起变暗。
 - 浮层不参与构图计算，也不改变「画面永不响应指针」这条规则：`PointerFx` / `Spotlight` 只是装饰覆盖层，默认关闭。
 - WE 桌面壁纸默认不投递鼠标事件：想让指针特效或聚光灯在实机看到，要在 WE 里为该壁纸开启鼠标交互。

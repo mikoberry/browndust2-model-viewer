@@ -1,5 +1,6 @@
 // WallKit control overlays for the wallpaper route: clock, audio spectrum,
-// album card, ambient particles, pointer effects and the spotlight mask.
+// album card, ambient particles, weather light, pointer effects and the
+// spotlight mask.
 //
 // WallKit is presentation-only: it renders from props and never touches the
 // Spine stage. Everything therefore lives in its own absolutely positioned
@@ -24,6 +25,7 @@ import { Clock } from 'wallkit/components/clock'
 import { Spectrum } from 'wallkit/components/spectrum'
 import { AlbumArt } from 'wallkit/components/album-art'
 import { AmbientFx } from 'wallkit/components/ambient-fx'
+import { LightFx } from 'wallkit/components/light-fx'
 import { PointerFx } from 'wallkit/components/pointer-fx'
 import { Spotlight } from 'wallkit/components/spotlight'
 import { Frame, formatTimecode } from 'wallkit/components/frame'
@@ -221,12 +223,46 @@ function FrameWidget({ spec, paused }) {
   )
 }
 
+// Weather light (wallkit `LightFx`). It is a full-bleed CSS layer like the
+// spotlight, so `anchor` places the LIGHT CENTRE — a point — instead of a box
+// corner, and the shafts are derived from it (no angle key to keep in sync).
+//
+// `size: 0` is this project's "use the variant's own wash radius" sentinel: a
+// radius has to be a positive number or the browser drops the whole gradient,
+// and WallKit falls back to the preset for anything invalid, but passing
+// `undefined` says that on purpose instead of relying on the fence.
+//
+// Visible from the first frame, unlike the spotlight: weather does not need a
+// pointer. `follow` only moves the light once the host delivers events.
+function LightWidget({ spec, paused }) {
+  const radius = Number(spec.size)
+  return (
+    <LightFx
+      variant={spec.variant}
+      anchor={spec.anchor}
+      offsetX={spec.offsetX}
+      offsetY={spec.offsetY}
+      intensity={spec.intensity}
+      size={Number.isFinite(radius) && radius > 0 ? radius : undefined}
+      rays={spec.rays}
+      flare={spec.flare}
+      follow={spec.follow}
+      smoothing={spec.smoothing}
+      sway={spec.sway}
+      colorHex={spec.color || undefined}
+      paused={paused}
+    />
+  )
+}
+
 export default function WallpaperOverlay({ config }) {
   const overlay = config ?? WALLPAPER.overlay
   const paused = useWallpaperPaused()
-  const { accent, clock, spectrum, albumArt, ambient, pointer, spotlight, frame } = overlay
+  const { accent, clock, spectrum, albumArt, ambient, light, pointer, spotlight, frame } = overlay
 
-  const anyEnabled = [clock, spectrum, albumArt, ambient, pointer, spotlight, frame].some((item) => item?.enabled)
+  const anyEnabled = [clock, spectrum, albumArt, ambient, light, pointer, spotlight, frame].some(
+    (item) => item?.enabled,
+  )
   if (!anyEnabled) return null
 
   return (
@@ -247,6 +283,9 @@ export default function WallpaperOverlay({ config }) {
           paused={paused}
         />
       )}
+      {/* Directly under the controls (its own z-index 2, above the particles):
+          the picture is lit, the widgets are not washed out. */}
+      {light?.enabled && <LightWidget spec={light} paused={paused} />}
       {pointer?.enabled && (
         <PointerFx
           trail={pointer.trail}
