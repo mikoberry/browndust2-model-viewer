@@ -401,12 +401,15 @@ export default function ViewerPage({ onGoWallpaper }) {
 
   // A new variant starts as a copy of what is on screen, so it is immediately
   // previewable and tweakable (no "inherits everything until you touch it").
+  // The default label mirrors the id (`v1`, `v2`, ...): it is what the chips
+  // show and what the file records, so an untouched variant reads the same in
+  // both places, and a short name fits more chips on one row.
   const handleVariantAdd = useCallback(() => {
     const list = variantsRef.current
     let n = list.length + 1
     while (list.some((item) => item.id === `v${n}`)) n += 1
     const id = `v${n}`
-    setVariants((prev) => [...prev, { id, label: `变体 ${n}`, view: viewOf(composeRef.current) }])
+    setVariants((prev) => [...prev, { id, label: id, view: viewOf(composeRef.current) }])
     setEditing(id)
   }, [])
 
