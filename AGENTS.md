@@ -422,6 +422,10 @@ src/features/<feature>/
   `wantsEntrance = autoplay || sequenceToken > 0`，且**不播入场时给 `SpineStage` 传 `sequence={null}`**
   —— 空列表正是「只播 `animation`」的既有语义，不要为此新增开关。抽屉里的勾选框改的是内存 override
   （`autoplayOverride`，`null` = 跟随配置，避免配置晚到时被一份旧副本盖住），「全部重置」把它清回 `null`。
+  **右下角竖列还有个「切换立绘」按钮**（`.wallpaper-variant-toggle`，在播放按钮之上）：`variants` 非空
+  （即 `looks.length > 1`，含「基础」）才渲染，点击把 `variantOverride` 设成下一套、循环回基础；tooltip 里
+  写下一套的名字。它是**循环**而不是选择器——精确挑某套用抽屉的 chips。它多占一格 40px，
+  所以 `.wallpaper-follow` 用 `.wallpaper-tools.has-variants ~ .wallpaper-follow` 抬到 168px，别写死成第二个值。
   **段间过渡也用同一个 `blend`**：hook 在 `active`（序列进行中）
   或刚离开序列时对每次 target 变化做缓动，其余情况（首帧、抽屉滑块、换背景）直接贴值。
   两个通道和视差同源：背景写 `--backdrop-x/y/scale`、模型写 `design.transformRef`（`SpineStage` 里

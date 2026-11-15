@@ -419,6 +419,7 @@ const MESSAGES = {
   },
   'page.followClose': { zh: '关闭', en: 'Dismiss', ja: '閉じる', ko: '닫기' },
   'page.playEntrance': { zh: '播放开场动画', en: 'Play entrance', ja: '登場アニメを再生', ko: '등장 애니메이션 재생' },
+  'page.switchArtwork': { zh: '切换立绘', en: 'Switch artwork', ja: '立ち絵を切り替え', ko: '일러스트 전환' },
   'page.openSettings': { zh: '打开构图设置', en: 'Open composition settings', ja: '構図設定を開く', ko: '구도 설정 열기' },
   'page.settingsHint': { zh: '构图设置（S）', en: 'Composition settings (S)', ja: '構図設定（S）', ko: '구도 설정 (S)' },
   'page.noModels': {

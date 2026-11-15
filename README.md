@@ -110,6 +110,9 @@ just to have two chips:
 - **`design` / `fit` and `modelId` cannot vary per variant**: the design canvas is the unit every offset is measured
   in, so changing it would silently reinterpret the whole set of numbers. A variant's backdrop is fitted onto the same
   canvas by `fit` (mismatched aspect ratios get cropped).
+- The bottom-right corner grows a **switch-artwork button** above the replay / settings toggles whenever at least one
+  variant exists: it cycles base → each variant → base, and its tooltip names where the next click lands. Switching is
+  instant and in-memory — "Record config" is what makes it stick.
 - Easiest way to set it up: the "Composition" tab in `/spine-viewer`. The "Display artwork" row at the top adds /
   renames / sets-as-default / removes looks (the base can be the startup default too — that is just `variant: ""`), and
   every slider below writes into the selected look only. See [docs/display-variants.md](docs/display-variants.md).

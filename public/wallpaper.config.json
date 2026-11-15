@@ -221,7 +221,7 @@
       "smoothing": 0.05
     },
     "frame": {
-      "enabled": true,
+      "enabled": false,
       "variant": "corners",
       "inset": 28,
       "thickness": 1.5,

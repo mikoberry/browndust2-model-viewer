@@ -48,6 +48,7 @@ import {
   normalizeVariants,
   resolveVariantId,
   applyVariant,
+  variantLabel,
   FOLLOW_DISMISS_KEY,
   storageKey,
 } from './config.js'
@@ -68,7 +69,7 @@ function toTweak(spec, design) {
 export default function WallpaperPage() {
   // Re-render page-level chrome (play / settings hints, error line) on locale
   // switch; the drawer subscribes on its own.
-  useLocale()
+  const { locale } = useLocale()
   // `null` until the external config settles; `config` is then the merged
   // result. Falling back here keeps the component usable on the very first
   // render (hooks must stay unconditional).
@@ -101,6 +102,24 @@ export default function WallpaperPage() {
     [variants, variantId],
   )
   const config = useMemo(() => applyVariant(baseConfig, activeVariant), [baseConfig, activeVariant])
+
+  // Bottom-right 「切换立绘」 handle: cycles base → each variant → base, i.e. the
+  // same list the drawer's chips show. One variant is already two looks, so the
+  // button appears as soon as `variants` is non-empty — with none there is
+  // nothing to switch and it stays hidden (same rule as the chip row).
+  const looks = useMemo(
+    () => [
+      { id: '', label: t('comp.variantBase') },
+      ...variants.map((item) => ({ id: item.id, label: variantLabel(item, locale) })),
+    ],
+    [variants, locale],
+  )
+  // The label goes in the tooltip, so the button previews where a click lands —
+  // the only affordance it has, since it is a 32px disc at 25% opacity.
+  const nextLook = useMemo(() => {
+    const index = looks.findIndex((item) => item.id === variantId)
+    return looks[(index + 1) % looks.length] ?? looks[0]
+  }, [looks, variantId])
 
   const model = useMemo(() => {
     const override = new URLSearchParams(window.location.search).get('model') ?? ''
@@ -729,7 +748,35 @@ export default function WallpaperPage() {
       )}
 
       {!settingsOpen && (
-        <div className="wallpaper-tools">
+        <div className={`wallpaper-tools${looks.length > 1 ? ' has-variants' : ''}`}>
+          {/* Cycle to the next look. Deliberately a cycle rather than a picker:
+              it is one hidden handle in the corner, and the drawer already has
+              the explicit chips for choosing a specific one. */}
+          {looks.length > 1 && (
+            <button
+              type="button"
+              className="wallpaper-variant-toggle"
+              onClick={() => setVariantOverride(nextLook.id)}
+              aria-label={t('page.switchArtwork')}
+              title={`${t('page.switchArtwork')} → ${nextLook.label}`}
+            >
+              {/* Two arrows chasing each other round a circle: reads as
+                  "cycle through the looks" rather than "open a list". */}
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20.5 12a8.5 8.5 0 0 1-14.2 6.3" />
+                <path d="M3.5 12a8.5 8.5 0 0 1 14.2-6.3" />
+                <path d="M14.1 5.7h3.6V2.1" />
+                <path d="M9.9 18.3H6.3v3.6" />
+              </svg>
+            </button>
+          )}
           {/* Same call as the drawer's 「重新播放」, for when the entrance was
               missed. Only offered when the config plays it automatically — with
               `autoplay: false` the wallpaper is meant to stay on its resting

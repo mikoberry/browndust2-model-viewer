@@ -1247,12 +1247,13 @@ code {
 }
 
 .wallpaper-settings-toggle,
-.wallpaper-play-toggle {
+.wallpaper-play-toggle,
+.wallpaper-variant-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(32px * var(--ui-scale));
-  height: calc(32px * var(--ui-scale));
+  width: calc(34px * var(--ui-scale));
+  height: calc(34px * var(--ui-scale));
   padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 50%;
@@ -1266,26 +1267,29 @@ code {
 .wallpaper-settings-toggle:hover,
 .wallpaper-settings-toggle:focus-visible,
 .wallpaper-play-toggle:hover,
-.wallpaper-play-toggle:focus-visible {
+.wallpaper-play-toggle:focus-visible,
+.wallpaper-variant-toggle:hover,
+.wallpaper-variant-toggle:focus-visible {
   opacity: 1;
   background: rgba(12, 16, 24, 0.78);
   outline: none;
 }
 
 .wallpaper-settings-toggle svg,
-.wallpaper-play-toggle svg {
-  width: calc(16px * var(--ui-scale));
-  height: calc(16px * var(--ui-scale));
+.wallpaper-play-toggle svg,
+.wallpaper-variant-toggle svg {
+  width: calc(20px * var(--ui-scale));
+  height: calc(20px * var(--ui-scale));
 }
 
 /* One-shot follow/like nudge, anchored above the bottom-right tool column
-   (same 16px inset). 128px clears the raised tool stack (taskbar offset 48px
+   (same 16px inset). 132px clears the raised tool stack (taskbar offset 48px
    + play + settings toggles + gap); with only the settings toggle present the
    card just floats a little higher. Same dark-glass language as the chrome. */
 .wallpaper-follow {
   position: fixed;
   right: calc(16px * var(--ui-scale));
-  bottom: calc(128px * var(--ui-scale));
+  bottom: calc(132px * var(--ui-scale));
   z-index: 6;
   display: flex;
   align-items: center;
@@ -1303,6 +1307,13 @@ code {
   animation: wallpaper-follow-in 0.3s ease both;
   pointer-events: auto;
   user-select: none;
+}
+
+/* The look switcher adds a third toggle to the column, so the card moves up by
+   exactly one button + gap (34 + 8). `.wallpaper-tools` is rendered whenever the
+   drawer is closed and precedes the card in the DOM, hence the sibling rule. */
+.wallpaper-tools.has-variants ~ .wallpaper-follow {
+  bottom: calc(174px * var(--ui-scale));
 }
 
 .wallpaper-follow-text {
