@@ -252,17 +252,21 @@ function SequenceGroup({ sequence, autoplay, onAutoplayChange, onReplay }) {
 
 // Click-to-play: a one-shot reaction. The switch gates whether a click on the
 // model does anything; the animation is picked from the model's own clips.
-// Facial `_faceN` tracks and idle loops (`loop` / `loop_2`) are filtered out —
-// only the `cut_*` reaction clips are offered. Off by default because the host
-// has to deliver mouse events at all (Wallpaper Engine: turn on mouse
-// interaction for the wallpaper).
+// Facial `_faceN` tracks and idle loops (`loop` / `loop_2` / `loop2`) are
+// filtered out — only the `cut_*` reaction clips are offered. Off by default
+// because the host has to deliver mouse events at all (Wallpaper Engine: turn
+// on mouse interaction for the wallpaper).
 function ClickAnimationGroup({ clickAnimation, animations, onChange, onReset }) {
   const name = clickAnimation?.name ?? ''
   const enabled = clickAnimation?.enabled === true
   // Reaction clips only: drop the _faceN portrait tracks and the idle loops.
+  // The separator is optional because BD2 is not consistent: every skin uses
+  // `loop_2` except `Tenka_Izumo/Special_Date`, which names its second idle
+  // plain `loop2`. Differential siblings (`loop_bowl`, `loop_2_water`) are
+  // already hidden upstream (they are folded into their base by clipLayers).
   const options = (animations ?? [])
     .map((item) => item?.name ?? item)
-    .filter((item) => typeof item === 'string' && item && !/^_face\d+$/i.test(item) && !/^loop(_\d+)?$/i.test(item))
+    .filter((item) => typeof item === 'string' && item && !/^_face\d+$/i.test(item) && !/^loop[\s_-]?\d*$/i.test(item))
     .map((item) => ({ value: item, label: item }))
   return (
     <Group title={t('comp.clickTitle')} onReset={onReset}>
