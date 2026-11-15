@@ -231,17 +231,27 @@ export default function WallpaperPage() {
     const available = new Set(info.animations.map((item) => item.name))
     return names.filter((name) => available.has(name))
   }, [config.sequence, info])
-  const sequenceKey = sequence.join('|')
   // Bumped to replay the entrance from the first clip (no asset reload).
   const [sequenceToken, setSequenceToken] = useState(0)
   const replaySequence = useCallback(() => setSequenceToken((token) => token + 1), [])
+  // Which entrance run the "already played" flags below belong to. Built from the
+  // BASE sequence, not the active look's: switching a display variant is a
+  // costume change, not a new scene, so it must not replay the cutscene. The two
+  // looks may legitimately declare different sequences (each skin has its own
+  // cut) — those still decide what plays WHILE the entrance runs, they just no
+  // longer count as "a different entrance", which used to reset `entranceDone`
+  // and re-arm the whole chain on every 切换立绘.
+  const entranceKey = useMemo(
+    () => resolveSequence(baseConfig.sequence, info?.animations ?? []).join('|'),
+    [baseConfig.sequence, info],
+  )
   // Both the "done" flag and the shot reported by the stage belong to ONE run of
-  // the sequence. Tagging them with that run (sequence + token + model) makes a
+  // the sequence. Tagging them with that run (entrance + token + model) makes a
   // replay read as "nothing has played yet" in the SAME render the token bumps.
   // Clearing them from an effect ran one commit late, which left the previous
   // run's tail clip in `stageClip` for a frame — the stage then reported the old
   // clip's framing before clip 1, and that bounce was cross-faded.
-  const entranceRun = `${sequenceKey}|${sequenceToken}|${model?.id ?? ''}`
+  const entranceRun = `${entranceKey}|${sequenceToken}|${model?.id ?? ''}`
   const entranceRunRef = useRef(entranceRun)
   entranceRunRef.current = entranceRun
   const [entranceDoneRun, setEntranceDoneRun] = useState({ run: '', done: false })
