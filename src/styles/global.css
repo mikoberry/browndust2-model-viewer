@@ -1286,6 +1286,46 @@ code {
    (same 16px inset). 132px clears the raised tool stack (taskbar offset 48px
    + play + settings toggles + gap); with only the settings toggle present the
    card just floats a little higher. Same dark-glass language as the chrome. */
+/* Dev-only WE audio simulator chip (?audioSim=1): bottom-left, quiet. */
+.wallpaper-audio-sim {
+  position: fixed;
+  left: calc(16px * var(--ui-scale));
+  bottom: calc(16px * var(--ui-scale));
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--ui-scale));
+  padding: calc(7px * var(--ui-scale)) calc(11px * var(--ui-scale));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: calc(999px * var(--ui-scale));
+  background: rgba(12, 16, 24, 0.62);
+  backdrop-filter: blur(calc(10px * var(--ui-scale)));
+  color: rgba(255, 255, 255, 0.75);
+  font-size: calc(12px * var(--ui-scale));
+  line-height: 1.4;
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.wallpaper-audio-sim-dot {
+  width: calc(8px * var(--ui-scale));
+  height: calc(8px * var(--ui-scale));
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.wallpaper-audio-sim-dot.is-playing {
+  background: #6fcf7f;
+  animation: wallpaper-audio-sim-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes wallpaper-audio-sim-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
 .wallpaper-follow {
   position: fixed;
   right: calc(16px * var(--ui-scale));

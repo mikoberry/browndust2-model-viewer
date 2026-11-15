@@ -416,6 +416,16 @@ const MESSAGES = {
     ko: '추종은 마우스 이벤트가 필요합니다(WE 에서 마우스 상호작용 켜기). 0 이면 광선이 고정되어 스티커처럼 미끄러져 보입니다',
   },
 
+  // ---- audio sim: dev-only WE audio stand-in (?audioSim=1) ----
+  'audioSim.blocked': {
+    zh: '模拟音频 · 点击播放',
+    en: 'Audio sim · click to play',
+    ja: 'オーディオ模擬 · クリックで再生',
+    ko: '오디오 시뮬 · 클릭하여 재생',
+  },
+  'audioSim.playing': { zh: '模拟音频播放中', en: 'Audio sim playing', ja: 'オーディオ模擬再生中', ko: '오디오 시뮬 재생 중' },
+  'audioSim.paused': { zh: '模拟音频 · 已暂停', en: 'Audio sim · paused', ja: 'オーディオ模擬 · 一時停止', ko: '오디오 시뮬 · 일시정지' },
+
   // ---- spotlight: a second section inside the pointer tab ----
   'spotlight.title': { zh: '聚光灯', en: 'Spotlight', ja: 'スポットライト', ko: '스포트라이트' },
   'spotlight.enable': {

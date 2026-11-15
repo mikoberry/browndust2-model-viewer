@@ -34,6 +34,7 @@ import FollowPrompt from './components/FollowPrompt.jsx'
 import useParallax from './useParallax.js'
 import useCompositionBlend from './useCompositionBlend.js'
 import { t, useLocale } from '../../lib/i18n.js'
+import { startAudioSim } from './audioSim.js'
 import {
   WALLPAPER,
   loadWallpaperConfig,
@@ -297,6 +298,46 @@ export default function WallpaperPage() {
       alive = false
     }
   }, [designBackdrop])
+
+  // Dev-only WE audio simulator (`?audioSim=1`): plays public/spitz.mp3 through
+  // a Web Audio graph and feeds `window.__wallkitAudioFrame` the same 256-float
+  // shape the real WE bridge writes, so the spectrum / beat widgets move in a
+  // plain browser. It yields to real host frames (see audioSim.js). Browsers
+  // gate autoplay behind a gesture, so the chip doubles as the click-to-start.
+  const audioSimEnabled =
+    import.meta.env.DEV && new URLSearchParams(window.location.search).has('audioSim')
+  const [simState, setSimState] = useState(null) // null | blocked | playing | paused
+  const simRef = useRef(null)
+  useEffect(() => {
+    if (!audioSimEnabled) return undefined
+    const sim = startAudioSim()
+    simRef.current = sim
+    setSimState('blocked')
+    sim
+      .play()
+      .then(() => setSimState('playing'))
+      .catch(() => setSimState('blocked')) // stays until the chip is clicked
+    return () => {
+      sim.stop()
+      simRef.current = null
+    }
+  }, [audioSimEnabled])
+  // Playing → pause; blocked/paused → play. Audio events drive the widget
+  // side; this just keeps the chip label in step.
+  const toggleSim = useCallback(() => {
+    const sim = simRef.current
+    if (!sim) return
+    if (simState === 'playing') {
+      sim.audio.pause()
+      setSimState('paused')
+      return
+    }
+    sim
+      .play()
+      .then(() => setSimState('playing'))
+      .catch(() => setSimState('blocked'))
+  }, [simState])
+
 
   const [clipsReady, setClipsReady] = useState(false)
   // Once the scene has opened, a later change (switching a display variant swaps
@@ -870,6 +911,23 @@ export default function WallpaperPage() {
           inset, raised clear of the button column). Rendered outside the
           drawer so it survives the drawer unmounting. */}
       {showFollow && <FollowPrompt onDismiss={dismissFollow} />}
+
+      {simState && (
+        <button
+          type="button"
+          className="wallpaper-audio-sim"
+          onClick={toggleSim}
+        >
+          <span className={`wallpaper-audio-sim-dot is-${simState}`} aria-hidden="true" />
+          {t(
+            simState === 'playing'
+              ? 'audioSim.playing'
+              : simState === 'paused'
+                ? 'audioSim.paused'
+                : 'audioSim.blocked',
+          )}
+        </button>
+      )}
     </div>
   )
 }
