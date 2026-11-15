@@ -49,6 +49,9 @@ npm run project:latest -- --dry    # 只报告会改什么
 npm run project:latest -- --created  # 按创建时间挑（刚建好、还没放东西的空文件夹用这个）
 ```
 
+`project:latest` **不动标题**：目录里已有的 `title` 原样保留（每张壁纸有自己的名字，别被一个通用名抹平），
+要让它按 `project.config.js` 覆盖得显式加 `--force-title`。`description` 与面板 properties 仍按配置写。
+
 不想让它自己挑目录时，仍然可以显式指定：
 
 ```bash
@@ -56,7 +59,8 @@ npm run project:gen -- --target "F:/SteamLibrary/steamapps/common/wallpaper_engi
 ```
 
 - **`--target` 必填**：不写就默认写 `BD2-test`。`--target X` 与 `--target=X` 等价。
-- 它是**合并**而不是覆盖：`title` / `description` / `general.properties` 用 `project.config.js` 的内容，
+- 它是**合并**而不是覆盖：`title` / `description` / `general.properties` 用 `project.config.js` 的内容
+  （`project:gen` 没有标题保护，title 始终取配置值），
   WE 写过的 `preview` / `version` / `snapshotformat` / `workshopid` 等引擎自有字段原样保留，
   文件里多出来、配置没声明的属性也保留（除非加 `--prune`）。
 - 只看差异不写盘：

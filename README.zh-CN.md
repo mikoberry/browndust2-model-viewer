@@ -171,7 +171,8 @@ npm run build:home:embed     # 产物在 dist/，不碰任何 WE 目录
 ```
 
 然后在 WE 里「创建壁纸」拖入 `dist/index.html`，再补面板文案（`project:latest` 会自动采用
-`myprojects` 下你上次动过的那个文件夹，接着做不用记路径；想挑最新建的那个加 `--created`）：
+`myprojects` 下你上次动过的那个文件夹，接着做不用记路径；想挑最新建的那个加 `--created`。
+它不会改动那里面已有的标题（每张壁纸保留自己的名字），要按配置覆盖得加 `--force-title`）：
 
 ```bash
 npm run project:latest

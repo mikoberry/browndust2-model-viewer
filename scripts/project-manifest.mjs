@@ -68,9 +68,21 @@ export async function readProjectFile(file) {
 // `overrides` carries the two values only the deploy script knows: the CLI
 // --title and the preview image it just found in the target folder. Leaving
 // either out keeps what project.config.js / the editor's copy say.
-export function buildProject(config, existing, { prune = false, title, preview } = {}) {
+//
+// `keepTitle` is the opposite of `title`: the folder already has a title (WE
+// names it after the folder, or you wrote a per-wallpaper one) and the generic
+// title in project.config.js must not flatten it. Only `project:latest` uses
+// it, because that script adopts a folder it did not just configure.
+export function buildProject(
+  config,
+  existing,
+  { prune = false, title, preview, keepTitle = false } = {},
+) {
+  const kept =
+    keepTitle && !title && typeof existing?.title === 'string' ? existing.title.trim() : ''
   const generated = defineProject({
     ...config,
+    ...(kept ? { title: kept } : {}),
     ...(title ? { title } : {}),
     ...(preview ? { preview } : {}),
   })

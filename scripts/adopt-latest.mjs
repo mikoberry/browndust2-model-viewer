@@ -13,6 +13,12 @@
 //   npm run project:latest -- --target <dir>      skip the search entirely
 //   npm run project:latest -- --config <file>     another project.config.js
 //   npm run project:latest -- --created           rank by creation instead
+//   npm run project:latest -- --force-title       also overwrite the title
+//
+// The folder's own title wins. Every wallpaper here is published under its own
+// name (WE seeds it from the folder name, or you wrote one), so letting the
+// generic `title` in project.config.js win would rename a published item on
+// every run. Pass --force-title when you actually want the config's title.
 //
 // Ranking is mtime by default: "the folder I last touched" is what resuming
 // work needs, and deploying into a folder counts as touching it. The tradeoff
@@ -84,6 +90,7 @@ async function main() {
     target: readArg('target'),
     config: readArg('config'),
     byCreated: process.argv.includes('--created') || readArg('sort') === 'created',
+    forceTitle: process.argv.includes('--force-title'),
   }
   const sortField = options.byCreated ? 'created' : 'modified'
   const sortLabel = options.byCreated ? '创建时间' : '修改时间'
@@ -125,7 +132,9 @@ async function main() {
   const config = await loadProjectConfig(options.config || DEFAULT_CONFIG)
   const file = path.join(pick.dir, 'project.json')
   const existing = await readProjectFile(file)
-  const { generated, merged } = buildProject(config, existing)
+  const { generated, merged } = buildProject(config, existing, {
+    keepTitle: !options.forceTitle,
+  })
   const count = Object.keys(merged.general?.properties || {}).length
 
   if (options.dry) {
@@ -151,6 +160,7 @@ async function main() {
   await writeProjectFile(file, merged)
   console.log(`${existing ? '已更新' : '已创建'}：${file}`)
   console.log(`  type Web，音频处理已开启，${count} 个属性，入口 ${merged.file}`)
+  if (!options.forceTitle && existing?.title) console.log(`  标题保持不变：${existing.title}`)
   if (!pick.hasEntry) {
     console.log(`  提示：该目录还没有 ${merged.file}，跑一次 npm run deploy:we -- --target "${pick.dir}" 把 dist/ 放进去`)
   }

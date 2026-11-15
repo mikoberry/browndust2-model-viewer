@@ -560,6 +560,8 @@ src/features/<feature>/
   `npm run project:gen -- --target "<新工程目录>"` 合并面板文案；完整流程见
   [docs/we-manual-import.md](docs/we-manual-import.md)。
   `--list` 先看候选（表头会写明按哪种时间排序）、`--dry` 只看差异不写盘。
+  **标题不会被覆盖**：沿用目录里 `project.json` 现有的 `title`（每张壁纸有自己的名字），
+  要让配置里的 title 生效得显式加 `--force-title`；`description` / 面板 properties 仍按配置写。
 
 - `scripts/deploy-weproject.mjs` 默认目标
   `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用

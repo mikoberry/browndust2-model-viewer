@@ -190,7 +190,8 @@ npm run build:home:embed     # output in dist/, no WE directory touched
 
 Then in WE choose "Create wallpaper" and drop in `dist/index.html`, and fill the panel text
 (`project:latest` adopts the folder you touched last under `myprojects` — resuming work, no path to
-remember; add `--created` when you want the newest folder instead):
+remember; add `--created` when you want the newest folder instead. It leaves the title already in that
+folder alone, so each wallpaper keeps its own name; `--force-title` overrides):
 
 ```bash
 npm run project:latest
