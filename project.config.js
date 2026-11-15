@@ -11,7 +11,7 @@
 // panel; they are never pushed to the page, so nothing here touches the runtime.
 // Panel links only open for allowlisted domains (Steam / Bilibili / YouTube) —
 // GitHub is NOT one of them, so the homepage <a> below is coloured for
-// visibility but still has to be copied into a browser (the note says so).
+// visibility but still has to be copied into a browser.
 // Images from github.com/<user>.png do render, which is how the avatar works.
 
 import { html } from 'wallkit/project'
@@ -25,8 +25,6 @@ export default {
   description: [
     '《棕色尘埃 2》角色动态壁纸：Spine 立绘 + 对应场景背景，可叠加时钟、音频频谱、专辑卡、氛围粒子与指针特效。',
     'BrownDust 2 live wallpaper: Spine character art over its matching scene, with optional clock, audio spectrum, album card, ambient particles and pointer effects.',
-    '主页 Homepage: https://github.com/mikoberry',
-    '源码与问题反馈 Source & issues: https://github.com/mikoberry/browndust2-model-viewer',
   ],
 
   // The engine rewrites `contentrating` / `visibility` / `preview` itself, so

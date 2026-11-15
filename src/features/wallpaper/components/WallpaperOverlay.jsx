@@ -272,6 +272,8 @@ export default function WallpaperOverlay({ config }) {
       // this layer keeps the debug viewer untouched.
       style={accent ? { '--wallkit-accent': accent } : undefined}
     >
+      {/* `variant` is forwarded untouched: wallkit owns the form list, so a new
+          form such as `stars` needs no change on this side of the boundary. */}
       {ambient?.enabled && (
         <AmbientFx
           variant={ambient.variant}
