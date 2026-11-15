@@ -36,7 +36,7 @@
     "B_cut",
     "loop"
   ],
-  "variant": "",
+  "variant": "v1",
   "variants": [
     {
       "id": "v1",
@@ -106,7 +106,12 @@
         "A_cut",
         "B_cut",
         "loop"
-      ]
+      ],
+      "parallax": {
+        "enabled": true,
+        "backdrop": 1,
+        "model": 1.5
+      }
     }
   ],
   "clickAnimation": {
@@ -231,7 +236,7 @@
       "follow": 0.28,
       "smoothing": 0.5,
       "sway": -20,
-      "color": "#4796d0"
+      "color": "#b2d2ea"
     },
     "pointer": {
       "enabled": false,
