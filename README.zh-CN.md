@@ -64,7 +64,8 @@ Wallpaper Engine **2.8.797 beta**（CEF 156，默认禁止 file:// 读本地文�
 
 壁纸页右下角手柄 / `S` 键打开设置抽屉，tab 分组：**构图 · 时钟 · 频谱 · 专辑卡 · 氛围 · 指针 · 其他**
 （聚光灯在「指针」tab 内的第二节，配置键仍是独立的 `overlay.spotlight`；
-取景框在「其他」tab 里，配置键是 `overlay.frame`——它铺满整个画面、没有位置锚点，所以不单独占 tab）。
+取景框在「其他」tab 里，配置键是 `overlay.frame`——它铺满整个画面、没有位置锚点，所以不单独占 tab；
+四角参数文字只有一个开关（`overlay.frame.labels`），文案是固定的预设值，因为 WE 的壁纸窗口拿不到键盘焦点）。
 改完点「记录配置」存进 `localStorage['mikoberry:wallpaper.config.user:<modelId>']`，此后启动按这份来；
 `wallpaper.config.json` 只是出厂默认值（「恢复首次默认」回到它）。
 

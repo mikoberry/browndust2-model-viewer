@@ -72,7 +72,9 @@ static-imports that JSON) — editing the defaults means editing the JSON.
 The handle in the bottom-right corner (or the `S` key) opens the settings drawer. Tabs:
 **Composition · Clock · Spectrum · Album art · Ambient · Pointer · Other**
 (the spotlight is the second section inside "Pointer" and keeps its own `overlay.spotlight` key; the viewfinder lives
-in "Other" as `overlay.frame` — it covers the whole picture and has no position anchor, so it doesn't get a tab).
+in "Other" as `overlay.frame` — it covers the whole picture and has no position anchor, so it doesn't get a tab;
+its corner readouts have a single switch (`overlay.frame.labels`) over a fixed preset copy, since Wallpaper Engine
+gives the wallpaper window no keyboard focus).
 
 "Record config" writes to `localStorage['mikoberry:wallpaper.config.user:<modelId>']`, and from then on that snapshot
 wins at startup; `wallpaper.config.json` is only the factory default ("Restore factory defaults" returns to it).

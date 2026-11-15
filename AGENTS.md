@@ -327,6 +327,9 @@ src/features/<feature>/
   时钟在应用层：`WallpaperOverlay` 的 `useFrameSeconds()` 每秒累加、`paused` 时停、再用 `formatTimecode()` 格式化。
   别把 `setInterval` 挪进组件，也别改成从时间戳现算（暂停恢复会跳）。`rec` 存三态字符串
   （`off` / `dot` / `rec` → `false` / `true` / `'REC'`），因为 JSON 布尔表达不了「只要红点不要字」。
+  四角文字是 `overlay.frame.labels: true|false` 的**开关**，文案是常量 `FRAME_LABELS`（`WallpaperOverlay.jsx`，
+  现在 `AUTO / 4K · 60P / F/2.8 / ISO 400`）——WE 窗口拿不到键盘焦点，抽屉里不放假输入框，所以只暴露开关；
+  改文案就改那个常量。WallKit 用 CSS 把拉丁字母转大写；`rec` 占 tl、`timecode` 占 br 时角标自己下移一行。
 
 ## 8. Spine 运行时约束（Runtime Constraints，实测，不要凭直觉改）
 

@@ -414,6 +414,16 @@ const BUILTIN_WALLPAPER = {
     //   timecode  — true = HH:MM:SS:00 counted from load (stops while paused).
     //               wallkit's Frame holds no timer on purpose, so the clock is
     //               ours: a frozen wallpaper must not show a running readout.
+    //   labels    — true = draw the four preset corner readouts (AUTO / 4K ·
+    //               60P / F/2.8 / ISO 400), false = plain brackets. The copy is
+    //               a single constant (`FRAME_LABELS` in WallpaperOverlay.jsx)
+    //               because Wallpaper Engine gives the wallpaper window no
+    //               keyboard focus, so no text field can live in the drawer —
+    //               a switch is all the UI can honestly offer. Fixed text on
+    //               purpose: nothing is formatted or counted, so a paused
+    //               wallpaper never shows stale data. Where `rec` / `timecode`
+    //               already sit (tl / br) the readout steps down a line instead
+    //               of overlapping them.
     //   theme     — 'light' = light line (for dark artwork), 'dark' = dark line
     frame: {
       enabled: false,
@@ -427,6 +437,7 @@ const BUILTIN_WALLPAPER = {
       ticks: false,
       rec: 'off',
       timecode: false,
+      labels: false,
       theme: 'light',
     },
   },

@@ -356,6 +356,14 @@ const MESSAGES = {
   'frame.lineTheme': { zh: '线色明暗', en: 'Line brightness', ja: '線の明暗', ko: '선 밝기' },
   'frame.lineLight': { zh: '亮线', en: 'Light line', ja: '明るい線', ko: '밝은 선' },
   'frame.lineDark': { zh: '暗线', en: 'Dark line', ja: '暗い線', ko: '어두운 선' },
+  'frame.labels': { zh: '角标文字', en: 'Corner labels', ja: 'コーナー文字', ko: '코너 텍스트' },
+  'frame.labelsToggle': { zh: '显示四角参数文字', en: 'Draw corner readouts', ja: '四隅の文字を表示', ko: '코너 텍스트 표시' },
+  'frame.labelsNote': {
+    zh: '固定文案：AUTO · 4K · 60P · F/2.8 · ISO 400（WE 里无法输入文字，所以只给开关）',
+    en: 'Fixed copy: AUTO · 4K · 60P · F/2.8 · ISO 400 (no keyboard in WE, hence a switch only)',
+    ja: '固定文言：AUTO · 4K · 60P · F/2.8 · ISO 400（WE では入力不可のためスイッチのみ）',
+    ko: '고정 문구: AUTO · 4K · 60P · F/2.8 · ISO 400 (WE 에서 입력 불가라 스위치만)',
+  },
 
   // ---- spotlight: a second section inside the pointer tab ----
   'spotlight.title': { zh: '聚光灯', en: 'Spotlight', ja: 'スポットライト', ko: '스포트라이트' },

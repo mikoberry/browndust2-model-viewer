@@ -55,6 +55,11 @@
   `ambient` / `pointer` / `spotlight` / `frame` 不认 `anchor`，位置由「铺满视口」决定。
   取景框更彻底：它连 `size` 也没有——`inset`（离画面边的距离）、`thickness`（线宽）、`length`（角臂长）
   是画面像素，统一由 `size` 倍率缩放。
+- **取景框四角文字（`labels`）是开关 + 固定文案**：配置里只有 `overlay.frame.labels: true|false`，
+  文案是应用层的常量 `FRAME_LABELS`（`WallpaperOverlay.jsx`，现在是 `AUTO / 4K · 60P / F/2.8 / ISO 400`）。
+  不做格式化、不计时（所以暂停前后一模一样）；抽屉里只给开关，因为 WE 的壁纸窗口拿不到键盘焦点
+  （见 `SliderField` 注释），文本输入框在那边是死控件。WallKit 的 CSS 会把拉丁字母转大写，
+  中文不受影响；`rec` 占左上、`timecode` 占右下时，对应角标会自动下移一行。
 - **`size` / `width` / `height`**：控件尺寸。频谱与专辑卡还接受 `width` / `height` 精确覆盖盒子。
   **频谱的抽屉面板只给 `width` / `height`**：wallkit 里显式的宽高会完全覆盖 `size` 缩放，两个都写死时
   `size` 是死参数（旧面板正是这个坑），所以尺寸只有两个轴——线性样式 `100vw` / `14vh` 这类「沿边色带」，

@@ -469,6 +469,18 @@ function OtherPanel({ frame, onFrameChange, onResetFrame }) {
               />
             </div>
           </Group>
+          {/* Corner readouts are a plain switch: the copy is one constant
+              (`FRAME_LABELS` in WallpaperOverlay.jsx), because Wallpaper Engine
+              never gives the wallpaper window a keyboard focus (see
+              SliderField) — a text field here would be a dead control in the
+              only place that matters. */}
+          <Group title={t('frame.labels')} note={t('frame.labelsNote')}>
+            <ToggleField
+              label={t('frame.labelsToggle')}
+              checked={spec.labels === true}
+              onChange={(on) => onFrameChange({ labels: on })}
+            />
+          </Group>
         </>
       )}
       <Group title={t('comp.perfHud')} note={t('comp.perfHudNote')}>

@@ -183,6 +183,20 @@ function useFrameSeconds(enabled, paused) {
 // caption, which is why WallKit leaves the copy to the caller.
 const FRAME_REC = { off: false, dot: true, rec: 'REC' }
 
+// Corner readouts, shown when `overlay.frame.labels` is true. This is the ONLY
+// place the copy lives: Wallpaper Engine never gives the wallpaper window a
+// keyboard focus, so the drawer cannot host a text field — a switch is all the
+// UI can honestly offer, and a fixed camera-style set reads the same on every
+// wallpaper. Edit these four strings to change the copy for a build.
+// WallKit uppercases Latin text in CSS, and the labels are static by design (no
+// formatting, no clock), so the readout is identical before and after a pause.
+const FRAME_LABELS = {
+  tl: 'AUTO',
+  tr: '4K · 60P',
+  bl: 'F/2.8',
+  br: 'ISO 400',
+}
+
 // The viewfinder is a picture-level layer: no anchor, no children, nothing to
 // position. It draws ABOVE the other widgets by its own z-index (7 vs the
 // spotlight's 6) — instrumentation should not dim with the exposure.
@@ -200,6 +214,7 @@ function FrameWidget({ spec, paused }) {
       ticks={spec.ticks}
       rec={FRAME_REC[spec.rec] ?? false}
       timecode={spec.timecode === true ? formatTimecode(seconds) : ''}
+      labels={spec.labels === true ? FRAME_LABELS : undefined}
       theme={spec.theme}
       paused={paused}
     />
