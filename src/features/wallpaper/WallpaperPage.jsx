@@ -38,6 +38,7 @@ import { startAudioSim } from './audioSim.js'
 import {
   WALLPAPER,
   loadWallpaperConfig,
+  mergeConfig,
   resolveWallpaperModel,
   pickBackdrop,
   resolveDesign,
@@ -299,17 +300,22 @@ export default function WallpaperPage() {
     }
   }, [designBackdrop])
 
-  // Dev-only WE audio simulator (`?audioSim=1`): plays public/spitz.mp3 through
-  // a Web Audio graph and feeds `window.__wallkitAudioFrame` the same 256-float
-  // shape the real WE bridge writes, so the spectrum / beat widgets move in a
-  // plain browser. It yields to real host frames (see audioSim.js). Browsers
-  // gate autoplay behind a gesture, so the chip doubles as the click-to-start.
-  const audioSimEnabled =
-    import.meta.env.DEV && new URLSearchParams(window.location.search).has('audioSim')
+  // Dev-only WE audio simulator (`?sim=1` arms the debug tab): plays
+  // public/spitz.mp3 through a Web Audio graph and feeds
+  // `window.__wallkitAudioFrame` the same 256-float shape the real WE bridge
+  // writes, so the spectrum / beat widgets move in a plain browser. It yields
+  // to real host frames (see audioSim.js). Browsers gate autoplay behind a
+  // gesture, so the chip doubles as the click-to-start.
+  const [simEnabled, setSimEnabled] = useState(
+    import.meta.env.DEV && new URLSearchParams(window.location.search).get('sim') === '1',
+  )
   const [simState, setSimState] = useState(null) // null | blocked | playing | paused
   const simRef = useRef(null)
   useEffect(() => {
-    if (!audioSimEnabled) return undefined
+    if (!simEnabled) {
+      setSimState(null)
+      return undefined
+    }
     const sim = startAudioSim()
     simRef.current = sim
     setSimState('blocked')
@@ -321,7 +327,7 @@ export default function WallpaperPage() {
       sim.stop()
       simRef.current = null
     }
-  }, [audioSimEnabled])
+  }, [simEnabled])
   // Playing → pause; blocked/paused → play. Audio events drive the widget
   // side; this just keeps the chip label in step.
   const toggleSim = useCallback(() => {
@@ -574,6 +580,13 @@ export default function WallpaperPage() {
 
   const updateAccent = useCallback((accent) => {
     setOverlayTweaks((prev) => ({ ...prev, accent }))
+  }, [])
+
+  // Debug-tab overlay presets: each patch deep-merges onto the BUILT-IN
+  // defaults, so applying one is a complete look rather than a delta on the
+  // user's current tweaks (a preset can't inherit stale enabled flags).
+  const applyOverlayPreset = useCallback((patch) => {
+    setOverlayTweaks(mergeConfig(WALLPAPER.overlay, patch))
   }, [])
 
   // Lets `resetTweaks` stay referentially stable while still seeing the latest
@@ -904,6 +917,11 @@ export default function WallpaperPage() {
           // (the variant still carried its old value) until a full reload.
           onRecorded={handleRecorded}
           onClose={() => setSettingsOpen(false)}
+          // Debug tab (?sim=1, dev builds only): the WE audio simulator.
+          debug={simEnabled}
+          simState={simState}
+          onSimToggle={() => setSimEnabled((value) => !value)}
+          onApplyOverlayPreset={applyOverlayPreset}
         />
       </SettingsBoundary>
 

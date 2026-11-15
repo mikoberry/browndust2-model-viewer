@@ -32,6 +32,7 @@ import {
 import OverlaySettings, { OVERLAY_TABS } from './OverlaySettings.jsx'
 import { ChipField, ColorField, DrawerOpenContext, Group, SliderField, ToggleField } from './settings-fields.jsx'
 import LocaleSwitcher from './LocaleSwitcher.jsx'
+import { OVERLAY_PRESETS } from '../overlayPresets.js'
 import { readStatsFlag, subscribeStatsFlag, writeStatsFlag } from '../statsFlag.js'
 import { t, useLocale } from '../../../lib/i18n.js'
 
@@ -576,6 +577,32 @@ const TABS = [
   { key: 'other', label: () => t('widget.other') },
 ]
 
+// Dev-only extra tab, shown only when the page was armed with `?sim=1`.
+const DEBUG_TAB = { key: 'debug', label: () => t('debug.title') }
+
+// One-click overlay looks (see features/wallpaper/overlayPresets.js). These
+// replace the overlay widgets wholesale (deep-merged onto the built-in
+// defaults); the composition stays untouched.
+function OverlayPresetGroup({ onApply }) {
+  return (
+    <Group title={t('overlayPreset.title')}>
+      <div className="ws-chips" role="group" aria-label={t('overlayPreset.title')}>
+        {OVERLAY_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            className="ws-chip"
+            onClick={() => onApply(preset.patch)}
+          >
+            {t(`overlayPreset.${preset.id}`)}
+          </button>
+        ))}
+      </div>
+      <p className="ws-note">{t('overlayPreset.note')}</p>
+    </Group>
+  )
+}
+
 const pad = (value) => String(value).padStart(2, '0')
 const clockLabel = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 
@@ -602,6 +629,10 @@ export default function WallpaperSettings({
   onReset,
   onRecorded,
   onClose,
+  debug = false,
+  simState = null,
+  onSimToggle,
+  onApplyOverlayPreset,
 }) {
   const [flash, setFlash] = useState('')
   const [lastAt, setLastAt] = useState('')
@@ -733,7 +764,7 @@ export default function WallpaperSettings({
       <AccentField value={overlay?.accent} onChange={onAccentChange} />
 
       <div className="ws-tabs" role="tablist" aria-label={t('drawer.title')}>
-        {TABS.map((item) => {
+        {(debug ? [...TABS, DEBUG_TAB] : TABS).map((item) => {
           const active = tab === item.key
           const dot = item.key !== 'composition' && overlay?.[item.key]?.enabled
           return (
@@ -800,6 +831,29 @@ export default function WallpaperSettings({
             onFrameChange={(patch) => onOverlayChange('frame', patch)}
             onResetFrame={() => onReset('frame')}
           />
+        ) : tab === 'debug' ? (
+          <>
+            <Group title={t('debug.title')}>
+              <ToggleField
+                label={t('audioSim.toggle')}
+                note={t('audioSim.note')}
+                checked={simState !== null}
+                onChange={onSimToggle}
+              />
+              {simState !== null && (
+                <p className="ws-note">
+                  {t(
+                    simState === 'playing'
+                      ? 'audioSim.playing'
+                      : simState === 'paused'
+                        ? 'audioSim.paused'
+                        : 'audioSim.blocked',
+                  )}
+                </p>
+              )}
+            </Group>
+            <OverlayPresetGroup onApply={onApplyOverlayPreset} />
+          </>
         ) : (
           <OverlaySettings tab={tab} overlay={overlay} onChange={onOverlayChange} onReset={onReset} />
         )}

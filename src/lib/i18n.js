@@ -416,7 +416,15 @@ const MESSAGES = {
     ko: '추종은 마우스 이벤트가 필요합니다(WE 에서 마우스 상호작용 켜기). 0 이면 광선이 고정되어 스티커처럼 미끄러져 보입니다',
   },
 
-  // ---- audio sim: dev-only WE audio stand-in (?audioSim=1) ----
+  // ---- audio sim: dev-only WE audio stand-in (?sim=1) ----
+  'debug.title': { zh: '调试', en: 'Debug', ja: 'デバッグ', ko: '디버그' },
+  'audioSim.toggle': { zh: '模拟 WE 音频', en: 'Simulate WE audio', ja: 'WE オーディオを模擬', ko: 'WE 오디오 시뮬레이션' },
+  'audioSim.note': {
+    zh: '循环播放 spitz.mp3 喂频谱与专辑卡；WE 真实音频优先',
+    en: 'Loops spitz.mp3 to feed the spectrum and album card; real WE audio wins',
+    ja: 'spitz.mp3 をループ再生してスペクトラムとアルバムカードに供給。実 WE オーディオを優先',
+    ko: 'spitz.mp3 를 반복 재생해 스펙트럼과 앨범 카드에 공급. 실제 WE 오디오 우선',
+  },
   'audioSim.blocked': {
     zh: '模拟音频 · 点击播放',
     en: 'Audio sim · click to play',
@@ -425,6 +433,19 @@ const MESSAGES = {
   },
   'audioSim.playing': { zh: '模拟音频播放中', en: 'Audio sim playing', ja: 'オーディオ模擬再生中', ko: '오디오 시뮬 재생 중' },
   'audioSim.paused': { zh: '模拟音频 · 已暂停', en: 'Audio sim · paused', ja: 'オーディオ模擬 · 一時停止', ko: '오디오 시뮬 · 일시정지' },
+  'overlayPreset.title': { zh: '浮层预设', en: 'Overlay presets', ja: 'オーバーレイ プリセット', ko: '오버레이 프리셋' },
+  'overlayPreset.note': {
+    zh: '点一下整套应用（构图不动）；再点其它预设直接切换',
+    en: 'One click applies a whole look (composition untouched); click another to switch',
+    ja: 'クリックで一括適用（構図はそのまま）。別のプリセットで切替',
+    ko: '클릭 한 번으로 전체 적용(구도는 그대로). 다른 프리셋으로 전환',
+  },
+  'overlayPreset.moonlit': { zh: '默认', en: 'Default', ja: 'デフォルト', ko: '기본' },
+  'overlayPreset.minimal': { zh: '极简', en: 'Minimal', ja: 'ミニマル', ko: '미니멀' },
+  'overlayPreset.moonlit-stars': { zh: '月光·星空', en: 'Moonlit stars', ja: '月光・星空', ko: '월광·별빛' },
+  'overlayPreset.clear-sky-card': { zh: '卡片·大晴天', en: 'Clear-sky card', ja: 'カード・快晴', ko: '카드·맑은 하늘' },
+  'overlayPreset.tech-rain': { zh: '雨天科技感', en: 'Cyber rain', ja: '雨のサイバー', ko: '비 사이버' },
+  'overlayPreset.preset-1': { zh: '预设1', en: 'Preset 1', ja: 'プリセット 1', ko: '프리셋 1' },
 
   // ---- spotlight: a second section inside the pointer tab ----
   'spotlight.title': { zh: '聚光灯', en: 'Spotlight', ja: 'スポットライト', ko: '스포트라이트' },
