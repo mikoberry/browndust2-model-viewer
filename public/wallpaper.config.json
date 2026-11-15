@@ -60,18 +60,53 @@
       },
       "entrance": {
         "blend": 0.9,
-        "clips": {}
+        "clips": {
+          "A_cut": {
+            "backdrop": "char021291 back1-composer-upscal4x.png",
+            "backdropTransform": {
+              "scale": 2.5,
+              "offsetX": 0,
+              "offsetY": -922
+            },
+            "modelTransform": {
+              "scale": 2.39,
+              "offsetX": -3891,
+              "offsetY": 696
+            }
+          },
+          "B_cut": {
+            "backdrop": "char021291 back2_upscayl_4x.png",
+            "backdropTransform": {
+              "scale": 3,
+              "offsetX": 0,
+              "offsetY": 1946
+            },
+            "modelTransform": {
+              "scale": 3.37,
+              "offsetX": -5734,
+              "offsetY": 1475
+            }
+          },
+          "loop": {
+            "backdrop": "char021291 back2_upscayl_4x.png",
+            "backdropTransform": {
+              "scale": 1,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1,
+              "offsetX": 0,
+              "offsetY": 0
+            }
+          }
+        }
       },
       "sequence": [
         "A_cut",
         "B_cut",
         "loop"
-      ],
-      "parallax": {
-        "enabled": true,
-        "backdrop": 1,
-        "model": 1.5
-      }
+      ]
     }
   ],
   "clickAnimation": {
@@ -96,7 +131,7 @@
         }
       },
       "B_cut": {
-        "backdrop": "",
+        "backdrop": "char021291 back2_upscayl_4x.png",
         "backdropTransform": {
           "scale": 3,
           "offsetX": 0,
@@ -106,6 +141,19 @@
           "scale": 3.37,
           "offsetX": -5734,
           "offsetY": 1475
+        }
+      },
+      "loop": {
+        "backdrop": "char021291 back2_upscayl_4x.png",
+        "backdropTransform": {
+          "scale": 1,
+          "offsetX": 0,
+          "offsetY": 0
+        },
+        "modelTransform": {
+          "scale": 1,
+          "offsetX": 0,
+          "offsetY": 0
         }
       }
     }
@@ -139,11 +187,11 @@
       "color": "",
       "anchor": "center-left",
       "width": "20vw",
-      "height": "20vh",
+      "height": "30vh",
       "offsetX": 9,
       "offsetY": 9,
       "size": 100,
-      "barCount": 15,
+      "barCount": 24,
       "intensity": 100,
       "curve": 1
     },
@@ -171,19 +219,19 @@
       "speed": 100
     },
     "light": {
-      "enabled": false,
-      "variant": "sun",
-      "anchor": "top-left",
-      "offsetX": 0,
-      "offsetY": 0,
+      "enabled": true,
+      "variant": "moon",
+      "anchor": "top-right",
+      "offsetX": -30,
+      "offsetY": -30,
       "intensity": 100,
-      "size": 0,
-      "rays": 1,
+      "size": 2100,
+      "rays": 0.92,
       "flare": 1,
-      "follow": 0.45,
-      "smoothing": 0.12,
-      "sway": 16,
-      "color": ""
+      "follow": 0.28,
+      "smoothing": 0.5,
+      "sway": -20,
+      "color": "#4796d0"
     },
     "pointer": {
       "enabled": false,
@@ -199,7 +247,7 @@
       "enabled": true,
       "size": 1700,
       "feather": 0.45,
-      "dim": 0.72,
+      "dim": 0.55,
       "glow": 0,
       "darkColor": "#000000",
       "lightColor": "#ffffff",
