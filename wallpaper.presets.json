@@ -2252,7 +2252,10 @@
       "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
       "modelId": "Liatris/Sweet_Temptation/cutscene_char001297",
       "backdrop": "char001297_back2.webp",
-      "design": null,
+      "design": {
+        "width": 1920,
+        "height": 1080
+      },
       "fit": "contain",
       "letterbox": "#101319",
       "bleed": true,
@@ -2264,14 +2267,14 @@
         "alignY": 0.5
       },
       "backdropTransform": {
-        "scale": 1.2,
-        "offsetX": -117,
-        "offsetY": 38
+        "scale": 1.25,
+        "offsetX": -38,
+        "offsetY": 22
       },
       "modelTransform": {
         "scale": 1,
-        "offsetX": 334,
-        "offsetY": 132
+        "offsetX": 202,
+        "offsetY": 92
       },
       "parallax": {
         "enabled": true,
@@ -2286,6 +2289,35 @@
         "cut_B",
         "loop_2"
       ],
+      "variant": "",
+      "variants": [
+        {
+          "id": "v1",
+          "label": "v1",
+          "backdrop": "char001297_back1.webp",
+          "backdropTransform": {
+            "scale": 1.25,
+            "offsetX": -38,
+            "offsetY": 22
+          },
+          "modelTransform": {
+            "scale": 1,
+            "offsetX": 202,
+            "offsetY": 92
+          },
+          "animation": "loop",
+          "expression": null,
+          "clickAnimation": {
+            "enabled": true,
+            "name": "cut_A"
+          },
+          "parallax": {
+            "enabled": true,
+            "backdrop": 1,
+            "model": 1.5
+          }
+        }
+      ],
       "clickAnimation": {
         "enabled": true,
         "name": "cut_B"
@@ -2297,27 +2329,53 @@
           "cut_A": {
             "backdrop": "char001297_back1.webp",
             "backdropTransform": {
-              "scale": 1.2,
-              "offsetX": -100,
+              "scale": 1.15,
+              "offsetX": 0,
               "offsetY": 0
             },
             "modelTransform": {
               "scale": 1.1,
               "offsetX": 0,
-              "offsetY": 56
+              "offsetY": 54
+            },
+            "camera": {
+              "from": {
+                "zoom": 1,
+                "x": 0,
+                "y": 0
+              },
+              "to": {
+                "zoom": 1.5,
+                "x": 0,
+                "y": 0
+              },
+              "ease": "easeOut"
             }
           },
           "cut_B": {
-            "backdrop": "char001297_back2.webp",
+            "backdrop": "",
             "backdropTransform": {
-              "scale": 1.5,
-              "offsetX": -117,
-              "offsetY": 38
+              "scale": 1.25,
+              "offsetX": -38,
+              "offsetY": 22
             },
             "modelTransform": {
-              "scale": 1.25,
-              "offsetX": 334,
-              "offsetY": 132
+              "scale": 1,
+              "offsetX": 202,
+              "offsetY": 92
+            },
+            "camera": {
+              "from": {
+                "zoom": 1.8,
+                "x": 0,
+                "y": 0
+              },
+              "to": {
+                "zoom": 1.2,
+                "x": 0,
+                "y": 0
+              },
+              "ease": "easeOut"
             }
           }
         }
@@ -2326,18 +2384,20 @@
       "speed": 1,
       "zoom": 1,
       "overlay": {
-        "accent": "#bb7013",
+        "accent": "#be450e",
         "clock": {
           "enabled": true,
           "placement": "stamp",
           "color": "",
           "anchor": "center-left",
-          "offsetX": 2.5,
-          "offsetY": 0,
-          "size": 250,
+          "offsetX": 5,
+          "offsetY": -15,
+          "size": 225,
           "use24Hour": true,
           "tilt": true,
           "beat": true,
+          "beatIntensity": 100,
+          "beatCurve": 1,
           "labels": {
             "locale": "zh-CN",
             "aria": "当前时间与日期"
@@ -2348,25 +2408,25 @@
           "variant": "pill",
           "color": "",
           "anchor": "center-left",
-          "width": "18vw",
-          "height": "30vh",
+          "width": "20vw",
+          "height": "14vh",
           "offsetX": 3,
-          "offsetY": 22,
+          "offsetY": 7.5,
           "size": 100,
-          "barCount": 10,
-          "intensity": 100,
+          "barCount": 24,
+          "intensity": 125,
           "curve": 1
         },
         "albumArt": {
           "enabled": false,
-          "variant": "cd",
+          "variant": "vinyl",
           "color": "",
           "textColor": "",
           "spectrum": "auto",
-          "anchor": "top-left",
-          "offsetX": 4,
-          "offsetY": 4,
-          "size": 97,
+          "anchor": "center-left",
+          "offsetX": 5,
+          "offsetY": 10,
+          "size": 130,
           "labels": {
             "aria": "正在播放"
           }
@@ -2375,7 +2435,7 @@
           "enabled": true,
           "variant": "sakura",
           "color": "",
-          "density": 50,
+          "density": 100,
           "size": 100,
           "intensity": 100,
           "speed": 100
@@ -2399,10 +2459,10 @@
           "enabled": true,
           "trail": false,
           "click": true,
-          "trailVariant": "ribbon",
+          "trailVariant": "glow",
           "clickVariant": "firework",
-          "color": "#83b4f9",
-          "size": 250,
+          "color": "#5dc1d4",
+          "size": 200,
           "intensity": 100
         },
         "spotlight": {
@@ -2414,6 +2474,21 @@
           "darkColor": "#000000",
           "lightColor": "#ffffff",
           "smoothing": 0.05
+        },
+        "frame": {
+          "enabled": false,
+          "variant": "corners",
+          "inset": 28,
+          "thickness": 1.5,
+          "length": 56,
+          "size": 1,
+          "color": "",
+          "grid": "none",
+          "ticks": false,
+          "rec": "off",
+          "timecode": false,
+          "labels": false,
+          "theme": "light"
         }
       }
     },
