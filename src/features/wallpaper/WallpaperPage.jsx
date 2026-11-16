@@ -46,6 +46,7 @@ import {
   resolveLayerTransform,
   resolveEntrance,
   clipFraming,
+  cameraAt,
   resolveParallax,
   normalizeVariants,
   resolveVariantId,
@@ -272,6 +273,46 @@ export default function WallpaperPage() {
 
   const entrance = useMemo(() => resolveEntrance(config.entrance, design), [config.entrance, design])
 
+  // ---- camera moves (PV-style pan / zoom over the WHOLE picture) ----------
+  // SpineStage reports (clip, elapsed) every rAF; the pose is written straight
+  // onto the design element's transform — both layers are children, so one
+  // write moves the whole picture and the composition invariant is untouched.
+  // No React state at 60fps: refs carry the per-frame inputs.
+  const entranceRef = useRef(entrance)
+  entranceRef.current = entrance
+  const clipDurations = useMemo(() => {
+    const map = {}
+    for (const item of info?.animations ?? []) map[item.name] = item.duration
+    return map
+  }, [info])
+  const clipDurationsRef = useRef(clipDurations)
+  clipDurationsRef.current = clipDurations
+  // The mapped canvas scale (`scale(k)`), assigned after it is computed below.
+  const camScaleRef = useRef(1)
+  const camLastRef = useRef('')
+  const handleSequenceFrame = useCallback((name, elapsed) => {
+    const el = designRef.current
+    if (!el) return
+    const scale = camScaleRef.current
+    const cam = name ? entranceRef.current.clips[name]?.camera : null
+    const pose = cam ? cameraAt(cam, elapsed, clipDurationsRef.current[name] ?? 0) : null
+    // The design element's transform-origin is its top-left corner, but the pan
+    // offsets are relative to the picture's CENTRE and a zoom should keep that
+    // centre put. Compensate: under origin 0 0, scale(z) pushes the centre by
+    // (z-1)*size/2, so the translation must add it back.
+    let transform = `scale(${scale})`
+    if (pose) {
+      const cx = (Number(el.style.width) || 0) / 2
+      const cy = (Number(el.style.height) || 0) / 2
+      const tx = (pose.dx + cx * (1 - pose.zoom)) * scale
+      const ty = (pose.dy + cy * (1 - pose.zoom)) * scale
+      transform = `translate(${tx}px, ${ty}px) scale(${scale * pose.zoom})`
+    }
+    if (transform === camLastRef.current) return
+    camLastRef.current = transform
+    el.style.transform = transform
+  }, [])
+
   // ---- scene warm-up gate -------------------------------------------------
   // The FIRST entrance must not start while anything is still decoding — that
   // WAS the first-load stutter, and a manual replay never stuttered because by
@@ -300,15 +341,17 @@ export default function WallpaperPage() {
     }
   }, [designBackdrop])
 
-  // Dev-only WE audio simulator (`?sim=1` arms the debug tab): plays
-  // public/spitz.mp3 through a Web Audio graph and feeds
+  // Dev-only WE audio simulator: `?sim=1` only ARMS the debug tab — playback
+  // never starts on its own, the drawer's switch (or the chip) starts it. The
+  // sim plays public/spitz.mp3 through a Web Audio graph and feeds
   // `window.__wallkitAudioFrame` the same 256-float shape the real WE bridge
   // writes, so the spectrum / beat widgets move in a plain browser. It yields
   // to real host frames (see audioSim.js). Browsers gate autoplay behind a
   // gesture, so the chip doubles as the click-to-start.
-  const [simEnabled, setSimEnabled] = useState(
+  const [debugArmed] = useState(
     import.meta.env.DEV && new URLSearchParams(window.location.search).get('sim') === '1',
   )
+  const [simEnabled, setSimEnabled] = useState(false)
   const [simState, setSimState] = useState(null) // null | blocked | playing | paused
   const simRef = useRef(null)
   useEffect(() => {
@@ -663,6 +706,8 @@ export default function WallpaperPage() {
   }, [])
 
   const scale = designScale(design, viewport, config.fit)
+  // Camera-move driver reads this every frame (see handleSequenceFrame).
+  camScaleRef.current = scale
   const left = (viewport.width - design.width * scale) / 2
   const top = (viewport.height - design.height * scale) / 2
 
@@ -761,6 +806,7 @@ export default function WallpaperPage() {
               sequenceToken={sequenceToken}
               onSequenceDone={handleSequenceDone}
               onSequenceStage={handleSequenceStage}
+              onSequenceFrame={handleSequenceFrame}
               skin={config.skin}
               playing
               speed={config.speed}
@@ -918,7 +964,7 @@ export default function WallpaperPage() {
           onRecorded={handleRecorded}
           onClose={() => setSettingsOpen(false)}
           // Debug tab (?sim=1, dev builds only): the WE audio simulator.
-          debug={simEnabled}
+          debug={debugArmed}
           simState={simState}
           onSimToggle={() => setSimEnabled((value) => !value)}
           onApplyOverlayPreset={applyOverlayPreset}

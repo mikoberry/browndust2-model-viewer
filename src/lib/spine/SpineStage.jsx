@@ -73,10 +73,15 @@ export default function SpineStage(props) {
     // once when the last clip becomes the current one. `onSequenceStage` fires
     // every time a DIFFERENT clip takes over (including the first), so a caller
     // can swap the framing per shot — it is one call per clip, not per frame.
+    // `onSequenceFrame(name, elapsedSeconds)` fires EVERY frame while a
+    // sequence runs (name = current clip, elapsed = seconds into it, from the
+    // track's own clock so `speed` applies), and `(null, 0)` once when the
+    // sequence hands track 0 back — the per-frame camera-move driver.
     sequence = null,
     sequenceToken = 0,
     onSequenceDone,
     onSequenceStage,
+    onSequenceFrame,
     // Click-to-play: when `clickAnimation` is a non-empty animation name, the
     // wallpaper hands track 0 to it once on a click (via `onClick` -> parent
     // bumping `clickToken`). It plays through ONCE (loop=false) and then the
@@ -214,6 +219,7 @@ export default function SpineStage(props) {
       sequencePendingRef.current = false
       sequenceStageRef.current = ''
       sequenceLengthRef.current = 0
+      if (wasSequence) liveRef.current.onSequenceFrame?.(null, 0)
       if (!wasSequence) return
       // Sequence removed at runtime: fall back to the plain animation. When the
       // rAF handoff (sequence tail -> `animation`) already switched to it a
@@ -422,7 +428,8 @@ export default function SpineStage(props) {
 
       // Entrance sequence: announce the hand-off to the last clip exactly once,
       // so the parent can ease from the cutscene framing into its own, and
-      // announce every clip change so the framing can follow the shot.
+      // announce every clip change so the framing can follow the shot. The
+      // per-frame callback carries the clip's own clock for camera moves.
       if (sequenceActiveRef.current) {
         const head = state.getCurrent(0)
         const clip = head?.animation?.name ?? ''
@@ -430,6 +437,7 @@ export default function SpineStage(props) {
           sequenceStageRef.current = clip
           live.onSequenceStage?.(clip)
         }
+        if (clip) live.onSequenceFrame?.(clip, head.trackTime ?? 0)
       }
       if (sequencePendingRef.current) {
         const head = state.getCurrent(0)
@@ -446,6 +454,7 @@ export default function SpineStage(props) {
           // preview), so it keeps looping that clip untouched.
           if (sequenceLengthRef.current > 1) {
             sequenceActiveRef.current = false
+            live.onSequenceFrame?.(null, 0)
             const rest = live.animation
             if (rest && rest !== sequenceTailRef.current && state.data.skeletonData.findAnimation(rest)) {
               state.setAnimation(0, rest, live.loop !== false)

@@ -13,7 +13,7 @@ import SpineStage from '../../lib/spine/SpineStage.jsx'
 import { pickDefaultAnimation, pickDefaultExpression, pickEntranceSequence } from '../../lib/animation.js'
 import { assetUrl } from '../../lib/assets.js'
 import { pickBackdrop } from '../../lib/backdrops.js'
-import { resolveDesign, resolveLayerTransform } from '../../lib/composition.js'
+import { resolveDesign, resolveLayerTransform, resolveCamera, cameraAt } from '../../lib/composition.js'
 import { applyVariant, normalizeVariants, resolveVariantId } from '../../lib/variants.js'
 
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
@@ -101,6 +101,20 @@ const mergeLayer = (base, patch) => ({
   offsetY: toFinite(patch?.offsetY, base.offsetY),
 })
 
+// A camera spec passes through untouched: validity (both poses present, sane
+// numbers) is `resolveCamera`'s job at playback time, and the panel edits it
+// as an object, not as scalars.
+const mergeCamera = (raw) => {
+  const c = raw && typeof raw === 'object' ? raw : null
+  if (!c || !(c.from && typeof c.from === 'object') || !(c.to && typeof c.to === 'object')) return null
+  return {
+    from: { zoom: toFinite(c.from.zoom, 1), x: toFinite(c.from.x, 0), y: toFinite(c.from.y, 0) },
+    to: { zoom: toFinite(c.to.zoom, 1), x: toFinite(c.to.x, 0), y: toFinite(c.to.y, 0) },
+    duration: toFinite(c.duration, 0),
+    ease: typeof c.ease === 'string' ? c.ease : 'linear',
+  }
+}
+
 // entrance.clips from the file -> the flat shape the sliders use. Keys are
 // animation names, so a new clip simply appears as another row.
 const mergeClips = (base, raw) => {
@@ -112,6 +126,7 @@ const mergeClips = (base, raw) => {
       backdrop: typeof clip?.backdrop === 'string' ? clip.backdrop : '',
       backdropTransform: mergeLayer(NEUTRAL_LAYER, clip?.backdropTransform),
       modelTransform: mergeLayer(NEUTRAL_LAYER, clip?.modelTransform),
+      camera: mergeCamera(clip?.camera),
     }
   }
   return out
@@ -520,6 +535,7 @@ export default function ViewerPage({ onGoWallpaper }) {
     [selected, baseView.backdrop],
   )
 
+
   // Default canvas choice: 「方形·跟随背景」. Until the config file or the user
   // picks a size (`designTouched`), the square of the base backdrop's longer
   // side snaps in as soon as that size is known.
@@ -537,6 +553,51 @@ export default function ViewerPage({ onGoWallpaper }) {
     () => resolveDesign(designBackdrop, compose.design),
     [designBackdrop, compose.design],
   )
+  // ---- camera moves (PV-style pan / zoom over the whole picture) ----------
+  // Resolved camera per clip (design-px poses), plus the frame driver: the
+  // SpineStage inside the composition stage reports (clip, elapsed) each rAF;
+  // the pose is written straight onto the design element's transform — one
+  // write moves BOTH layers, so the composition invariant is untouched. No
+  // React state at 60fps. `cameraHostRef` is filled in by CompositionStage.
+  const cameraHostRef = useRef(null)
+  const clipDurations = useMemo(() => {
+    const map = {}
+    for (const item of info?.animations ?? []) map[item.name] = item.duration
+    return map
+  }, [info])
+  const clipDurationsRef = useRef(clipDurations)
+  clipDurationsRef.current = clipDurations
+  const entranceCamerasRef = useRef(null)
+  entranceCamerasRef.current = useMemo(() => {
+    const map = {}
+    for (const [name, clip] of Object.entries(compose.entrance.clips ?? {})) {
+      const cam = resolveCamera(clip?.camera, composeDesign)
+      if (cam) map[name] = cam
+    }
+    return map
+  }, [compose.entrance.clips, composeDesign])
+  const handleSequenceFrame = useCallback((name, elapsed) => {
+    const host = cameraHostRef.current
+    if (!host?.el) return
+    const cam = name ? entranceCamerasRef.current[name] : null
+    const pose = cam ? cameraAt(cam, elapsed, clipDurationsRef.current[name] ?? 0) : null
+    const { el, scale } = host
+    // transform-origin is the element's top-left, but the pan is relative to
+    // the picture centre and zoom must keep that centre put — compensate the
+    // centre drift (z-1)*size/2 that an origin-0 scale introduces.
+    let transform = `scale(${scale})`
+    if (pose) {
+      const cx = (Number(host.width) || 0) / 2
+      const cy = (Number(host.height) || 0) / 2
+      const tx = (pose.dx + cx * (1 - pose.zoom)) * scale
+      const ty = (pose.dy + cy * (1 - pose.zoom)) * scale
+      transform = `translate(${tx}px, ${ty}px) scale(${scale * pose.zoom})`
+    }
+    if (el.__camTransform === transform) return
+    el.__camTransform = transform
+    el.style.transform = transform
+  }, [])
+
   // The image actually drawn, which for a clip can be its own backdrop.
   const previewBackdrop = useMemo(
     () =>
@@ -874,6 +935,7 @@ export default function ViewerPage({ onGoWallpaper }) {
               transform={composeBackdropT}
               overscan={COMPOSE_OVERSCAN}
               crossRect={crossRegion}
+              cameraHostRef={cameraHostRef}
             >
               <SpineStage
                 model={selected}
@@ -884,6 +946,7 @@ export default function ViewerPage({ onGoWallpaper }) {
                 sequenceToken={composeToken}
                 onSequenceStage={handleStageClip}
                 onSequenceDone={handleSequenceDone}
+                onSequenceFrame={handleSequenceFrame}
                 skin={skin}
                 playing={playing}
                 speed={speed}

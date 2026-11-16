@@ -21,9 +21,13 @@ export default function CompositionStage({
   // Central band (design pixels) visible after cover cropping on BOTH a 16:9
   // and a 9:16 screen — the toolbar's 「交叉区域」 overlay. Null hides it.
   crossRect = null,
+  // Filled with `{ el, scale }` (the design element + its mapped scale) so the
+  // parent can drive camera moves per frame without re-rendering this component.
+  cameraHostRef = null,
   children,
 }) {
   const wrapRef = useRef(null)
+  const designElRef = useRef(null)
   const [viewport, setViewport] = useState({ width: 0, height: 0 })
 
   // The stage area is a flex child, so its size is only known after layout and
@@ -38,6 +42,16 @@ export default function CompositionStage({
     return () => observer.disconnect()
   }, [])
 
+  // Publish the design element + its mapped scale for the parent's per-frame
+  // camera driver (see ViewerPage's handleSequenceFrame). In the plain (non-
+  // composed) mode there is no design element and no camera, hence scale 0.
+  const scale = enabled && viewport.width > 0 ? designScale(design, viewport, 'contain') : 0
+  useEffect(() => {
+    if (!cameraHostRef) return undefined
+    cameraHostRef.current = { el: designElRef.current, scale, width: design.width, height: design.height }
+    return undefined
+  }, [cameraHostRef, scale, design.width, design.height])
+
   if (!enabled) {
     return (
       <div className="compose-viewport is-plain" ref={wrapRef}>
@@ -48,7 +62,6 @@ export default function CompositionStage({
 
   const t = transform ?? { scale: 1, dx: 0, dy: 0 }
   const surface = Math.max(overscan, 1)
-  const scale = viewport.width > 0 ? designScale(design, viewport, 'contain') : 0
   const left = (viewport.width - design.width * scale) / 2
   const top = (viewport.height - design.height * scale) / 2
 
@@ -56,6 +69,7 @@ export default function CompositionStage({
     <div className={`compose-viewport${scale > 0 ? ' is-ready' : ''}`} ref={wrapRef}>
       <div
         className="compose-design"
+        ref={designElRef}
         style={{ width: design.width, height: design.height, left, top, transform: `scale(${scale})` }}
       >
         {backdropUrl && (

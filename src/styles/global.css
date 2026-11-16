@@ -500,6 +500,9 @@ code {
 .compose-design {
   position: absolute;
   transform-origin: 0 0;
+  /* The camera rewrites this element's transform every frame; a promoted
+     compositing layer keeps the big backdrop from being repainted per frame. */
+  will-change: transform;
 }
 
 .compose-backdrop {
@@ -1131,6 +1134,8 @@ code {
 .wallpaper-design {
   position: absolute;
   transform-origin: 0 0;
+  /* Camera moves rewrite this transform every frame — keep it composited. */
+  will-change: transform;
 }
 
 /* Overscan surface for the WebGL canvas: `overscan` times the design canvas,

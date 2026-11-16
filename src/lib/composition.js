@@ -58,7 +58,7 @@ export const NEUTRAL_LAYER = Object.freeze({ scale: 1, dx: 0, dy: 0 })
 //     autoplay: true,                              // play on load, or not
 //     blend: 0.9,                                  // cross-fade, seconds
 //     clips: {
-//       cut_A:  { backdrop, backdropTransform, modelTransform },
+//       cut_A:  { backdrop, backdropTransform, modelTransform, camera },
 //       cut_B:  { … },
 //       loop_2: { … },
 //     },
@@ -66,6 +66,68 @@ export const NEUTRAL_LAYER = Object.freeze({ scale: 1, dx: 0, dy: 0 })
 //
 // A clip that is not listed plays on the raw design canvas. `backdrop: ''`
 // means "keep the global `backdrop` pick".
+//
+// `camera` is the shot's CAMERA MOVE (PV-style pan / zoom over the WHOLE
+// picture, both layers together): `from` / `to` poses in design-canvas units
+// (`zoom` scalar, `x` / `y` design pixels or '10%' strings), `duration` in
+// seconds (0 = the clip's own length), `ease` one of the keys below. Motion
+// plays ONLY when both `from` and `to` are given — a half-written camera is a
+// still frame, never a partial move. While the clip runs the pose loops over
+// `duration` until the clip ends.
+export const CAMERA_EASES = ['linear', 'easeIn', 'easeOut', 'easeInOut']
+
+const CAMERA_EASE_FNS = {
+  linear: (t) => t,
+  easeIn: (t) => t * t,
+  easeOut: (t) => 1 - (1 - t) * (1 - t),
+  easeInOut: (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) * (-2 * t + 2) / 2),
+}
+
+// One camera pose -> design-px numbers. `x` / `y` are pan offsets relative to
+// the composed frame's centre (so the default 0/0 keeps the frame put).
+function resolveCameraPose(pose, design) {
+  const p = pose && typeof pose === 'object' ? pose : {}
+  const zoom = Number.isFinite(p.zoom) && p.zoom > 0 ? p.zoom : 1
+  return {
+    zoom,
+    x: designLength(p.x, design.width),
+    y: designLength(p.y, design.height),
+  }
+}
+
+// Resolved camera for one clip, or null when there is no motion (missing,
+// incomplete, or identity poses are still kept — the interpolator decides).
+export function resolveCamera(spec, design = FALLBACK_DESIGN) {
+  const s = spec && typeof spec === 'object' ? spec : {}
+  const hasFrom = s.from && typeof s.from === 'object'
+  const hasTo = s.to && typeof s.to === 'object'
+  if (!hasFrom || !hasTo) return null
+  return {
+    from: resolveCameraPose(s.from, design),
+    to: resolveCameraPose(s.to, design),
+    // 0 = ride the clip's own duration (resolved by the player).
+    duration: Number.isFinite(s.duration) && s.duration > 0 ? s.duration : 0,
+    ease: CAMERA_EASES.includes(s.ease) ? s.ease : 'linear',
+  }
+}
+
+// Pose at `elapsed` seconds into the clip. Loops over `duration` (or the clip's
+// own length when the camera carries no duration of its own). Returns null when
+// there is nothing to move — callers treat that as "keep the frame still".
+export function cameraAt(camera, elapsed, fallbackDuration = 0) {
+  if (!camera) return null
+  const duration = camera.duration > 0 ? camera.duration : fallbackDuration
+  if (!(duration > 0)) return null
+  const ease = CAMERA_EASE_FNS[camera.ease] ?? CAMERA_EASE_FNS.linear
+  const t = ease((Number(elapsed) / duration) % 1)
+  const { from, to } = camera
+  return {
+    zoom: from.zoom + (to.zoom - from.zoom) * t,
+    dx: from.x + (to.x - from.x) * t,
+    dy: from.y + (to.y - from.y) * t,
+  }
+}
+
 export function resolveEntrance(spec = {}, design = FALLBACK_DESIGN) {
   const s = spec ?? {}
   const clips = {}
@@ -76,6 +138,7 @@ export function resolveEntrance(spec = {}, design = FALLBACK_DESIGN) {
       backdrop: typeof clip?.backdrop === 'string' ? clip.backdrop : '',
       backdropTransform: resolveLayerTransform(clip?.backdropTransform, design),
       modelTransform: resolveLayerTransform(clip?.modelTransform, design),
+      camera: resolveCamera(clip?.camera, design),
     }
   }
   return {
@@ -90,13 +153,15 @@ export function resolveEntrance(spec = {}, design = FALLBACK_DESIGN) {
 
 // Fully resolved framing for one clip — never null, so callers can index it
 // without a fallback. `backdrop: ''` means "keep the global pick". A clip that
-// was never configured resolves to NEUTRAL_LAYER (raw design canvas).
+// was never configured resolves to NEUTRAL_LAYER (raw design canvas) and no
+// camera move.
 export function clipFraming(entrance, name) {
   const clip = name ? entrance?.clips?.[name] : null
   return {
     backdrop: clip?.backdrop ?? '',
     backdropTransform: clip?.backdropTransform ?? NEUTRAL_LAYER,
     modelTransform: clip?.modelTransform ?? NEUTRAL_LAYER,
+    camera: clip?.camera ?? null,
   }
 }
 

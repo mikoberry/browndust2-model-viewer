@@ -21,6 +21,7 @@
 import { useEffect, useState } from 'react'
 import { FACE_ANIM } from '../../../lib/animation.js'
 import { variantLabel } from '../../../lib/variants.js'
+import { CAMERA_EASES } from '../../../lib/composition.js'
 
 const round2 = (value) => Math.round(value * 100) / 100
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value))
@@ -260,6 +261,65 @@ const layerOf = (item) => ({
   offsetY: Math.round(item?.offsetY ?? 0),
 })
 
+// Camera poses are stored in design pixels, but the panel speaks in percent of
+// the canvas (same convention as the layer offsets above).
+const CAMERA_PX = (percent, basis) => (basis > 0 ? (percent / 100) * basis : 0)
+const CAMERA_PCT = (px, basis) => (basis > 0 ? (px / basis) * 100 : 0)
+
+function CameraPoseFields({ title, pose, design, onChange }) {
+  const pct = (px, basis) => round2(CAMERA_PCT(px ?? 0, basis))
+  // Each slider patches ONE field, but the parent stores the whole pose object —
+  // so every change must carry the untouched fields along, or they reset.
+  const patch = (part) => onChange({ ...pose, ...part })
+  return (
+    <>
+      <div className="section-head">
+        <h4>{title}</h4>
+        <span className="badge">{Math.round((pose?.zoom ?? 1) * 100)}%</span>
+      </div>
+      <NumberRow
+        label="缩放"
+        value={pose?.zoom ?? 1}
+        min={0.25}
+        max={5}
+        step={0.01}
+        onChange={(zoom) => patch({ zoom })}
+      />
+      <NumberRow
+        label="水平偏移 (%)"
+        value={pct(pose?.x, design.width)}
+        min={-100}
+        max={100}
+        step={0.5}
+        onChange={(percent) => patch({ x: Math.round(CAMERA_PX(percent, design.width)) })}
+      />
+      <NumberRow
+        label="垂直偏移 (%)"
+        value={pct(pose?.y, design.height)}
+        min={-100}
+        max={100}
+        step={0.5}
+        onChange={(percent) => patch({ y: Math.round(CAMERA_PX(percent, design.height)) })}
+      />
+    </>
+  )
+}
+
+const serializeCamera = (cam) => {
+  if (!cam) return undefined
+  const pose = (p) => ({
+    zoom: round2(p?.zoom ?? 1),
+    x: Math.round(p?.x ?? 0),
+    y: Math.round(p?.y ?? 0),
+  })
+  return {
+    from: pose(cam.from),
+    to: pose(cam.to),
+    ...(Number(cam.duration) > 0 ? { duration: round2(cam.duration) } : {}),
+    ...(cam.ease && cam.ease !== 'linear' ? { ease: cam.ease } : {}),
+  }
+}
+
 // Panel view -> config keys. Shared by the live state and by every variant, so a
 // variant writes exactly what the sliders show: sentinels become null / '', the
 // sequence text becomes an array, offsets are rounded to whole design pixels.
@@ -267,10 +327,12 @@ function viewToConfig(view) {
   const clips = {}
   for (const [name, clip] of Object.entries(view?.entrance?.clips ?? {})) {
     if (!name) continue
+    const camera = serializeCamera(clip?.camera)
     clips[name] = {
       backdrop: clip?.backdrop ?? '',
       backdropTransform: layerOf(clip?.backdropTransform),
       modelTransform: layerOf(clip?.modelTransform),
+      ...(camera ? { camera } : {}),
     }
   }
   return {
@@ -409,6 +471,7 @@ export default function CompositionPanel({
       backdrop: clip?.backdrop ?? '',
       backdropTransform: clip?.backdropTransform ?? NEUTRAL,
       modelTransform: clip?.modelTransform ?? NEUTRAL,
+      camera: clip?.camera ?? null,
       ...patch,
     })
   }
@@ -694,6 +757,81 @@ export default function CompositionPanel({
               design={design}
               onChange={patchActive}
             />
+          )}
+
+          {isEntrance && clipName && (
+            <>
+              <div className="section-head">
+                <h3>{clipName} 运镜</h3>
+                {clip?.camera ? (
+                  <button type="button" className="btn btn-mini" onClick={() => patchClip({ camera: null })}>
+                    移除运镜
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-mini"
+                    onClick={() =>
+                      patchClip({
+                        camera: {
+                          from: { zoom: 1, x: 0, y: 0 },
+                          to: { zoom: 1.15, x: 0, y: 0 },
+                          duration: 0,
+                          ease: 'easeOut',
+                        },
+                      })
+                    }
+                  >
+                    添加运镜
+                  </button>
+                )}
+              </div>
+              {clip?.camera ? (
+                <>
+                  <CameraPoseFields
+                    title="起点"
+                    pose={clip.camera.from}
+                    design={design}
+                    onChange={(from) => patchClip({ camera: { ...clip.camera, from } })}
+                  />
+                  <CameraPoseFields
+                    title="终点"
+                    pose={clip.camera.to}
+                    design={design}
+                    onChange={(to) => patchClip({ camera: { ...clip.camera, to } })}
+                  />
+                  <NumberRow
+                    label="时长 (秒)"
+                    value={clip.camera.duration ?? 0}
+                    min={0}
+                    max={15}
+                    step={0.1}
+                    onChange={(duration) => patchClip({ camera: { ...clip.camera, duration } })}
+                  />
+                  <span className="hint">0 = 跟随该段动画时长；运镜在该段内按此时长循环播放。</span>
+                  <select
+                    className="full-select"
+                    value={clip.camera.ease ?? 'linear'}
+                    aria-label="运镜缓动"
+                    onChange={(event) => patchClip({ camera: { ...clip.camera, ease: event.target.value } })}
+                  >
+                    {CAMERA_EASES.map((value) => (
+                      <option key={value} value={value}>
+                        {value === 'linear' && '匀速'}
+                        {value === 'easeIn' && '先慢后快'}
+                        {value === 'easeOut' && '先快后慢'}
+                        {value === 'easeInOut' && '两端慢中间快'}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="hint">
+                    起点与终点同时存在才会播放；偏移是相对画面中心的画布百分比。整幅画面（背景+人物）一起推拉平移。
+                  </p>
+                </>
+              ) : (
+                <p className="hint">这一段没有运镜，播放时画面静止。添加后起点、终点同时生效才会动。</p>
+              )}
+            </>
           )}
 
           {isEntrance && (
