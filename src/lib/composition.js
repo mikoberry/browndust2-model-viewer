@@ -111,15 +111,17 @@ export function resolveCamera(spec, design = FALLBACK_DESIGN) {
   }
 }
 
-// Pose at `elapsed` seconds into the clip. Loops over `duration` (or the clip's
-// own length when the camera carries no duration of its own). Returns null when
-// there is nothing to move — callers treat that as "keep the frame still".
+// Pose at `elapsed` seconds into the clip. Runs once over `duration` (or the
+// clip's own length when the camera carries no duration of its own) and holds
+// the destination pose past the end — a camera move is a single shot, not a
+// loop. Returns null when there is nothing to move — callers treat that as
+// "keep the frame still".
 export function cameraAt(camera, elapsed, fallbackDuration = 0) {
   if (!camera) return null
   const duration = camera.duration > 0 ? camera.duration : fallbackDuration
   if (!(duration > 0)) return null
   const ease = CAMERA_EASE_FNS[camera.ease] ?? CAMERA_EASE_FNS.linear
-  const t = ease((Number(elapsed) / duration) % 1)
+  const t = ease(Math.min(Number(elapsed) / duration, 1))
   const { from, to } = camera
   return {
     zoom: from.zoom + (to.zoom - from.zoom) * t,
