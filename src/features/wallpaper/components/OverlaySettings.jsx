@@ -201,6 +201,8 @@ const POINTER_CLICK_VARIANTS = [
   { value: 'sparks', label: () => t('pointer.sparks') },
   { value: 'bubble', label: () => t('pointer.bubble') },
   { value: 'firework', label: () => t('pointer.firework') },
+  // Click-only "like" reaction; the trail channel has no heart variant.
+  { value: 'heart', label: () => t('pointer.heart') },
 ]
 
 // Offsets are viewport percentages in this drawer. A config file may hold a CSS

@@ -512,6 +512,7 @@ const MESSAGES = {
   'page.playEntrance': { zh: '播放开场动画', en: 'Play entrance', ja: '登場アニメを再生', ko: '등장 애니메이션 재생' },
   'page.switchArtwork': { zh: '切换立绘', en: 'Switch artwork', ja: '立ち絵を切り替え', ko: '일러스트 전환' },
   'page.openSettings': { zh: '打开构图设置', en: 'Open composition settings', ja: '構図設定を開く', ko: '구도 설정 열기' },
+  'page.burst': { zh: '喷射', en: 'Burst', ja: '噴射', ko: '분사' },
   'page.settingsHint': { zh: '构图设置（S）', en: 'Composition settings (S)', ja: '構図設定（S）', ko: '구도 설정 (S)' },
   'page.noModels': {
     zh: 'model-library/ 里没有可识别的模型',
@@ -576,6 +577,7 @@ const MESSAGES = {
   'pointer.firework': { zh: '烟花', en: 'Firework', ja: '花火', ko: '불꽃' },
   'pointer.ripple': { zh: '涟漪', en: 'Ripple', ja: '波紋', ko: '물결' },
   'pointer.sparks': { zh: '星尘', en: 'Sparks', ja: '火花', ko: '스파크' },
+  'pointer.heart': { zh: '爱心', en: 'Hearts', ja: 'ハート', ko: '하트' },
 
   // ---- language switcher ----
   'lang.label': { zh: '语言', en: 'Language', ja: '言語', ko: '언어' },
