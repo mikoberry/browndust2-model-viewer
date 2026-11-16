@@ -234,7 +234,7 @@ function FrameWidget({ spec, paused }) {
 //
 // Visible from the first frame, unlike the spotlight: weather does not need a
 // pointer. `follow` only moves the light once the host delivers events.
-function LightWidget({ spec, paused }) {
+function LightWidget({ spec, accent, paused }) {
   const radius = Number(spec.size)
   return (
     <LightFx
@@ -249,7 +249,11 @@ function LightWidget({ spec, paused }) {
       follow={spec.follow}
       smoothing={spec.smoothing}
       sway={spec.sway}
-      colorHex={spec.color || undefined}
+      // Same fallback as every other widget: pinned colour → theme accent.
+      // (WallKit's per-variant preset colour is NOT in the chain — the drawer
+      // promises "empty = follow the theme colour", and with moonlight that
+      // preset would otherwise always beat the accent.)
+      colorHex={spec.color || accent || undefined}
       paused={paused}
     />
   )
@@ -287,7 +291,7 @@ export default function WallpaperOverlay({ config }) {
       )}
       {/* Directly under the controls (its own z-index 2, above the particles):
           the picture is lit, the widgets are not washed out. */}
-      {light?.enabled && <LightWidget spec={light} paused={paused} />}
+      {light?.enabled && <LightWidget spec={light} accent={accent} paused={paused} />}
       {pointer?.enabled && (
         <PointerFx
           trail={pointer.trail}

@@ -641,7 +641,7 @@ function LightPanel({ spec, accent, onChange, onReset }) {
             <ColorField
               label={t('widget.color')}
               value={spec.color ?? ''}
-              fallback={preset?.color ?? accent}
+              fallback={accent}
               onChange={(color) => onChange({ color })}
             />
             <SliderField

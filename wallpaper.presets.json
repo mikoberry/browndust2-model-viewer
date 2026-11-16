@@ -8,6 +8,817 @@
     "每个条目就是一份完整的 wallpaper.config.json 内容，可原样复制回去用。"
   ],
   "presets": {
+    "": {
+      "modelId": "Valze/Night_of_Betrayal/cutscene_char068001",
+      "backdrop": "char068001_back_2_upscayl_2x_upscayl-standard-4x.webp",
+      "backdropTransform": {
+        "scale": 1.9,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "modelTransform": {
+        "scale": 2.3,
+        "offsetX": -1249,
+        "offsetY": 0
+      },
+      "animation": "loop_2",
+      "expression": null,
+      "clickAnimation": {
+        "enabled": false,
+        "name": ""
+      },
+      "entrance": {
+        "autoplay": true,
+        "blend": 0.9,
+        "clips": {
+          "cut_A": {
+            "backdrop": "char068001_back_1_upscayl_2x_upscayl-standard-4x.webp",
+            "backdropTransform": {
+              "scale": 2,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 3,
+              "offsetX": -1843,
+              "offsetY": 0
+            },
+            "camera": {
+              "from": {
+                "zoom": 1,
+                "x": 0,
+                "y": 0
+              },
+              "to": {
+                "zoom": 1.4,
+                "x": 0,
+                "y": 0
+              },
+              "ease": "easeIn"
+            }
+          },
+          "cut_B": {
+            "backdrop": "char068001_back_2_upscayl_2x_upscayl-standard-4x.webp",
+            "backdropTransform": {
+              "scale": 2,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 3.5,
+              "offsetX": -1843,
+              "offsetY": 0
+            },
+            "camera": {
+              "from": {
+                "zoom": 2.5,
+                "x": -1372,
+                "y": -768
+              },
+              "to": {
+                "zoom": 1.15,
+                "x": 0,
+                "y": 0
+              },
+              "ease": "easeOut"
+            }
+          }
+        }
+      },
+      "sequence": [
+        "cut_A",
+        "cut_B",
+        "loop_2"
+      ],
+      "design": {
+        "width": 2048,
+        "height": 2048
+      },
+      "variant": "",
+      "variants": [
+        {
+          "id": "v1",
+          "label": "v1",
+          "backdrop": "char068001_back_1_upscayl_2x_upscayl-standard-4x.webp",
+          "backdropTransform": {
+            "scale": 2.1,
+            "offsetX": 0,
+            "offsetY": 0
+          },
+          "modelTransform": {
+            "scale": 2.6,
+            "offsetX": -1638,
+            "offsetY": 72
+          },
+          "animation": "loop",
+          "expression": null,
+          "clickAnimation": {
+            "enabled": false,
+            "name": ""
+          },
+          "entrance": {
+            "blend": 0.9,
+            "clips": {
+              "cut_A": {
+                "backdrop": "char068001_back_1_upscayl_2x_upscayl-standard-4x.webp",
+                "backdropTransform": {
+                  "scale": 2,
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "modelTransform": {
+                  "scale": 3,
+                  "offsetX": -1843,
+                  "offsetY": 0
+                }
+              },
+              "cut_B": {
+                "backdrop": "char068001_back_2_upscayl_2x_upscayl-standard-4x.webp",
+                "backdropTransform": {
+                  "scale": 2,
+                  "offsetX": 0,
+                  "offsetY": 0
+                },
+                "modelTransform": {
+                  "scale": 3.5,
+                  "offsetX": -1843,
+                  "offsetY": 0
+                }
+              }
+            }
+          },
+          "sequence": [
+            "cut_A",
+            "cut_B",
+            "loop_2"
+          ]
+        }
+      ]
+    },
+    "Blade/Young_Lady/cutscene_char003703": {
+      "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
+      "modelId": "Blade/Young_Lady/cutscene_char003703",
+      "backdrop": "Char003703_back2_upscayl_2x_upscayl-standard-4x.webp",
+      "design": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fit": "contain",
+      "letterbox": "#101319",
+      "bleed": true,
+      "overscan": 1.5,
+      "model": {
+        "heightRatio": 1,
+        "widthRatio": 1,
+        "alignX": 0.5,
+        "alignY": 0.5
+      },
+      "backdropTransform": {
+        "scale": 1.25,
+        "offsetX": 0,
+        "offsetY": 22
+      },
+      "modelTransform": {
+        "scale": 2.45,
+        "offsetX": 1536,
+        "offsetY": 389
+      },
+      "parallax": {
+        "enabled": true,
+        "backdrop": 1,
+        "model": 1.5
+      },
+      "animation": "loop",
+      "expression": null,
+      "animationStart": 0,
+      "sequence": [
+        "cut_a",
+        "cut_b",
+        "loop_2"
+      ],
+      "variant": "",
+      "variants": [
+        {
+          "id": "v1",
+          "label": "v1",
+          "backdrop": "Char003703_back1_upscayl_2x_upscayl-standard-4x.webp",
+          "backdropTransform": {
+            "scale": 1.3,
+            "offsetX": 0,
+            "offsetY": 22
+          },
+          "modelTransform": {
+            "scale": 1.51,
+            "offsetX": 1037,
+            "offsetY": 162
+          },
+          "animation": "loop_2",
+          "expression": null,
+          "clickAnimation": {
+            "enabled": false,
+            "name": ""
+          },
+          "parallax": {
+            "enabled": true,
+            "backdrop": 1,
+            "model": 1.5
+          }
+        }
+      ],
+      "clickAnimation": {
+        "enabled": false,
+        "name": ""
+      },
+      "entrance": {
+        "autoplay": false,
+        "blend": 0.9,
+        "clips": {
+          "cut_a": {
+            "backdrop": "Char003703_back1_upscayl_2x_upscayl-standard-4x.webp",
+            "backdropTransform": {
+              "scale": 1.4,
+              "offsetX": 0,
+              "offsetY": -81
+            },
+            "modelTransform": {
+              "scale": 1.7,
+              "offsetX": 1152,
+              "offsetY": 65
+            }
+          },
+          "cut_b": {
+            "backdrop": "Char003703_back2_upscayl_2x_upscayl-standard-4x.webp",
+            "backdropTransform": {
+              "scale": 1.25,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 2.68,
+              "offsetX": 1680,
+              "offsetY": 383
+            }
+          }
+        }
+      },
+      "skin": "",
+      "speed": 1,
+      "zoom": 1,
+      "overlay": {
+        "accent": "#a8c4ff",
+        "clock": {
+          "enabled": true,
+          "placement": "minimal",
+          "color": "",
+          "anchor": "top-left",
+          "offsetX": 5,
+          "offsetY": 10,
+          "size": 130,
+          "use24Hour": true,
+          "tilt": true,
+          "beat": true,
+          "beatIntensity": 100,
+          "beatCurve": 1,
+          "labels": {
+            "locale": "zh-CN",
+            "aria": "当前时间与日期"
+          }
+        },
+        "spectrum": {
+          "enabled": false,
+          "variant": "ring",
+          "color": "",
+          "anchor": "bottom-center",
+          "width": "46vh",
+          "height": "46vh",
+          "offsetX": 0,
+          "offsetY": 0,
+          "size": 100,
+          "barCount": 128,
+          "intensity": 100,
+          "curve": 1
+        },
+        "albumArt": {
+          "enabled": true,
+          "variant": "vinyl",
+          "color": "",
+          "textColor": "",
+          "spectrum": "on",
+          "anchor": "center-left",
+          "offsetX": 5,
+          "offsetY": 0,
+          "size": 120,
+          "labels": {
+            "aria": "正在播放"
+          }
+        },
+        "ambient": {
+          "enabled": true,
+          "variant": "stars",
+          "color": "",
+          "density": 150,
+          "size": 200,
+          "intensity": 100,
+          "speed": 200
+        },
+        "light": {
+          "enabled": true,
+          "variant": "moon",
+          "anchor": "top-right",
+          "offsetX": -10,
+          "offsetY": -10,
+          "intensity": 60,
+          "size": 0,
+          "rays": 1,
+          "flare": 1,
+          "follow": 0.06,
+          "smoothing": 1,
+          "sway": 16,
+          "color": "#cedeff"
+        },
+        "pointer": {
+          "enabled": false,
+          "trail": true,
+          "click": true,
+          "trailVariant": "glow",
+          "clickVariant": "ripple",
+          "color": "",
+          "size": 100,
+          "intensity": 100
+        },
+        "spotlight": {
+          "enabled": false,
+          "size": 1000,
+          "feather": 0.6,
+          "dim": 0.6,
+          "glow": 0.05,
+          "darkColor": "#000000",
+          "lightColor": "#ffffff",
+          "smoothing": 0.35
+        },
+        "frame": {
+          "enabled": false,
+          "variant": "corners",
+          "inset": 28,
+          "thickness": 1.5,
+          "length": 56,
+          "size": 1,
+          "color": "",
+          "grid": "none",
+          "ticks": false,
+          "rec": "off",
+          "timecode": false,
+          "labels": false,
+          "theme": "light"
+        }
+      }
+    },
+    "Blade/Tender_Dream/cutscene_char003793": {
+      "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
+      "modelId": "Blade/Tender_Dream/cutscene_char003793",
+      "backdrop": "char003793_back2.webp",
+      "design": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fit": "contain",
+      "letterbox": "#101319",
+      "bleed": true,
+      "overscan": 1.5,
+      "model": {
+        "heightRatio": 1,
+        "widthRatio": 1,
+        "alignX": 0.5,
+        "alignY": 0.5
+      },
+      "backdropTransform": {
+        "scale": 1.18,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "modelTransform": {
+        "scale": 1.9,
+        "offsetX": 1056,
+        "offsetY": 151
+      },
+      "parallax": {
+        "enabled": true,
+        "backdrop": 1,
+        "model": 1.5
+      },
+      "animation": null,
+      "expression": null,
+      "animationStart": 0,
+      "sequence": [
+        "A_cut",
+        "B_cut",
+        "loop_2"
+      ],
+      "variant": "v1",
+      "variants": [
+        {
+          "id": "v1",
+          "label": "v1",
+          "backdrop": "char003793_back1.webp",
+          "backdropTransform": {
+            "scale": 1.2,
+            "offsetX": 0,
+            "offsetY": 0
+          },
+          "modelTransform": {
+            "scale": 2.45,
+            "offsetX": 1344,
+            "offsetY": 324
+          },
+          "animation": "loop_1",
+          "expression": null,
+          "clickAnimation": {
+            "enabled": true,
+            "name": "A_cut"
+          },
+          "sequence": [
+            "A_cut",
+            "B_cut",
+            "loop_2"
+          ],
+          "parallax": {
+            "enabled": true,
+            "backdrop": 1,
+            "model": 1.5
+          }
+        }
+      ],
+      "clickAnimation": {
+        "enabled": true,
+        "name": "B_cut"
+      },
+      "entrance": {
+        "autoplay": true,
+        "blend": 0.9,
+        "clips": {
+          "A_cut": {
+            "backdrop": "char003793_back1.webp",
+            "backdropTransform": {
+              "scale": 1.3,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 2.55,
+              "offsetX": 1440,
+              "offsetY": 281
+            }
+          },
+          "B_cut": {
+            "backdrop": "char003793_back2.webp",
+            "backdropTransform": {
+              "scale": 1.3,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 2.9,
+              "offsetX": 1536,
+              "offsetY": 0
+            }
+          }
+        }
+      },
+      "skin": "",
+      "speed": 1,
+      "zoom": 1,
+      "overlay": {
+        "accent": "#a8c4ff",
+        "clock": {
+          "enabled": true,
+          "placement": "minimal",
+          "color": "",
+          "anchor": "top-left",
+          "offsetX": 5,
+          "offsetY": 10,
+          "size": 130,
+          "use24Hour": true,
+          "tilt": true,
+          "beat": true,
+          "beatIntensity": 100,
+          "beatCurve": 1,
+          "labels": {
+            "locale": "zh-CN",
+            "aria": "当前时间与日期"
+          }
+        },
+        "spectrum": {
+          "enabled": false,
+          "variant": "ring",
+          "color": "",
+          "anchor": "bottom-center",
+          "width": "46vh",
+          "height": "46vh",
+          "offsetX": 0,
+          "offsetY": 0,
+          "size": 100,
+          "barCount": 128,
+          "intensity": 100,
+          "curve": 1
+        },
+        "albumArt": {
+          "enabled": true,
+          "variant": "vinyl",
+          "color": "",
+          "textColor": "",
+          "spectrum": "on",
+          "anchor": "center-left",
+          "offsetX": 5,
+          "offsetY": 0,
+          "size": 120,
+          "labels": {
+            "aria": "正在播放"
+          }
+        },
+        "ambient": {
+          "enabled": true,
+          "variant": "stars",
+          "color": "",
+          "density": 150,
+          "size": 200,
+          "intensity": 100,
+          "speed": 200
+        },
+        "light": {
+          "enabled": true,
+          "variant": "moon",
+          "anchor": "top-right",
+          "offsetX": -10,
+          "offsetY": -10,
+          "intensity": 60,
+          "size": 0,
+          "rays": 1,
+          "flare": 1,
+          "follow": 0.06,
+          "smoothing": 1,
+          "sway": 16,
+          "color": "#cedeff"
+        },
+        "pointer": {
+          "enabled": false,
+          "trail": true,
+          "click": true,
+          "trailVariant": "glow",
+          "clickVariant": "ripple",
+          "color": "",
+          "size": 100,
+          "intensity": 100
+        },
+        "spotlight": {
+          "enabled": true,
+          "size": 1300,
+          "feather": 0.6,
+          "dim": 0.6,
+          "glow": 0.05,
+          "darkColor": "#000000",
+          "lightColor": "#ffffff",
+          "smoothing": 0.35
+        },
+        "frame": {
+          "enabled": false,
+          "variant": "corners",
+          "inset": 28,
+          "thickness": 1.5,
+          "length": 56,
+          "size": 1,
+          "color": "",
+          "grid": "none",
+          "ticks": false,
+          "rec": "off",
+          "timecode": false,
+          "labels": false,
+          "theme": "light"
+        }
+      }
+    },
+    "Aquila/Sealed_Desires/cutscene_char067902": {
+      "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
+      "modelId": "Aquila/Sealed_Desires/cutscene_char067902",
+      "backdrop": "char067902_back2.webp",
+      "design": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fit": "contain",
+      "letterbox": "#101319",
+      "bleed": true,
+      "overscan": 1.5,
+      "model": {
+        "heightRatio": 1,
+        "widthRatio": 1,
+        "alignX": 0.5,
+        "alignY": 0.5
+      },
+      "backdropTransform": {
+        "scale": 1.15,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "modelTransform": {
+        "scale": 1.4,
+        "offsetX": 288,
+        "offsetY": 0
+      },
+      "parallax": {
+        "enabled": true,
+        "backdrop": -1,
+        "model": 2
+      },
+      "animation": null,
+      "expression": null,
+      "animationStart": 0,
+      "sequence": [
+        "cut_A",
+        "cut_B",
+        "loop_2"
+      ],
+      "variant": "v1",
+      "variants": [
+        {
+          "id": "v1",
+          "label": "v1",
+          "backdrop": "char067902_back1.webp",
+          "backdropTransform": {
+            "scale": 1.15,
+            "offsetX": 0,
+            "offsetY": 0
+          },
+          "modelTransform": {
+            "scale": 1.3,
+            "offsetX": 0,
+            "offsetY": 54
+          },
+          "animation": "loop",
+          "expression": null,
+          "clickAnimation": {
+            "enabled": true,
+            "name": "cut_A"
+          },
+          "sequence": [
+            "cut_A",
+            "cut_B",
+            "loop_2"
+          ],
+          "parallax": {
+            "enabled": true,
+            "backdrop": -1,
+            "model": 2
+          }
+        }
+      ],
+      "clickAnimation": {
+        "enabled": true,
+        "name": "cut_B"
+      },
+      "entrance": {
+        "autoplay": true,
+        "blend": 0.9,
+        "clips": {
+          "cut_A": {
+            "backdrop": "char067902_back1.webp",
+            "backdropTransform": {
+              "scale": 1.1,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.55,
+              "offsetX": 0,
+              "offsetY": 43
+            }
+          },
+          "cut_B": {
+            "backdrop": "char067902_back2.webp",
+            "backdropTransform": {
+              "scale": 1.25,
+              "offsetX": 0,
+              "offsetY": 0
+            },
+            "modelTransform": {
+              "scale": 1.75,
+              "offsetX": 288,
+              "offsetY": 0
+            }
+          }
+        }
+      },
+      "skin": "",
+      "speed": 1,
+      "zoom": 1,
+      "overlay": {
+        "accent": "#a8515b",
+        "clock": {
+          "enabled": true,
+          "placement": "minimal",
+          "color": "",
+          "anchor": "center-left",
+          "offsetX": 15,
+          "offsetY": -15,
+          "size": 110,
+          "use24Hour": true,
+          "tilt": true,
+          "beat": true,
+          "beatIntensity": 100,
+          "beatCurve": 1,
+          "labels": {
+            "locale": "zh-CN",
+            "aria": "当前时间与日期"
+          }
+        },
+        "spectrum": {
+          "enabled": false,
+          "variant": "curve",
+          "color": "",
+          "anchor": "bottom-center",
+          "width": "100vw",
+          "height": "14vh",
+          "offsetX": 0,
+          "offsetY": 0,
+          "size": 100,
+          "barCount": 128,
+          "intensity": 100,
+          "curve": 1
+        },
+        "albumArt": {
+          "enabled": true,
+          "variant": "cd",
+          "color": "",
+          "textColor": "",
+          "spectrum": "auto",
+          "anchor": "center-left",
+          "offsetX": 4,
+          "offsetY": 7.5,
+          "size": 100,
+          "labels": {
+            "aria": "正在播放"
+          }
+        },
+        "ambient": {
+          "enabled": false,
+          "variant": "snow",
+          "color": "",
+          "density": 100,
+          "size": 100,
+          "intensity": 100,
+          "speed": 100
+        },
+        "light": {
+          "enabled": false,
+          "variant": "sun",
+          "anchor": "top-left",
+          "offsetX": 0,
+          "offsetY": 0,
+          "intensity": 100,
+          "size": 0,
+          "rays": 1,
+          "flare": 1,
+          "follow": 0.45,
+          "smoothing": 0.12,
+          "sway": 16,
+          "color": ""
+        },
+        "pointer": {
+          "enabled": false,
+          "trail": true,
+          "click": true,
+          "trailVariant": "glow",
+          "clickVariant": "ripple",
+          "color": "",
+          "size": 100,
+          "intensity": 100
+        },
+        "spotlight": {
+          "enabled": false,
+          "size": 420,
+          "feather": 0.45,
+          "dim": 0.72,
+          "glow": 0.22,
+          "darkColor": "#000000",
+          "lightColor": "#ffffff",
+          "smoothing": 0.05
+        },
+        "frame": {
+          "enabled": false,
+          "variant": "corners",
+          "inset": 28,
+          "thickness": 1.5,
+          "length": 56,
+          "size": 1,
+          "color": "",
+          "grid": "none",
+          "ticks": false,
+          "rec": "off",
+          "timecode": false,
+          "labels": false,
+          "theme": "light"
+        }
+      }
+    },
     "Aquila/Savage_Warrior/cutscene_char067901": {
       "_readme": "壁纸配置。改完刷新页面即生效，无需重新构建；打包后这个文件就在 index.html 旁边。省略任何字段都会沿用代码里的内置默认值，以 _ 开头的键只当注释。偏移量单位是设计画布像素，也可以写 '10%'（相对设计画布宽 / 高）。",
       "modelId": "Aquila/Savage_Warrior/cutscene_char067901",

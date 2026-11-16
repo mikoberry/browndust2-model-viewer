@@ -48,6 +48,8 @@ export {
   resolveLayerTransform,
   resolveEntrance,
   clipFraming,
+  resolveCamera,
+  cameraAt,
   NEUTRAL_LAYER,
   blendLayerTransform,
   resolveDesign,

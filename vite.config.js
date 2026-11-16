@@ -1,8 +1,27 @@
 import { defineConfig } from 'vite'
+import { rmSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { wallkitWE } from 'wallkit/we/vite'
 import { modelLibraryPlugin } from './scripts/model-library-plugin.mjs'
 import { embedBuildPlugin } from './scripts/embed-build-plugin.mjs'
+
+const rootDir = dirname(fileURLToPath(import.meta.url))
+
+// `public/spitz.mp3` exists only for the dev-only WE audio simulator
+// (`?sim=1`, see src/features/wallpaper/audioSim.js). Vite copies public/
+// verbatim into every build, so this plugin drops it from dist/ afterwards —
+// the shipped wallpaper never needs a 9 MB song file. Dev keeps serving it.
+function dropDevOnlyAssets() {
+  return {
+    name: 'drop-dev-only-assets',
+    apply: 'build',
+    writeBundle() {
+      rmSync(resolve(rootDir, 'dist/spitz.mp3'), { force: true })
+    },
+  }
+}
 
 // `BD2_EMBED=1` (set by `npm run build:we`) produces a bundle that requests
 // nothing at runtime, because Wallpaper Engine 2.8.797+ (CEF 156) blocks every
@@ -27,6 +46,7 @@ export default defineConfig({
     react(),
     wallkitWE(),
     ...(embed ? [embedBuildPlugin()] : []),
+    dropDevOnlyAssets(),
   ],
   base: './',
   // wallkit ships raw JSX + CSS (git dependency, no build step), so it has to
