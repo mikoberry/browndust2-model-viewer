@@ -35,11 +35,14 @@ const COMPOSE_DEFAULTS = {
   // its own); the full chain then only runs from 「播放完整入场」.
   solo: false,
   backdrop: 'auto',
-  // Design canvas override: { width, height } pins a scene resolution (the
-  // default is 1080p, matching the wallpaper's built-in `design`); null = follow
-  // the chosen backdrop's native pixel size. Mirrors the `design` key of
-  // wallpaper.config.json.
+  // Design canvas override: { width, height } pins a scene resolution; null =
+  // follow the chosen backdrop's native pixel size. Mirrors the `design` key of
+  // wallpaper.config.json. The STARTER value below is the placeholder the
+  // square-of-backdrop default replaces once the backdrop size is known;
+  // `designTouched` marks "someone already picked a size" (the config file or
+  // the user), which stops that snap-in.
   design: DEFAULT_DESIGN,
+  designTouched: false,
   backdropTransform: { scale: 1, offsetX: 0, offsetY: 0 },
   modelTransform: { scale: 1, offsetX: 0, offsetY: 0 },
   entrance: {
@@ -65,9 +68,16 @@ const NEUTRAL_LAYER = { scale: 1, offsetX: 0, offsetY: 0 }
 // '16:9' letterboxes a box with exactly the shape of a 1920×1080 screen inside
 // it. The composition is resolution independent, so only the RATIO matters —
 // 1366×768 and 1920×1080 show the same picture.
-const STAGE_ASPECT = 16 / 9
+// Stage viewport shape: common RATIOS × 横/竖 orientation, shown as two
+// intersecting button groups. Key encoding: `<ratio>-<orientation>`, e.g.
+// '16:9-h'; the preview letterboxes to exactly that screen shape.
+const STAGE_DEFAULT_RATIO = '16:9-h'
 
-// Largest 16:9 box that fits inside `box`, centred by the caller.
+const parseRatio = (key) => {
+  const [w, h] = String(key).split(':').map(Number)
+  return w > 0 && h > 0 ? w / h : 16 / 9
+}
+
 function fitAspect(box, aspect) {
   if (!(box.width > 0) || !(box.height > 0)) return null
   const width = Math.min(box.width, box.height * aspect)
@@ -287,11 +297,18 @@ export default function ViewerPage({ onGoWallpaper }) {
           ...prev,
           ...base,
           ...(initialView ?? {}),
-          // `design` is global (never per variant): null = follow the image.
-          design:
-            toFinite(raw.design?.width, 0) > 0 && toFinite(raw.design?.height, 0) > 0
-              ? { width: toFinite(raw.design.width, 0), height: toFinite(raw.design.height, 0) }
-              : null,
+          // `design` is global (never per variant). An explicit file value
+          // (number pair or null) wins AND counts as tuned; an absent key
+          // leaves the untouched default for the square-of-backdrop snap-in.
+          ...(raw.design !== undefined
+            ? {
+                design:
+                  toFinite(raw.design?.width, 0) > 0 && toFinite(raw.design?.height, 0) > 0
+                    ? { width: toFinite(raw.design.width, 0), height: toFinite(raw.design.height, 0) }
+                    : null,
+                designTouched: true,
+              }
+            : {}),
         }))
         // The model usually loads after this fetch, but a cached asset can win
         // the race. If one is already on screen and it is the config's model,
@@ -350,7 +367,13 @@ export default function ViewerPage({ onGoWallpaper }) {
 
   const updateCompose = useCallback(
     (patch) => {
-      setCompose((prev) => ({ ...prev, ...patch }))
+      setCompose((prev) => ({
+        ...prev,
+        ...patch,
+        // Any explicit design pick (preset / square / custom / null) is a
+        // decision — stop the square-of-backdrop default from snapping in.
+        ...('design' in patch ? { designTouched: true } : {}),
+      }))
       // Config values land on whatever is being edited (base or the active
       // variant); UI-only keys stay in compose.
       const { view } = splitPatch(patch)
@@ -496,6 +519,20 @@ export default function ViewerPage({ onGoWallpaper }) {
     () => pickBackdrop(selected, baseView.backdrop),
     [selected, baseView.backdrop],
   )
+
+  // Default canvas choice: 「方形·跟随背景」. Until the config file or the user
+  // picks a size (`designTouched`), the square of the base backdrop's longer
+  // side snaps in as soon as that size is known.
+  useEffect(() => {
+    if (composeRef.current.designTouched) return
+    if (!(designBackdrop?.width > 0) || !(designBackdrop?.height > 0)) return
+    const side = Math.max(designBackdrop.width, designBackdrop.height)
+    setCompose((prev) =>
+      prev.designTouched || (prev.design?.width === side && prev.design?.height === side)
+        ? prev
+        : { ...prev, design: { width: side, height: side } },
+    )
+  }, [designBackdrop])
   const composeDesign = useMemo(
     () => resolveDesign(designBackdrop, compose.design),
     [designBackdrop, compose.design],
@@ -657,14 +694,17 @@ export default function ViewerPage({ onGoWallpaper }) {
 
   // ---- stage viewport ------------------------------------------------------
   // The WebGL canvas is sized from its own CSS box, so letterboxing the stage
-  // frame is all it takes to preview the wallpaper's 1080p framing: both the
-  // debug camera and the composition preview measure the frame, not the
-  // workspace. The frame element is ALWAYS rendered (only its box changes), so
-  // switching shape never remounts the stage / reloads the asset.
-  // Default '16:9': the composition is judged against a real wallpaper screen
-  // shape, so the letterboxed 1920×1080 box is the sensible starting point.
-  // 'auto' (fills the workspace) stays available in the toolbar.
-  const [stageRatio, setStageRatio] = useState('16:9')
+  // frame is all it takes to preview the wallpaper's framing on a chosen screen
+  // shape: both the debug camera and the composition preview measure the frame,
+  // not the workspace. The frame element is ALWAYS rendered (only its box
+  // changes), so switching shape never remounts the stage / reloads the asset.
+  // Default: the 1080P landscape box — the composition is judged against a real
+  // wallpaper screen shape from the start.
+  const [stageRatio, setStageRatio] = useState(STAGE_DEFAULT_RATIO)
+  // Cross-region overlay: mark the central band that survives cover cropping on
+  // BOTH the selected ratio and its inverse (16:9 ↔ 9:16, 4:3 ↔ 3:4, …), so one
+  // composition works on both orientations of that screen family.
+  const [showCross, setShowCross] = useState(false)
   const stageAreaRef = useRef(null)
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 })
   useEffect(() => {
@@ -676,10 +716,31 @@ export default function ViewerPage({ onGoWallpaper }) {
     observer.observe(node)
     return () => observer.disconnect()
   }, [])
+  // '<ratio>-<orientation>' -> aspect: portrait (…-v) inverts the ratio, e.g.
+  // 16:9-h = 1.78 wide, 16:9-v = 0.5625 tall.
+  const stageAspect = (() => {
+    const [ratio, orient] = String(stageRatio).split('-')
+    const a = parseRatio(ratio)
+    return orient === 'v' ? 1 / a : a
+  })()
   const stageFrame = useMemo(
-    () => (stageRatio === '16:9' ? fitAspect(stageSize, STAGE_ASPECT) : null),
-    [stageRatio, stageSize],
+    () => fitAspect(stageSize, stageAspect),
+    [stageAspect, stageSize],
   )
+  // Cover-crop window of aspect A over the canvas (design pixels, centred):
+  // full width share fw = min(1, A·ch/cw), full height share fh = min(1, cw/(A·ch)).
+  // The intersection with the INVERSE ratio's window is the cross region.
+  const crossRegion = useMemo(() => {
+    if (!showCross || !compose.on) return null
+    const cw = composeDesign.width
+    const ch = composeDesign.height
+    if (!(cw > 0) || !(ch > 0)) return null
+    const a = stageAspect
+    const b = 1 / a
+    const wFrac = Math.min(1, (a * ch) / cw, (b * ch) / cw)
+    const hFrac = Math.min(1, cw / (a * ch), cw / (b * ch))
+    return { width: cw * wFrac, height: ch * hFrac }
+  }, [showCross, compose.on, composeDesign, stageAspect])
   const stageFrameStyle = stageFrame
     ? {
         left: (stageSize.width - stageFrame.width) / 2,
@@ -780,6 +841,9 @@ export default function ViewerPage({ onGoWallpaper }) {
             onBackgroundChange={handleBackgroundChange}
             stageRatio={stageRatio}
             onStageRatioChange={setStageRatio}
+            showCross={showCross}
+            onShowCrossChange={setShowCross}
+            composeOn={compose.on}
           />
         </header>
 
@@ -788,15 +852,19 @@ export default function ViewerPage({ onGoWallpaper }) {
           ref={stageAreaRef}
         >
           {/* The reference backdrop image belongs to the preview box, not to the
-              workspace, so it stays aligned with the model when the 16:9 frame
-              is letterboxed. The surrounding area keeps the flat colour. */}
+              workspace, so it stays aligned with the model when the frame is
+              letterboxed. The surrounding area keeps the flat colour. */}
           <div
             className={`stage-frame${stageFrame ? ' is-locked' : ''}`}
             style={compose.on ? stageFrameStyle : { ...stageFrameStyle, ...stageStyle }}
           >
-            {/* Visible marker of the locked ratio (e.g. 16:9). Only while the
-                frame is actually letterboxed; 'auto' has no shape to announce. */}
-            {stageFrame && <span className="stage-frame-ratio">{stageRatio}</span>}
+            {/* Visible marker of the locked shape (ratio + orientation). The
+                frame is always letterboxed now — there is no 'auto' shape. */}
+            {stageFrame && (
+              <span className="stage-frame-ratio">
+                {stageRatio.split('-')[0]} · {stageRatio.endsWith('-v') ? '竖屏' : '横屏'}
+              </span>
+            )}
             {/* The wrapper is always present so toggling the preview never remounts
                 the WebGL stage (and thus never reloads the asset). */}
             <CompositionStage
@@ -805,6 +873,7 @@ export default function ViewerPage({ onGoWallpaper }) {
               backdropUrl={compose.on && previewBackdrop ? assetUrl(previewBackdrop.url) : ''}
               transform={composeBackdropT}
               overscan={COMPOSE_OVERSCAN}
+              crossRect={crossRegion}
             >
               <SpineStage
                 model={selected}
@@ -874,6 +943,8 @@ export default function ViewerPage({ onGoWallpaper }) {
           state: compose,
           design: composeDesign,
           backdrops: selected.backdrops,
+          // Native size of the base backdrop, for the square-canvas preset.
+          designBackdrop,
           animations: info?.animations ?? [],
           playingSequence,
           // The copied config must target the model being TUNED, not whatever

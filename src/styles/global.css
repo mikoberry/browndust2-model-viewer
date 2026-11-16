@@ -66,11 +66,11 @@ code {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 236px minmax(460px, 1fr) 296px;
+  grid-template-columns: 236px minmax(460px, 1fr) 460px;
   gap: 1px;
   height: 100vh;
   min-height: 620px;
-  min-width: 980px;
+  min-width: 1140px;
   background: var(--border);
 }
 
@@ -302,6 +302,15 @@ code {
   margin-left: auto;
 }
 
+/* Right-aligned column: row 1 = viewport buttons, row 2 = background select. */
+.toolbar-side {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 20px;
@@ -510,6 +519,20 @@ code {
 .compose-surface {
   position: absolute;
   inset: 0;
+}
+
+/* Cross-region overlay: the central band that survives cover cropping on BOTH
+   a 16:9 and a 9:16 screen. Design-pixel sized, centred, drawn above both
+   layers; purely informational (no pointer events). */
+.compose-cross {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(220, 60, 60, 0.9);
+  background: rgba(220, 60, 60, 0.08);
+  pointer-events: none;
+  z-index: 3;
 }
 
 .stage-canvas-wrap {
@@ -830,6 +853,11 @@ code {
 .num-row input[type='range'] {
   width: 100%;
   accent-color: var(--accent);
+}
+
+/* Custom design-size row: label + width box + × + height box + unit, one line. */
+.num-row.is-design-size {
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
 }
 
 .num-input,
@@ -1235,7 +1263,9 @@ code {
    place and the replay button grows above it. */
 .wallpaper-tools {
   position: fixed;
-  right: calc(16px * var(--ui-scale));
+  /* 64px = 16px inset + one Windows taskbar width (~48px), so the rail stays
+     clear when the taskbar sits on the right edge of the screen. */
+  right: calc(64px * var(--ui-scale));
   /* 48px clears the Windows taskbar (~40-48px), which Wallpaper Engine lets
      overlap the viewport — at 16px the bottom button was partially covered. */
   bottom: calc(48px * var(--ui-scale));
@@ -1328,7 +1358,8 @@ code {
 
 .wallpaper-follow {
   position: fixed;
-  right: calc(16px * var(--ui-scale));
+  /* Same right offset as .wallpaper-tools (16px inset + one taskbar width). */
+  right: calc(64px * var(--ui-scale));
   bottom: calc(132px * var(--ui-scale));
   z-index: 6;
   display: flex;

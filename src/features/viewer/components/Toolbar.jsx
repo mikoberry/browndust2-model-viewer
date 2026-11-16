@@ -3,12 +3,19 @@ import { assetUrl } from '../../../lib/assets.js'
 const SPEEDS = [0.25, 0.5, 1, 1.5, 2]
 const clamp = (v, min, max) => Math.min(max, Math.max(min, v))
 
-// Stage viewport shape. 'auto' keeps the old behaviour (the canvas fills the
-// workspace and follows the window); '16:9' letterboxes a 1920×1080-shaped box
-// so the framing can be judged as it will look on a real wallpaper screen.
-const RATIOS = [
-  { key: 'auto', label: '自适应', title: '预览铺满工作区，宽度 / 高度随窗口变化' },
-  { key: '16:9', label: '1920×1080', title: '按 1920×1080（16:9）比例居中预览，看构图更接近真实屏幕' },
+// Stage viewport shape: common screen RATIOS × orientation, shown as two
+// intersecting button groups (ratio + 横/竖) instead of one button per combo.
+// Key encoding: `<ratio>-<orientation>`, e.g. '16:9-h'.
+const VIEWPORT_RATIOS = [
+  { key: '16:9', label: '16:9', title: '桌面 / 1080P、2K 显示器' },
+  { key: '21:9', label: '21:9', title: '带鱼屏' },
+  { key: '16:10', label: '16:10', title: '部分笔记本 / 2K 显示器' },
+  { key: '4:3', label: '4:3', title: '平板' },
+  { key: '1:1', label: '1:1', title: '正方形（横竖裁切完全对称）' },
+]
+const VIEWPORT_ORIENTS = [
+  { key: 'h', label: '横屏' },
+  { key: 'v', label: '竖屏' },
 ]
 
 export default function Toolbar({
@@ -21,6 +28,9 @@ export default function Toolbar({
   backdropUrl,
   stageRatio,
   onStageRatioChange,
+  showCross,
+  onShowCrossChange,
+  composeOn = false,
   onTogglePlay,
   onLoopChange,
   onSpeedChange,
@@ -98,43 +108,75 @@ export default function Toolbar({
         </button>
       </div>
 
-      <div className="toolbar-group toolbar-group-right">
-        <span className="inline-field" title="预览区比例">
-          视口
-        </span>
-        {RATIOS.map((item) => {
-          const active = stageRatio === item.key
-          return (
-            <button
-              key={item.key}
-              type="button"
-              className={`btn${active ? ' is-on' : ''}`}
-              aria-pressed={active}
-              title={item.title}
-              onClick={() => onStageRatioChange(item.key)}
-            >
-              {item.label}
-            </button>
-          )
-        })}
-        <span className="toolbar-divider" />
-        <label className="inline-field" title="画布背景">
-          背景
-          <select value={bgValue} onChange={handleBgChange} aria-label="画布背景">
-            <option value="checker">棋盘格</option>
-            <option value="light">浅灰</option>
-            <option value="dark">深灰</option>
-            {backdropGroups.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.items.map((item) => (
-                  <option key={item.source} value={`image:${assetUrl(item.url)}`}>
-                    {item.label}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+      <div className="toolbar-side">
+        <div className="toolbar-group">
+          <span className="inline-field" title="预览区比例">
+            视口
+          </span>
+          {VIEWPORT_RATIOS.map((item) => {
+            const [ratio, orient] = stageRatio.split('-')
+            const active = ratio === item.key
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`btn${active ? ' is-on' : ''}`}
+                aria-pressed={active}
+                title={item.title}
+                onClick={() => onStageRatioChange(`${item.key}-${orient || 'h'}`)}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+          {VIEWPORT_ORIENTS.map((item) => {
+            const active = stageRatio.endsWith(`-${item.key}`)
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`btn${active ? ' is-on' : ''}`}
+                aria-pressed={active}
+                onClick={() => onStageRatioChange(`${stageRatio.split('-')[0]}-${item.key}`)}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+          <button
+            type="button"
+            className={`btn${showCross ? ' is-on' : ''}`}
+            aria-pressed={showCross}
+            disabled={!composeOn}
+            title={
+              composeOn
+                ? '在画布上标出当前比例与其倒数（如 16:9 ↔ 9:16）cover 裁切后都可见的交叠区域'
+                : '先开启构图预览（右侧「固定设计画布预览」）再标交叉区域'
+            }
+            onClick={() => onShowCrossChange(!showCross)}
+          >
+            交叉区域
+          </button>
+        </div>
+        <div className="toolbar-group">
+          <label className="inline-field" title="画布背景">
+            背景
+            <select value={bgValue} onChange={handleBgChange} aria-label="画布背景">
+              <option value="checker">棋盘格</option>
+              <option value="light">浅灰</option>
+              <option value="dark">深灰</option>
+              {backdropGroups.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.items.map((item) => (
+                    <option key={item.source} value={`image:${assetUrl(item.url)}`}>
+                      {item.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
     </div>
   )

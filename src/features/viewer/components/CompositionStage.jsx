@@ -18,6 +18,9 @@ export default function CompositionStage({
   backdropUrl = '',
   transform = null,
   overscan = 1.5,
+  // Central band (design pixels) visible after cover cropping on BOTH a 16:9
+  // and a 9:16 screen — the toolbar's 「交叉区域」 overlay. Null hides it.
+  crossRect = null,
   children,
 }) {
   const wrapRef = useRef(null)
@@ -68,6 +71,18 @@ export default function CompositionStage({
           {children}
         </div>
       </div>
+      {/* Cross overlay lives in VIEWPORT pixels, not design pixels: inside the
+          scaled canvas a 1px border would shrink to a sub-pixel hairline and
+          all but vanish. The canvas is centred in the viewport and the crop
+          windows are centred on the canvas, so a viewport-centred box is the
+          same region — just always readable. */}
+      {crossRect && scale > 0 && (
+        <div
+          className="compose-cross"
+          style={{ width: crossRect.width * scale, height: crossRect.height * scale }}
+          title="当前屏幕方向与其相反方向 cover 裁切后都可见的交叠区域"
+        />
+      )}
     </div>
   )
 }

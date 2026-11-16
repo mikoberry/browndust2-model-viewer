@@ -44,7 +44,76 @@ export const DESIGN_PRESETS = [
   { label: '2560×1440', width: 2560, height: 1440 },
   { label: '1080×1920', width: 1080, height: 1920 },
   { label: '1440×2560', width: 1440, height: 2560 },
+  { label: '2048×2048', width: 2048, height: 2048 },
 ]
+
+// Cap for the custom size inputs: large enough for 4K-class canvases, small
+// enough that a typo cannot ask the GPU for something absurd.
+const DESIGN_SIZE_MIN = 64
+const DESIGN_SIZE_MAX = 8192
+
+// Two plain number boxes for a hand-written canvas size. Local drafts keep
+// typing "2048" from being rewritten mid-keystroke, same trick as NumberRow.
+function CustomDesignFields({ design, onChange }) {
+  const [draftW, setDraftW] = useState(design ? String(Math.round(design.width)) : '')
+  const [draftH, setDraftH] = useState(design ? String(Math.round(design.height)) : '')
+
+  useEffect(() => {
+    setDraftW(design ? String(Math.round(design.width)) : '')
+    setDraftH(design ? String(Math.round(design.height)) : '')
+  }, [design?.width, design?.height])
+
+  // Editing one axis keeps the other; if the other axis is still unset it
+  // defaults to the same number (a square), which is the common intent.
+  const commit = (axis, text) => {
+    const next = Math.round(Number(text))
+    if (!Number.isFinite(next)) return
+    const clamped = clamp(next, DESIGN_SIZE_MIN, DESIGN_SIZE_MAX)
+    const width = axis === 'width' ? clamped : Number(draftW) > 0 ? clamp(Math.round(Number(draftW)), DESIGN_SIZE_MIN, DESIGN_SIZE_MAX) : clamped
+    const height = axis === 'height' ? clamped : Number(draftH) > 0 ? clamp(Math.round(Number(draftH)), DESIGN_SIZE_MIN, DESIGN_SIZE_MAX) : clamped
+    onChange({ width, height })
+  }
+
+  const width = design?.width > 0 ? Math.round(design.width) : 0
+  const height = design?.height > 0 ? Math.round(design.height) : 0
+  return (
+    <div className="num-row is-design-size">
+      <span className="num-label">自定义</span>
+      <input
+        className="num-input"
+        type="number"
+        min={DESIGN_SIZE_MIN}
+        max={DESIGN_SIZE_MAX}
+        step={64}
+        value={draftW}
+        aria-label="画布宽度"
+        placeholder="宽"
+        onChange={(event) => {
+          setDraftW(event.target.value)
+          commit('width', event.target.value)
+        }}
+        onBlur={() => setDraftW(width ? String(width) : '')}
+      />
+      <span className="num-label">×</span>
+      <input
+        className="num-input"
+        type="number"
+        min={DESIGN_SIZE_MIN}
+        max={DESIGN_SIZE_MAX}
+        step={64}
+        value={draftH}
+        aria-label="画布高度"
+        placeholder="高"
+        onChange={(event) => {
+          setDraftH(event.target.value)
+          commit('height', event.target.value)
+        }}
+        onBlur={() => setDraftH(height ? String(height) : '')}
+      />
+      <span className="num-label">px</span>
+    </div>
+  )
+}
 
 // Kept identical to the built-in `design` in features/wallpaper/config.js, and
 // to the shipped value in public/wallpaper.config.json.
@@ -273,6 +342,10 @@ export default function CompositionPanel({
   state,
   design,
   backdrops,
+  // The BASE backdrop's picked item, with its NATIVE width / height. "方形·跟随背景"
+  // squares the canvas on its longer side; without it the button falls back to
+  // the resolved design's longer side.
+  designBackdrop,
   animations,
   playingSequence,
   fileConfig,
@@ -342,6 +415,16 @@ export default function CompositionPanel({
 
   const composed = { backdrop: state.backdropTransform, model: state.modelTransform }
   const activeSpec = isEntrance ? clip?.[layerKeyOf(layerKey)] ?? NEUTRAL : composed[layerKey]
+
+  // Square canvas side: the BASE backdrop's longer native edge (what the
+  // wallpaper's "follow the backdrop" would resolve to), or the resolved
+  // canvas when the image size is unknown.
+  const backdropNative = designBackdrop?.width > 0 && designBackdrop?.height > 0 ? designBackdrop : null
+  const squareSide = Math.round(
+    backdropNative ? Math.max(backdropNative.width, backdropNative.height) : Math.max(design.width, design.height),
+  )
+  const isSquareFollow =
+    Number(state.design?.width) === squareSide && Number(state.design?.height) === squareSide
 
   const patchActive = (patch) => {
     if (!isEntrance) {
@@ -452,6 +535,14 @@ export default function CompositionPanel({
             >
               跟随背景
             </button>
+            <button
+              type="button"
+              className={`btn${isSquareFollow ? ' is-on' : ''}`}
+              onClick={() => onPatch({ design: { width: squareSide, height: squareSide } })}
+              title={`以背景较长边（${squareSide}px）为边长的正方形画布：配 fit: cover 时横竖屏裁切对称`}
+            >
+              方形·跟随背景
+            </button>
             {DESIGN_PRESETS.map((preset) => {
               const on =
                 Number(state.design?.width) === preset.width && Number(state.design?.height) === preset.height
@@ -468,6 +559,7 @@ export default function CompositionPanel({
               )
             })}
           </div>
+          <CustomDesignFields design={state.design} onChange={(design) => onPatch({ design })} />
           <BackdropSelect
             label="全局背景"
             value={state.backdrop}
