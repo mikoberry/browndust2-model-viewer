@@ -300,18 +300,26 @@ export default function WallpaperPage() {
     // offsets are relative to the picture's CENTRE and a zoom should keep that
     // centre put. Compensate: under origin 0 0, scale(z) pushes the centre by
     // (z-1)*size/2, so the translation must add it back.
-    let transform = `scale(${scale})`
+    //
+    // The half-size is the DESIGN canvas, a constant — never read it back from
+    // `el.style.width`/`height`. Reading layout here every frame forced a
+    // synchronous reflow on each camera frame, which is exactly why moving
+    // cameras stuttered while a still composition did not. `translate3d` keeps
+    // the whole picture on its own compositor layer, so the per-frame write is
+    // a transform update only (no layout, no paint).
+    let transform = `scale3d(${scale}, ${scale}, 1)`
     if (pose) {
-      const cx = (Number(el.style.width) || 0) / 2
-      const cy = (Number(el.style.height) || 0) / 2
+      const cx = design.width / 2
+      const cy = design.height / 2
       const tx = (pose.dx + cx * (1 - pose.zoom)) * scale
       const ty = (pose.dy + cy * (1 - pose.zoom)) * scale
-      transform = `translate(${tx}px, ${ty}px) scale(${scale * pose.zoom})`
+      const z = scale * pose.zoom
+      transform = `translate3d(${tx}px, ${ty}px, 0) scale3d(${z}, ${z}, 1)`
     }
     if (transform === camLastRef.current) return
     camLastRef.current = transform
     el.style.transform = transform
-  }, [])
+  }, [design.width, design.height])
 
   // ---- scene warm-up gate -------------------------------------------------
   // The FIRST entrance must not start while anything is still decoding — that
@@ -581,6 +589,13 @@ export default function WallpaperPage() {
   // element is the WRAPPER (not an <img>): it owns --backdrop-*, and both
   // stacked layers inherit them, so a cross-fade moves both together.
   const [backdropStackEl, setBackdropStackEl] = useState(null)
+  // The STATIC composition scale `scale(k)` (design canvas -> screen). The
+  // render loop must render at `dpr * scale(k)` resolution to stay sharp, but
+  // it must NOT track the per-frame camera zoom: the camera moves scale the
+  // whole picture via CSS transform, and letting that reach the canvas bitmap
+  // size rebuilt the WebGL buffer every frame (the stutter). Carried as a ref
+  // so a viewport resize re-renders but the loop reads it without a re-render.
+  const displayScaleRef = useRef(1)
   const stageDesign = useMemo(
     () => ({
       ...design,
@@ -589,6 +604,7 @@ export default function WallpaperPage() {
       transformRef: modelTransformRef,
       overscan,
       offsetRef: modelOffsetRef,
+      displayScaleRef,
     }),
     [design, config, modelT, overscan],
   )
@@ -708,6 +724,9 @@ export default function WallpaperPage() {
   const scale = designScale(design, viewport, config.fit)
   // Camera-move driver reads this every frame (see handleSequenceFrame).
   camScaleRef.current = scale
+  // The WebGL render loop reads this to size its drawing buffer at the STATIC
+  // composition resolution, ignoring the transient camera zoom (see stageDesign).
+  displayScaleRef.current = scale
   const left = (viewport.width - design.width * scale) / 2
   const top = (viewport.height - design.height * scale) / 2
 
@@ -763,7 +782,7 @@ export default function WallpaperPage() {
           height: design.height,
           left,
           top,
-          transform: `scale(${scale})`,
+          transform: `scale3d(${scale}, ${scale}, 1)`,
         }}
       >
         {/* Gated on `ready` like the stage: before the config settles this

@@ -481,12 +481,24 @@ export default function SpineStage(props) {
       const d = live.design
       const cssWidth = Math.max(canvas.clientWidth, 1)
       const cssHeight = Math.max(canvas.clientHeight, 1)
-      // The wallpaper scales its fixed design canvas with a CSS transform, so
-      // the canvas is displayed larger/smaller than its layout size. Render at
-      // the real displayed size to keep it sharp on any screen; with no
-      // transform displayScale is 1 and the debug viewer behaves as before.
-      const rect = canvas.getBoundingClientRect()
-      const displayScale = Math.max(rect.width / cssWidth, rect.height / cssHeight, 0.01)
+      // How much the canvas is displayed larger than its layout size, so the
+      // drawing buffer can be sized up to stay sharp. The wallpaper drives the
+      // WHOLE picture (both layers) through one CSS transform, and the camera
+      // moves add a per-frame zoom on top of the static `scale(k)`. Reading the
+      // display size via getBoundingClientRect() folds that transient zoom in,
+      // which resized the drawing buffer every frame and stuttered. The caller
+      // therefore hands the STATIC scale in as `design.displayScaleRef`; the
+      // camera zoom is a compositor-only scale and must never reach this buffer.
+      // Falls back to the measured rect when the caller provides none (debug
+      // viewer without a composition canvas).
+      const displayScaleRef = d?.displayScaleRef?.current
+      const displayScale =
+        displayScaleRef > 0
+          ? displayScaleRef
+          : (() => {
+              const rect = canvas.getBoundingClientRect()
+              return Math.max(rect.width / cssWidth, rect.height / cssHeight, 0.01)
+            })()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       // The wallpaper may render on a surface `overscan` times larger than the
       // design canvas. Divide the density cap by it so the maximum bitmap size
