@@ -437,7 +437,12 @@ export default function SpineStage(props) {
           sequenceStageRef.current = clip
           live.onSequenceStage?.(clip)
         }
-        if (clip) live.onSequenceFrame?.(clip, head.trackTime ?? 0)
+        // `getAnimationTime()` is the loop-wrapped time (resets each pass for a
+        // looping entry); `trackTime` only grows, so a looping clip would drive
+        // the camera move once and then hold the destination pose forever.
+        // Camera moves must restart whenever their clip loops — e.g. the
+        // viewer's single-shot preview.
+        if (clip) live.onSequenceFrame?.(clip, head.getAnimationTime())
       }
       if (sequencePendingRef.current) {
         const head = state.getCurrent(0)
