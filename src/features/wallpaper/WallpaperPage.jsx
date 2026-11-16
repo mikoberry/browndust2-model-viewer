@@ -33,6 +33,7 @@ import WallpaperOverlay from './components/WallpaperOverlay.jsx'
 import FollowPrompt from './components/FollowPrompt.jsx'
 import useParallax from './useParallax.js'
 import useCompositionBlend from './useCompositionBlend.js'
+import { burstCommand, normalizeBurstConfig } from './burst.js'
 import { t, useLocale } from '../../lib/i18n.js'
 import { startAudioSim } from './audioSim.js'
 import {
@@ -163,6 +164,23 @@ export default function WallpaperPage() {
   const configOverlay = config.overlay
   const [overlayTweaks, setOverlayTweaks] = useState(configOverlay)
   useEffect(() => setOverlayTweaks(configOverlay), [configOverlay])
+
+  // Burst effect (`overlay.burst`): a per-build setting with no drawer UI. The
+  // corner button appears only when the shipped `wallpaper.config.json` arms it,
+  // and clicking it fires one wallkit `BurstFx` burst at the configured point.
+  //
+  // Read from `config` (the merged document), NOT `overlayTweaks`: applying an
+  // overlay preset rewrites that state from the BUILT-IN defaults, which carry no
+  // `burst` key, so the button would disarm itself mid-session.
+  const burstSpec = useMemo(() => normalizeBurstConfig(configOverlay?.burst), [configOverlay])
+  // Wallkit's only imperative handle in this project: no command, no effect.
+  const burstRef = useRef(null)
+  const fireBurst = useCallback(() => {
+    const fx = burstRef.current
+    if (!fx || !burstSpec) return
+    const { kind, opts } = burstCommand(burstSpec)
+    fx.burst(kind, opts)
+  }, [burstSpec])
 
   // Click-to-play: edited live in the composition drawer, same rule as the
   // layer tweaks (config wins until touched, nothing persisted until 记录配置).
@@ -491,6 +509,15 @@ export default function WallpaperPage() {
   // one value to differ from. `blend` / per-clip framing stay per-variant.
   const [autoplayOverride, setAutoplayOverride] = useState(null)
   const autoplay = autoplayOverride ?? entrance.autoplay
+  // How many buttons the bottom-right column will render. The one-shot follow
+  // card sits directly above that column and is positioned in CSS from this
+  // count (`--tools-count`), so adding a button here can never make the card
+  // overlap it. Order matters only for the CSS arithmetic.
+  const toolCount =
+    (burstSpec ? 1 : 0) +
+    (looks.length > 1 ? 1 : 0) +
+    (autoplay && sequence.length > 0 ? 1 : 0) +
+    1
   // Gated on the warm-up gate: before the scene is ready (and armed) the
   // sequence waits, so the opening cut never plays over cold resources.
   const wantsEntrance = sceneReady && entranceArmed && (autoplay || sequenceToken > 0)
@@ -782,7 +809,13 @@ export default function WallpaperPage() {
   }, [config.animation, config.expression, info])
 
   return (
-    <div className="wallpaper-page" style={{ backgroundColor: config.letterbox }}>
+    <div
+      className="wallpaper-page"
+      // `--tools-count` is read by `.wallpaper-follow` (global.css): the nudge
+      // card sits above the button column and has to clear however many buttons
+      // this build renders.
+      style={{ backgroundColor: config.letterbox, '--tools-count': toolCount }}
+    >
       {ready && config.bleed && backdropUrl && (
         <div
           className="wallpaper-bleed"
@@ -871,7 +904,7 @@ export default function WallpaperPage() {
 
       {/* Viewport-anchored, so the composition scale never moves the widgets.
           Renders nothing when every `overlay.*.enabled` is false. */}
-      {ready && <WallpaperOverlay config={overlayTweaks} />}
+      {ready && <WallpaperOverlay config={overlayTweaks} burst={burstSpec} burstRef={burstRef} />}
 
       {/* Opt-in FPS / frame-time / heap readout (`?stats=1`, `#stats`, or
           localStorage 'bd2.stats' = '1'). Renders nothing otherwise, so
@@ -894,7 +927,39 @@ export default function WallpaperPage() {
       )}
 
       {!settingsOpen && (
-        <div className={`wallpaper-tools${looks.length > 1 ? ' has-variants' : ''}`}>
+        <div className="wallpaper-tools">
+          {/* Party popper, first in the column (top of the rail). This button
+              exists only when `overlay.burst` is configured: it is a build
+              setting, so there is no drawer control to show on the other side.
+              One click = one burst, positioned by the config, at the picture's
+              own layer (BurstFx, not the model). */}
+          {burstSpec && (
+            <button
+              type="button"
+              className="wallpaper-burst-toggle"
+              onClick={fireBurst}
+              aria-label={t('page.burst')}
+              title={t('page.burst')}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                {/* Cone, wide mouth to the upper left; the scatter leaves it
+                    that way, so the icon reads as a popper even at 34px. */}
+                <path d="M10.4 17.6 16.9 10.8l3.7 9.8z" />
+                <path d="M8.4 13.4c-2.2-.9-3.7-2.7-4.2-5" />
+                <path d="M11.4 9.4c.6-2.1 2.1-3.7 4.1-4.6" />
+                <circle cx="4.2" cy="4.6" r="1" />
+                <circle cx="8.2" cy="3.2" r="0.8" />
+                <circle cx="12.8" cy="3.4" r="0.7" />
+              </svg>
+            </button>
+          )}
           {/* Cycle to the next look. Deliberately a cycle rather than a picker:
               it is one hidden handle in the corner, and the drawer already has
               the explicit chips for choosing a specific one. */}

@@ -27,6 +27,7 @@ import { AlbumArt } from 'wallkit/components/album-art'
 import { AmbientFx } from 'wallkit/components/ambient-fx'
 import { LightFx } from 'wallkit/components/light-fx'
 import { PointerFx } from 'wallkit/components/pointer-fx'
+import { BurstFx } from 'wallkit/components/burst-fx'
 import { Spotlight } from 'wallkit/components/spotlight'
 import { Frame, formatTimecode } from 'wallkit/components/frame'
 import {
@@ -259,14 +260,19 @@ function LightWidget({ spec, accent, paused }) {
   )
 }
 
-export default function WallpaperOverlay({ config }) {
+export default function WallpaperOverlay({ config, burst = null, burstRef = null }) {
   const overlay = config ?? WALLPAPER.overlay
   const paused = useWallpaperPaused()
   const { accent, clock, spectrum, albumArt, ambient, light, pointer, spotlight, frame } = overlay
 
-  const anyEnabled = [clock, spectrum, albumArt, ambient, light, pointer, spotlight, frame].some(
-    (item) => item?.enabled,
-  )
+  const anyEnabled =
+    [clock, spectrum, albumArt, ambient, light, pointer, spotlight, frame].some(
+      (item) => item?.enabled,
+    ) ||
+    // A burst-only wallpaper still needs this layer: `BurstFx` owns the canvas
+    // the corner button paints into, so the layer must mount even with every
+    // regular widget switched off.
+    Boolean(burst)
   if (!anyEnabled) return null
 
   return (
@@ -301,6 +307,21 @@ export default function WallpaperOverlay({ config }) {
           colorHex={pointer.color || undefined}
           size={pointer.size}
           intensity={pointer.intensity}
+          paused={paused}
+        />
+      )}
+      {/* Command-triggered, not input-driven: nothing plays until the corner
+          button calls `burstRef.current.burst(kind, opts)`. The layer paints on
+          its own z-index 4, level with the pointer effects. Colour / size /
+          intensity / speed are only DEFAULTS here — every fire passes its own
+          values, so editing the config changes the very next click. */}
+      {burst && (
+        <BurstFx
+          ref={burstRef}
+          colorHex={burst.color || undefined}
+          size={burst.size}
+          intensity={burst.intensity}
+          speed={burst.speed}
           paused={paused}
         />
       )}

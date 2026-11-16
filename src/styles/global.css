@@ -1283,7 +1283,8 @@ code {
 
 .wallpaper-settings-toggle,
 .wallpaper-play-toggle,
-.wallpaper-variant-toggle {
+.wallpaper-variant-toggle,
+.wallpaper-burst-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1296,7 +1297,7 @@ code {
   color: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(calc(6px * var(--ui-scale)));
   opacity: 0.25;
-  transition: opacity 0.18s ease, background 0.18s ease;
+  transition: opacity 0.18s ease, background 0.18s ease, transform 0.12s ease;
 }
 
 .wallpaper-settings-toggle:hover,
@@ -1304,7 +1305,9 @@ code {
 .wallpaper-play-toggle:hover,
 .wallpaper-play-toggle:focus-visible,
 .wallpaper-variant-toggle:hover,
-.wallpaper-variant-toggle:focus-visible {
+.wallpaper-variant-toggle:focus-visible,
+.wallpaper-burst-toggle:hover,
+.wallpaper-burst-toggle:focus-visible {
   opacity: 1;
   background: rgba(12, 16, 24, 0.78);
   outline: none;
@@ -1312,9 +1315,17 @@ code {
 
 .wallpaper-settings-toggle svg,
 .wallpaper-play-toggle svg,
-.wallpaper-variant-toggle svg {
+.wallpaper-variant-toggle svg,
+.wallpaper-burst-toggle svg {
   width: calc(20px * var(--ui-scale));
   height: calc(20px * var(--ui-scale));
+}
+
+/* Pressed state: the burst button is the only one that shoots something, so a
+   short press "kick" is the only feedback it gets (the effect lands elsewhere
+   in the frame, potentially off the pointer). */
+.wallpaper-burst-toggle:active {
+  transform: scale(0.92);
 }
 
 /* One-shot follow/like nudge, anchored above the bottom-right tool column
@@ -1365,7 +1376,12 @@ code {
   position: fixed;
   /* Same right offset as .wallpaper-tools (16px inset + one taskbar width). */
   right: calc(64px * var(--ui-scale));
-  bottom: calc(132px * var(--ui-scale));
+  /* The card sits directly above the tool column, so its offset is derived from
+     how many buttons that column holds this build (`--tools-count`, set on
+     `.wallpaper-page` by WallpaperPage): one button is a 34px disc, every
+     neighbour adds 34 + 8. The column starts at 48px (taskbar clearance) and
+     the card keeps one 8px gap above it — hence `48 + 42 * count`. */
+  bottom: calc((48px + 42px * var(--tools-count, 2)) * var(--ui-scale));
   z-index: 6;
   display: flex;
   align-items: center;
@@ -1383,13 +1399,6 @@ code {
   animation: wallpaper-follow-in 0.3s ease both;
   pointer-events: auto;
   user-select: none;
-}
-
-/* The look switcher adds a third toggle to the column, so the card moves up by
-   exactly one button + gap (34 + 8). `.wallpaper-tools` is rendered whenever the
-   drawer is closed and precedes the card in the DOM, hence the sibling rule. */
-.wallpaper-tools.has-variants ~ .wallpaper-follow {
-  bottom: calc(174px * var(--ui-scale));
 }
 
 .wallpaper-follow-text {

@@ -746,9 +746,23 @@ export async function loadWallpaperConfig(options) {
   const base = await readConfigFile(options)
   const recorded = readRecordedConfig()
   if (!recorded) return base
+  // `overlay.burst` is a BUILD setting: it lives only in the shipped file (no
+  // drawer tab, see features/wallpaper/burst.js). A snapshot recorded by an
+  // older build may still carry it, so drop it before merging — otherwise the
+  // value frozen on this machine would shadow the file the author is editing.
+  const snapshot = recorded.config
+  if (isPlainObject(snapshot?.overlay) && 'burst' in snapshot.overlay) {
+    const { burst: _ignored, ...restOverlay } = snapshot.overlay
+    return {
+      ...base,
+      config: mergeConfig(base.config, { ...snapshot, overlay: restOverlay }),
+      source: 'user',
+      recordedAt: recorded.at,
+    }
+  }
   return {
     ...base,
-    config: mergeConfig(base.config, recorded.config),
+    config: mergeConfig(base.config, snapshot),
     source: 'user',
     recordedAt: recorded.at,
   }

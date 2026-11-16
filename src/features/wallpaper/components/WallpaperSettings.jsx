@@ -568,10 +568,15 @@ function configPayload(config, spec, overlay, autoplay, clickAnimation, speed, v
   }
   const list = Array.isArray(config.variants) ? config.variants : []
   const active = variantId && list.some((item) => item?.id === variantId) ? variantId : ''
+  // `overlay.burst` is a BUILD setting (hand-edited in `wallpaper.config.json`,
+  // no drawer tab — see features/wallpaper/burst.js). Writing it into the
+  // snapshot would shadow the file this machine is about to edit, so the
+  // recorded document drops the key and the shipped file stays authoritative.
+  const { burst: _burst, ...recordedOverlay } = overlay ?? {}
   const payload = {
     _readme: CONFIG_README,
     ...config,
-    overlay,
+    overlay: recordedOverlay,
     variant: active,
   }
   // One switch for the whole wallpaper: recorded here, whatever look is on
