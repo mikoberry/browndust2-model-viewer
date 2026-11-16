@@ -500,10 +500,16 @@ export default function SpineStage(props) {
               return Math.max(rect.width / cssWidth, rect.height / cssHeight, 0.01)
             })()
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
-      // The wallpaper may render on a surface `overscan` times larger than the
-      // design canvas. Divide the density cap by it so the maximum bitmap size
-      // (and so GPU memory) stays what the exact-canvas case used to allow.
-      const surfaceOverscan = d?.overscan > 0 ? d.overscan : 1
+      // The render surface may be larger than the design canvas (overscan, and
+      // now potentially the whole viewport once effectiveOverscan grows it over
+      // the letterbox). Measure the ACTUAL surface-to-canvas ratio rather than
+      // trusting a configured number, so the density cap stays correct however
+      // the surface is sized.
+      const surfaceOverscan = Math.max(
+        d?.overscan > 0 ? d.overscan : 1,
+        cssWidth / (d?.width > 0 ? d.width : cssWidth),
+        cssHeight / (d?.height > 0 ? d.height : cssHeight),
+      )
       const renderScale = Math.min(dpr * displayScale, 3 / surfaceOverscan)
       const width = Math.max(1, Math.round(cssWidth * renderScale))
       const height = Math.max(1, Math.round(cssHeight * renderScale))
@@ -527,10 +533,12 @@ export default function SpineStage(props) {
       let camY
       if (fixed) {
         // Design pixels -> device pixels, one factor shared with the backdrop.
-        // The canvas bitmap covers a surface `overscan` times the design canvas,
-        // so dividing by d.width alone would over-scale the camera. Either way
-        // k === renderScale, so the composition maths is identical.
-        const k = width / (d.width * surfaceOverscan)
+        // The canvas bitmap covers `cssWidth` layout pixels (the render surface,
+        // whatever its overscan / letterbox size), so `k = width / cssWidth` is
+        // exactly renderScale and is correct for ANY surface size — the old
+        // `width / (d.width * overscan)` only held when the surface was exactly
+        // `overscan` × the design canvas and broke once it covered the viewport.
+        const k = width / cssWidth
         const m = d.model ?? {}
         const hRatio = m.heightRatio > 0 ? m.heightRatio : 1
         const wRatio = m.widthRatio > 0 ? m.widthRatio : 1

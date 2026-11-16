@@ -54,6 +54,7 @@ export {
   blendLayerTransform,
   resolveDesign,
   designScale,
+  effectiveOverscan,
   resolveParallax,
   parallaxOffset,
   layerRect,

@@ -10,7 +10,7 @@
 // remounts the WebGL stage (no asset reload while tuning).
 
 import { useEffect, useRef, useState } from 'react'
-import { designScale } from '../../../lib/composition.js'
+import { designScale, effectiveOverscan } from '../../../lib/composition.js'
 
 export default function CompositionStage({
   enabled = false,
@@ -61,7 +61,10 @@ export default function CompositionStage({
   }
 
   const t = transform ?? { scale: 1, dx: 0, dy: 0 }
-  const surface = Math.max(overscan, 1)
+  // Grow the overscan surface to cover the whole viewport (not just the design
+  // canvas), so a panned/enlarged model reaches the true screen edge instead of
+  // being clipped by the WebGL bitmap mid-letterbox (square canvas on 16:9).
+  const surface = effectiveOverscan(design, viewport, overscan)
   const left = (viewport.width - design.width * scale) / 2
   const top = (viewport.height - design.height * scale) / 2
 

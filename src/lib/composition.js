@@ -196,6 +196,28 @@ export function designScale(design, viewport, fit = 'contain') {
   return fit === 'cover' ? Math.max(sx, sy) : Math.min(sx, sy)
 }
 
+// The overscan render surface is `overscan` times the design canvas, but it must
+// still cover the WHOLE viewport once the canvas is contain-fitted. A square (or
+// portrait) canvas inside a wide viewport leaves letterbox wider than the fixed
+// margin, so the WebGL bitmap ends short of the screen edge and a panned /
+// enlarged model gets hard-clipped mid-letterbox (≈8% in on a 16:9 screen). The
+// configured value is therefore a MINIMUM; the surface grows to whichever the
+// viewport needs on each axis, so the model can always reach the true screen
+// edge. Pure: importable from Node for the invariants.
+export function effectiveOverscan(design, viewport, min = 1) {
+  const dw = design?.width ?? 0
+  const dh = design?.height ?? 0
+  const vw = viewport?.width ?? 0
+  const vh = viewport?.height ?? 0
+  if (!(dw > 0 && dh > 0 && vw > 0 && vh > 0)) return Math.max(min, 1)
+  const s = designScale(design, viewport, 'contain')
+  if (!(s > 0)) return Math.max(min, 1)
+  // surface on-screen size = design * overscan * s must cover the viewport.
+  const neededW = vw / (dw * s)
+  const neededH = vh / (dh * s)
+  return Math.max(min, neededW, neededH)
+}
+
 // Normalise the parallax block. Unknown / missing numbers fall back to 0 so a
 // half-written config file cannot make a layer jump.
 export function resolveParallax(spec = {}) {

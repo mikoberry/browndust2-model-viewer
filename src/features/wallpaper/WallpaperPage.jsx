@@ -43,6 +43,7 @@ import {
   pickBackdrop,
   resolveDesign,
   designScale,
+  effectiveOverscan,
   resolveLayerTransform,
   resolveEntrance,
   clipFraming,
@@ -578,10 +579,20 @@ export default function WallpaperPage() {
     setBackdropLayers((prev) => (prev.length > 1 ? prev.slice(-1) : prev))
   }, [])
 
+  const [viewport, setViewport] = useState(readViewport)
+  useEffect(() => {
+    const onResize = () => setViewport(readViewport())
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   // Both layers render on a surface slightly larger than the design canvas, so
   // panning / enlarging stops cutting them off with a visible straight edge at
-  // the canvas bounds (the viewport does the clipping instead).
-  const overscan = config.overscan > 1 ? config.overscan : 1
+  // the canvas bounds (the viewport does the clipping instead). `effectiveOverscan`
+  // grows that surface to still cover the whole viewport when the contain-fit
+  // letterbox is wider than the configured margin (e.g. a square canvas on a
+  // 16:9 screen), otherwise the model gets hard-clipped ~8% in from the edges.
+  const overscan = effectiveOverscan(design, viewport, config.overscan > 1 ? config.overscan : 1)
   const overscanInset = `${-((overscan - 1) / 2) * 100}%`
   // Parallax is written imperatively (CSS vars on the design canvas + a ref the
   // WebGL camera reads), never through React state: a 60fps drift must not
@@ -725,13 +736,6 @@ export default function WallpaperPage() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
-
-  const [viewport, setViewport] = useState(readViewport)
-  useEffect(() => {
-    const onResize = () => setViewport(readViewport())
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   const scale = designScale(design, viewport, config.fit)
