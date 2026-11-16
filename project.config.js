@@ -25,6 +25,8 @@ export default {
   description: [
     '《棕色尘埃 2》角色动态壁纸：Spine 立绘 + 对应场景背景，可叠加时钟、音频频谱、专辑卡、氛围粒子与指针特效。',
     'BrownDust 2 live wallpaper: Spine character art over its matching scene, with optional clock, audio spectrum, album card, ambient particles and pointer effects.',
+    '本壁纸主要针对 1080p 16:9 屏幕设计，其他分辨率可在设置中自行调整构图。',
+    'This wallpaper is designed primarily for 1080p 16:9 screens; other aspect ratios can be tuned in the settings.',
   ],
 
   // The engine rewrites `contentrating` / `visibility` / `preview` itself, so

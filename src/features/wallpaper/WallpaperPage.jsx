@@ -170,6 +170,12 @@ export default function WallpaperPage() {
   const configClickAnimation = config.clickAnimation ?? { enabled: false, name: '' }
   const [clickTweak, setClickTweak] = useState(configClickAnimation)
   useEffect(() => setClickTweak(configClickAnimation), [configClickAnimation])
+
+  // Animation speed (top-level `speed`, a variant key): edited live in the
+  // composition drawer next to the model scale, same rule as the layer tweaks
+  // (config wins until touched, nothing persisted until 记录配置).
+  const [speedTweak, setSpeedTweak] = useState(config.speed)
+  useEffect(() => setSpeedTweak(config.speed), [config.speed])
   // Bumped on every click to make SpineStage replay the one-shot clip. The
   // actual animation name rides alongside as `clickAnimation` (config-derived),
   // so a click never re-renders the WebGL stage — only the token changes.
@@ -656,6 +662,8 @@ export default function WallpaperPage() {
   configOverlayRef.current = configOverlay
   const configClickRef = useRef(configClickAnimation)
   configClickRef.current = configClickAnimation
+  const configSpeedRef = useRef(config.speed)
+  configSpeedRef.current = config.speed
 
   // 「记录配置」 makes the snapshot live immediately: the in-memory document
   // becomes exactly what was just written. Without it the drawer keeps reading
@@ -677,6 +685,7 @@ export default function WallpaperPage() {
       setTweaks({ ...base })
       setOverlayTweaks({ ...overlayBase })
       setClickTweak({ ...configClickRef.current })
+      setSpeedTweak(configSpeedRef.current)
       setAutoplayOverride(null)
       return
     }
@@ -686,6 +695,10 @@ export default function WallpaperPage() {
     }
     if (target === 'clickAnimation') {
       setClickTweak({ ...configClickRef.current })
+      return
+    }
+    if (target === 'speed') {
+      setSpeedTweak(configSpeedRef.current)
       return
     }
     // Any other target is an overlay widget key.
@@ -828,7 +841,7 @@ export default function WallpaperPage() {
               onSequenceFrame={handleSequenceFrame}
               skin={config.skin}
               playing
-              speed={config.speed}
+              speed={speedTweak}
               loop
               zoom={config.zoom}
               showBones={false}
@@ -965,12 +978,14 @@ export default function WallpaperPage() {
           autoplay={autoplay}
           source={loaded?.source ?? 'builtin'}
           clickAnimation={clickTweak}
+          speed={speedTweak}
           animations={info?.animations ?? []}
           variants={variants}
           variantId={variantId}
           onVariantChange={setVariantOverride}
           onChange={updateTweaks}
           onClickChange={updateClick}
+          onSpeedChange={setSpeedTweak}
           onOverlayChange={updateOverlay}
           onAccentChange={updateAccent}
           onAutoplayChange={setAutoplayOverride}

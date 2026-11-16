@@ -123,18 +123,34 @@ function VariantGroup({ variants, variantId, onChange }) {
   )
 }
 
-function LayerGroup({ title, note, spec, design, onChange, onReset }) {
+function LayerGroup({ title, note, spec, design, onChange, onReset, speed, onSpeedChange }) {
   return (
     <Group title={title} note={note} onReset={onReset}>
-      <SliderField
-        label={t('comp.scale')}
-        readout={formatScale(spec.scale)}
-        min={SCALE_MIN}
-        max={SCALE_MAX}
-        step={SCALE_STEP}
-        value={spec.scale}
-        onChange={(scale) => onChange({ scale: Math.max(scale, SCALE_MIN) })}
-      />
+      {/* Scale + (model only) animation speed share one row: both are the "how
+          big / how fast" pair of a layer, and the drawer has to fit the window
+          height (no mouse wheel in Wallpaper Engine). */}
+      <div className="ws-pair">
+        <SliderField
+          label={t('comp.scale')}
+          readout={formatScale(spec.scale)}
+          min={SCALE_MIN}
+          max={SCALE_MAX}
+          step={SCALE_STEP}
+          value={spec.scale}
+          onChange={(scale) => onChange({ scale: Math.max(scale, SCALE_MIN) })}
+        />
+        {speed !== undefined && (
+          <SliderField
+            label={t('comp.speed')}
+            readout={`${round2(speed)}×`}
+            min={0}
+            max={2}
+            step={0.05}
+            value={speed}
+            onChange={onSpeedChange}
+          />
+        )}
+      </div>
       {/* The two offsets sit side by side (like the parallax strengths): they are
           a pair — you nudge X and Y in the same breath — and the drawer has to
           fit the window height, since Wallpaper Engine has no mouse wheel. */}
@@ -517,7 +533,7 @@ function OtherPanel({ frame, onFrameChange, onResetFrame }) {
 //
 // `overlay` is the exception: it is not a variant key (host chrome, not a look),
 // so it always lands on the top level.
-function configPayload(config, spec, overlay, autoplay, clickAnimation, variantId) {
+function configPayload(config, spec, overlay, autoplay, clickAnimation, speed, variantId) {
   const layer = (item) => ({
     scale: round2(item.scale),
     offsetX: Math.round(item.offsetX),
@@ -537,6 +553,7 @@ function configPayload(config, spec, overlay, autoplay, clickAnimation, variantI
     backdropTransform: layer(spec.backdrop),
     modelTransform: layer(spec.model),
     parallax: parallaxValue,
+    speed: round2(speed ?? 1),
     clickAnimation: {
       enabled: clickAnimation?.enabled === true,
       name: clickAnimation?.name ?? '',
@@ -616,11 +633,13 @@ export default function WallpaperSettings({
   autoplay,
   source,
   clickAnimation,
+  speed,
   animations,
   variants,
   variantId,
   onChange,
   onClickChange,
+  onSpeedChange,
   onOverlayChange,
   onAccentChange,
   onAutoplayChange,
@@ -666,7 +685,7 @@ export default function WallpaperSettings({
   // The same text also goes to the clipboard, for the case where the tune
   // should become the new factory default of a build.
   const handleRecord = async () => {
-    const payload = configPayload(config, spec, overlay, autoplay, clickAnimation, variantId)
+    const payload = configPayload(config, spec, overlay, autoplay, clickAnimation, speed, variantId)
     const text = `${JSON.stringify(payload, null, 2)}\n`
     const at = new Date()
     const stored = saveRecordedConfig(payload, at.toISOString())
@@ -800,6 +819,8 @@ export default function WallpaperSettings({
               design={design}
               onChange={(patch) => onChange('model', patch)}
               onReset={() => onReset('model')}
+              speed={speed}
+              onSpeedChange={onSpeedChange}
             />
             <ParallaxGroup
               spec={spec.parallax ?? {}}

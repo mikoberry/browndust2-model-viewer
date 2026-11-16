@@ -8,7 +8,7 @@
     "每个条目就是一份完整的 wallpaper.config.json 内容，可原样复制回去用。"
   ],
   "presets": {
-    "": {
+    "Valze/Night_of_Betrayal/cutscene_char068001": {
       "modelId": "Valze/Night_of_Betrayal/cutscene_char068001",
       "backdrop": "char068001_back_2_upscayl_2x_upscayl-standard-4x.webp",
       "backdropTransform": {
@@ -2491,6 +2491,19 @@
                   "scale": 1.29,
                   "offsetX": 0,
                   "offsetY": 0
+                },
+                "camera": {
+                  "from": {
+                    "zoom": 2.55,
+                    "x": -2176,
+                    "y": 0
+                  },
+                  "to": {
+                    "zoom": 1.15,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "ease": "easeOut"
                 }
               },
               "cut_B": {
@@ -2504,6 +2517,19 @@
                   "scale": 1.24,
                   "offsetX": 0,
                   "offsetY": 259
+                },
+                "camera": {
+                  "from": {
+                    "zoom": 1.5,
+                    "x": -1024,
+                    "y": 0
+                  },
+                  "to": {
+                    "zoom": 1.15,
+                    "x": 0,
+                    "y": 0
+                  },
+                  "ease": "easeOut"
                 }
               }
             }
@@ -2534,6 +2560,19 @@
               "scale": 1.29,
               "offsetX": 0,
               "offsetY": 0
+            },
+            "camera": {
+              "from": {
+                "zoom": 2.55,
+                "x": -1024,
+                "y": 0
+              },
+              "to": {
+                "zoom": 1.25,
+                "x": 0,
+                "y": 0
+              },
+              "ease": "easeOut"
             }
           },
           "cut_B": {
@@ -2547,6 +2586,19 @@
               "scale": 1.24,
               "offsetX": 0,
               "offsetY": 259
+            },
+            "camera": {
+              "from": {
+                "zoom": 1.5,
+                "x": -1024,
+                "y": 0
+              },
+              "to": {
+                "zoom": 1.25,
+                "x": 154,
+                "y": 0
+              },
+              "ease": "easeOut"
             }
           }
         }

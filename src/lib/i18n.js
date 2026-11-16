@@ -108,6 +108,7 @@ const MESSAGES = {
   },
   'comp.variantBase': { zh: '基础', en: 'Base', ja: 'ベース', ko: '기본' },
   'comp.scale': { zh: '缩放', en: 'Scale', ja: '拡大縮小', ko: '배율' },
+  'comp.speed': { zh: '动画速度', en: 'Speed', ja: '再生速度', ko: '재생 속도' },
   'comp.offsetX': { zh: '水平偏移', en: 'Offset X', ja: '水平オフセット', ko: '가로 오프셋' },
   'comp.offsetY': { zh: '垂直偏移', en: 'Offset Y', ja: '垂直オフセット', ko: '세로 오프셋' },
   'comp.backdrop': { zh: '背景', en: 'Backdrop', ja: '背景', ko: '배경' },
