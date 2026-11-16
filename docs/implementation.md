@@ -40,6 +40,9 @@
 - `src/lib/assets.js` 模块顶层读 `import.meta.env.BASE_URL`，Node 里 import 会炸，所以背景挑选单独放 `backdrops.js`。
 - 相机数学的核心：`k = canvas.width / design.width` 反解设计坐标到屏幕；模型/画布归一化矩形与
   scale、dpr、屏幕比例无关，可用纯 Node 复算验证。
+- **渲染分辨率只用静态 `scale(k)`**：`SpineStage` 的 drawing buffer 大小由 `design.displayScaleRef`
+  决定，绝不能依赖 `getBoundingClientRect()`（含 transform）——否则运镜 zoom 会把 buffer 拖进每帧重建。
+  排查与修复见 [performance.md](performance.md)。
 
 ## 壁纸页设置抽屉细节
 
