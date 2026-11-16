@@ -29,7 +29,7 @@
 
 | 路径 | 用途 |
 | --- | --- |
-| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，无侧栏 / 无交互（滚轮、拖拽、双击都不响应）；配置三层 = `src/features/wallpaper/config.js`（内置兜底）→ `public/wallpaper.config.json`（**出厂默认**）→ 用户「记录配置」的 `localStorage` 快照（**最优先**）。chrome 只有右下角半透明构图手柄（`S` 键同效）与 `overlay` 配置开启的 WallKit 控件 |
+| `/`（以及其它所有路径） | **正式页面 / 全屏壁纸**：固定模型 + 对应背景，无侧栏 / 无交互（滚轮、拖拽、双击都不响应）；配置三层 = `src/features/wallpaper/config.js`（内置兜底）→ `public/wallpaper.config.json`（**出厂默认**）→ 用户「记录配置」的 `localStorage` 快照（**最优先**）。chrome 只有右下角半透明构图手柄（`S` 键同效）、`overlay` 配置开启的 WallKit 控件，以及 `overlay.burst` 配置时多出的礼炮按钮 |
 | `/spine-viewer` | **开发调试辅助页**：完整查看器 UI（侧栏 / 工具栏 / 检查器 / 时间轴 / 状态栏）。**不挂任何壁纸浮层** |
 
 旧 WE 方案留下的 `src/stage/`、`src/backdrop/`、`src/overlay/`、`src/we/`、`public/models/`、`project.json`、
@@ -69,7 +69,7 @@ npm run preview        # 预览构建产物
 index.html                       # 挂载点；内联脚本规范化 /spine-viewer/ 尾斜杠
 vite.config.js                   # react() + modelLibraryPlugin() + wallkitWE()，base: './'
 public/
-  wallpaper.config.json          # 出厂默认配置，原样复制到 dist/ 根；用户「记录」过则以记录为准
+  wallpaper.config.json          # 出厂默认配置，原样复制到 dist/ 根；用户「记录」过则以记录为准（`overlay.burst` 除外，见下）
 wallpaper.presets.json           # 人物配置库（仓库根目录、纯手工维护、代码不读、不进 dist）：每个人物一份完整配置，换人物靠手动复制
 project.config.js                # WE 工程清单声明：Workshop 标题 / 简介 / 属性面板自定义文案（html() 区块）；手工维护，不进 dist
 scripts/
@@ -323,6 +323,12 @@ src/features/<feature>/
   `light` / `pointer` / `spotlight` / `frame`，各自 `enabled`）。改它只影响浮层，不影响构图；`theme` 按 WallKit 约定指**文字色**
   （`light` = 浅色文字，配深色壁纸；`frame` 的 `theme` 同义，指取景线的明暗）。加新控件时同步三处：`WALLPAPER.overlay`、
   `public/wallpaper.config.json`、`WallpaperOverlay.jsx`，并保持「记录配置」内容与文件的字节等价。
+- **喷射按钮（`overlay.burst`）是唯一没有 `enabled` 的浮层设置**：没有这个键就**没有按钮**（不渲染），
+  配了就有（`true` = 全默认）。它不进抽屉、也不写进「记录配置」的快照（`configPayload` 里剥掉），
+  所以 `wallpaper.config.json` 始终是唯一来源。参数解析 / 弧度换算集中在 `src/features/wallpaper/burst.js`
+  （`normalizeBurstConfig()` / `burstCommand()`，纯函数，注意 `angle` 是**度**且 `0` = 正上、**负 = 逆时针**：
+  左上 45° 是 `-135`（不是 -45，那个是右上）、`x/y` 是视口比例）。
+  **不要**给它加抽屉入口 —— 需求是「作者打包前按壁纸手调，观众看不到任何入口」。
 - **`LightFx`（光照）是整幅画面的天气光**，不是控件：铺满定位上下文、`pointer-events: none`、自身 `z-index: 2`
   （氛围粒子 1 之上、其余控件之下——画面被照亮而文字不被糊掉）。和聚光灯相反，它**第一帧就在**：没有指针输入的壁纸
   照样有天气，`follow` 只是加分项，所以别把「收不到指针事件」当成不显示的理由。

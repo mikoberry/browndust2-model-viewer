@@ -69,6 +69,10 @@ Wallpaper Engine **2.8.797 beta**（CEF 156，默认禁止 file:// 读本地文�
 改完点「记录配置」存进 `localStorage['mikoberry:wallpaper.config.user:<modelId>']`，此后启动按这份来；
 `wallpaper.config.json` 只是出厂默认值（「恢复首次默认」回到它）。
 
+右下角工具列最上面是一个礼炮按钮，只有 `wallpaper.config.json` 配了 `overlay.burst` 才出现。
+点一下喷一发 `BurstFx`（形态 / 位置 / 角度 / 力度都在配置里），抽屉里没有设置项，
+「记录配置」也不会写这个键，所以文件始终是唯一来源（见 [docs/wallkit.md](docs/wallkit.md)）。
+
 配置优先级：内置默认值（已自动并入 JSON）< `wallpaper.config.json` < 用户「记录配置」。
 
 存储键按 `mikoberry:<键名>:<modelId>` 组成（`STORAGE_OWNER` 只是给人看的标记，可换成任意固定字符串）：

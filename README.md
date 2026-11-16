@@ -79,6 +79,11 @@ gives the wallpaper window no keyboard focus).
 "Record config" writes to `localStorage['mikoberry:wallpaper.config.user:<modelId>']`, and from then on that snapshot
 wins at startup; `wallpaper.config.json` is only the factory default ("Restore factory defaults" returns to it).
 
+The topmost button in the bottom-right column is a party popper, armed by `overlay.burst` in
+`public/wallpaper.config.json` (absent = no button). One click fires a single wallkit `BurstFx` burst at the
+configured point; the drawer has no settings for it and "Record config" never writes the key, so the shipped
+file stays authoritative (see [docs/wallkit.md](docs/wallkit.md)).
+
 Priority: built-in defaults (already folded into the JSON) < `wallpaper.config.json` < user "Record config".
 
 Storage keys look like `mikoberry:<base key>:<modelId>` (`STORAGE_OWNER` is a human-readable marker you can replace
