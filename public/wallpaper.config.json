@@ -1,3 +1,117 @@
 {
-  "modelId": "Darian/Bittersweet_Bunny/cutscene_char004002"
+  "modelId": "Justia/Knight_of_Blood/cutscene_char000201",
+  "backdrop": "char000201_back2_upscayl_2x_upscayl-standard-4x.webp",
+  "backdropTransform": {
+    "scale": 1.9,
+    "offsetX": 0,
+    "offsetY": 0
+  },
+  "modelTransform": {
+    "scale": 1.55,
+    "offsetX": 205,
+    "offsetY": 532
+  },
+  "animation": "loop_2",
+  "expression": null,
+  "clickAnimation": {
+    "enabled": false,
+    "name": ""
+  },
+  "entrance": {
+    "autoplay": true,
+    "blend": 0.9,
+    "clips": {
+      "A_cut": {
+        "backdrop": "char000201_back1_upscayl_2x_upscayl-standard-4x.webp",
+        "backdropTransform": {
+          "scale": 1.9,
+          "offsetX": 0,
+          "offsetY": 0
+        },
+        "modelTransform": {
+          "scale": 1.9,
+          "offsetX": 205,
+          "offsetY": 901
+        },
+        "camera": {
+          "from": {
+            "zoom": 1.8,
+            "x": 2048,
+            "y": 0
+          },
+          "to": {
+            "zoom": 1.8,
+            "x": 205,
+            "y": 512
+          },
+          "duration": 3,
+          "ease": "easeOut"
+        }
+      },
+      "B_cut": {
+        "backdrop": "",
+        "backdropTransform": {
+          "scale": 1.9,
+          "offsetX": 0,
+          "offsetY": 0
+        },
+        "modelTransform": {
+          "scale": 1.55,
+          "offsetX": 205,
+          "offsetY": 532
+        },
+        "camera": {
+          "from": {
+            "zoom": 2.5,
+            "x": 0,
+            "y": 1239
+          },
+          "to": {
+            "zoom": 1.25,
+            "x": 0,
+            "y": 0
+          },
+          "ease": "easeOut"
+        }
+      }
+    }
+  },
+  "sequence": [
+    "A_cut",
+    "B_cut",
+    "loop_2"
+  ],
+  "design": {
+    "width": 2048,
+    "height": 2048
+  },
+  "variant": "",
+  "variants": [
+    {
+      "id": "v1",
+      "label": "v1",
+      "backdrop": "char000201_back1_upscayl_2x_upscayl-standard-4x.webp",
+      "backdropTransform": {
+        "scale": 1.9,
+        "offsetX": 0,
+        "offsetY": 0
+      },
+      "modelTransform": {
+        "scale": 1.9,
+        "offsetX": 205,
+        "offsetY": 952
+      },
+      "animation": "loop",
+      "expression": null,
+      "clickAnimation": {
+        "enabled": false,
+        "name": ""
+      },
+      "sequence": [
+        "A_cut",
+        "B_cut",
+        "loop_2"
+      ]
+    }
+  ]
 }
