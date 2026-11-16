@@ -197,7 +197,26 @@ export function mergeClipLayers(skeletonData) {
     // something to stack: the first one is folded and the rest stay listed as
     // selectable clips. Measured on bones, not timeline keys — BD2 writes a
     // full slot snapshot into every clip, so key overlap says nothing.
+    //
+    // BUT bone overlap alone is not enough. BD2 splits one character into
+    // several clips that animate the *same* bones yet draw *different* parts:
+    // `cut_B` draws the body/face/hair, `cut_B_skirt` draws only the skirt and
+    // `cut_B_fire` only the fire effects — all three key the same 158 bones.
+    // Those are complementary parts, not alternative takes, and must all fold
+    // in or the character renders skirtless. So an already-folded layer only
+    // marks an alternative take when it also draws the same *slots* (e.g. two
+    // fire variants sharing `B_eff_*`), not merely the same bones.
     const foldedBones = new Set()
+    const foldedSlots = new Set()
+    const drawnSlotsOf = (animation) => {
+      const set = new Set()
+      for (const timeline of animation.timelines ?? []) {
+        if (isAttachmentTimeline(timeline) && (timeline.attachmentNames ?? []).some((n) => n != null)) {
+          set.add(timeline.slotIndex)
+        }
+      }
+      return set
+    }
     for (const layerName of layers) {
       const layer = byName.get(layerName)
       if (!layer) continue
@@ -205,10 +224,16 @@ export function mergeClipLayers(skeletonData) {
       // slot with an already folded layer is normal — BD2 writes a full slot
       // snapshot in every clip. Only bone overlap marks an alternative take.
       const layerBones = animatedBones(layer)
+      const layerSlots = drawnSlotsOf(layer)
       if (layerBones.size) {
         let sharedBones = 0
         for (const bone of layerBones) if (foldedBones.has(bone)) sharedBones += 1
-        if (sharedBones / layerBones.size >= ALTERNATE_TAKE_RATIO) continue
+        // Complementary: same bones but disjoint drawn slots — stack it.
+        const complementary =
+          sharedBones / layerBones.size >= ALTERNATE_TAKE_RATIO &&
+          layerSlots.size > 0 &&
+          [...layerSlots].every((slot) => !foldedSlots.has(slot))
+        if (sharedBones / layerBones.size >= ALTERNATE_TAKE_RATIO && !complementary) continue
       }
       // Attachments the layer actually draws. BD2 ships several slots per shape
       // (`A_arm_r4_bbb` / `A_arm_r4_fff` share the setup attachment `A_arm_r4`)
@@ -248,6 +273,7 @@ export function mergeClipLayers(skeletonData) {
         merged.set(key, timeline)
       }
       for (const bone of layerBones) foldedBones.add(bone)
+      for (const slot of layerSlots) foldedSlots.add(slot)
       duration = Math.max(duration, layer.duration ?? 0)
       // Marker read by `readAssetInfo` so the UI hides the sub-clip.
       layer.clipLayerOf = rootName
