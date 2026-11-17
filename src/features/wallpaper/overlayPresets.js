@@ -6,7 +6,7 @@
 //
 // Only overlay keys live here (accent + the eight control widgets); the
 // composition (model / backdrop / transforms) is deliberately untouched —
-// the full configs these were recorded from live in wallpaper.presets.json.
+// the full configs these were recorded from live in publish/wallpaper.presets.json.
 //
 // Adding one: copy the `overlay` block (plus `accent`) out of a recorded
 // config, wrap it as `{ id, patch }`, and add an `overlayPreset.<id>` label

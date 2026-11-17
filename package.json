@@ -12,6 +12,7 @@
     "build:we": "node scripts/build-home.mjs && node scripts/deploy-weproject.mjs",
     "build:we:embed": "node scripts/build-home.mjs --embed && node scripts/deploy-weproject.mjs",
     "deploy:we": "node scripts/deploy-weproject.mjs",
+    "we:new": "node scripts/new-wallpaper.mjs",
     "project:gen": "node scripts/gen-project.mjs",
     "project:check": "node scripts/gen-project.mjs --check",
     "project:latest": "node scripts/adopt-latest.mjs",

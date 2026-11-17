@@ -111,7 +111,7 @@ BD2 一个角色常有两个待机循环（`loop` / `loop_2`）和配套的两�
 
 ### 按人物保存配置（人物配置库）
 
-`wallpaper.presets.json`（仓库根目录，不进 dist）是手工维护的**人物配置库**（代码不读它）：给每个人物调好构图后，
+`publish/wallpaper.presets.json`（`publish/` 目录，不进 dist）是手工维护的**人物配置库**（代码不读它）：给每个人物调好构图后，
 抽屉里点「记录配置」，把剪贴板里的完整配置粘贴到该文件的 `presets` 下，用人物的 `modelId` 做键。
 换人物时把想要的人物整块复制、覆盖到 `wallpaper.config.json` 刷新即可；若之前点过「记录配置」，
 先在抽屉里点一次「恢复首次默认」（清掉 localStorage 快照）再刷新，文件才会生效。
@@ -135,13 +135,13 @@ npm run build:we       -- --target "F:/SteamLibrary/steamapps/common/wallpaper_e
 也可以用环境变量 `WE_PROJECT` / `WE_TITLE`，但那是 shell 相关的（bash 写 `WE_PROJECT=x npm run …`、
 cmd 要先 `set "WE_PROJECT=x"`、PowerShell 要用 `$env:WE_PROJECT='x';`）。
 
-`project.json` 由仓库根的 **`project.config.js`** 生成（`wallkit/project` 的 `defineProject` 保证形状、
+`project.json` 由 **`publish/project.config.js`** 生成（`wallkit/project` 的 `defineProject` 保证形状、
 `mergeProject` 保留 WE 编辑器写过的 `workshopid` / `preview` / `version`）。频谱 / 专辑卡需要的
 `general.supportsaudioprocessing: true` 与 `type: "Web"` 由工具自动补齐；放一张
 `preview.jpg|png|gif` 进部署目录即可作为缩略图。
 
 想改 Workshop 标题、简介或属性面板里的自定义文案（头像、求点赞订阅、主页、致谢），只改
-`project.config.js` 然后 `npm run project:gen` 即可，**不用重新构建**；`npm run project:check`
+`publish/project.config.js` 然后 `npm run project:gen` 即可，**不用重新构建**；`npm run project:check`
 只报告漂移不写盘。面板文案用 `html()` 区块，引擎当 HTML 渲染且不会推给页面，所以壁纸运行时零改动；
 GitHub 链接不在面板白名单里，主页用带颜色的 `<a>` 显示、仍需复制到浏览器打开；头像 `github.com/mikoberry.png` 则能正常显示。
 

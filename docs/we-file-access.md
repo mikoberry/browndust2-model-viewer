@@ -91,7 +91,7 @@
 - `features/wallpaper/config.js` 的 `readConfigFile()`：**先查 `window.__BD2_WALLPAPER_CONFIG__`**，命中就当作"文件内容"返回（`source` 仍为 `'file'`，`url` 记为 `embedded:wallpaper.config.json`），未命中才走原来的 `fetch`。
 - 优先级不变：内置 < 注入的工厂默认 < 抽屉「记录配置」的 localStorage 快照。
 
-**代价（需要你接受）**：WE 里改 `wallpaper.config.json` 不再即时生效——要改仓库的 `public/wallpaper.config.json`（或 `wallpaper.presets.json` 里对应那一份）然后重新 `npm run build:we:embed`。抽屉里的实时调参 + 「记录配置」仍可用（前提见 6.3）。
+**代价（需要你接受）**：WE 里改 `wallpaper.config.json` 不再即时生效——要改仓库的 `public/wallpaper.config.json`（或 `publish/wallpaper.presets.json` 里对应那一份）然后重新 `npm run build:we:embed`。抽屉里的实时调参 + 「记录配置」仍可用（前提见 6.3）。
 
 ### 4.4 部署脚本
 

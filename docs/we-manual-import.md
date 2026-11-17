@@ -113,7 +113,7 @@ npm run project:gen -- --target "F:/SteamLibrary/steamapps/common/wallpaper_engi
 
 以上是 `BD2-test\project.json` 里 `general` 的**完整内容**（2026-11-14 快照，未省略）——**以此文件为准**，
 不要按旧文档或截图手敲。复制时连外层花括号一起框选，整块替换掉新工程里同名的 `general`。
-面板文案本身还是以仓库的 `project.config.js` 为源；改了文案、`project:gen` 同步过之后，用下面这条命令
+面板文案本身还是以 `publish/project.config.js` 为源；改了文案、`project:gen` 同步过之后，用下面这条命令
 重新导出这段快照并替换掉本节的 JSON：
 
 ```bash
@@ -163,7 +163,7 @@ node -e "const j=require('F:/SteamLibrary/steamapps/common/wallpaper_engine/proj
 ### 3.4 不建议完全手写
 
 面板文案是 HTML 字符串，`index` / `order` / `type` / `value` 四个字段缺一个都可能「界面上看不到但
-不报错」。要调文案就改仓库里的 `project.config.js` 再跑第 3.1 步，比手写可靠。
+不报错」。要调文案就改 `publish/project.config.js` 再跑第 3.1 步，比手写可靠。
 
 ## 4. 校验
 
@@ -183,7 +183,7 @@ npm run project:check -- --target "F:/.../你的新工程名"
 
 | 改了什么 | 要做的 |
 |---|---|
-| 只改面板文案 / 标题 / 简介 | 改 `project.config.js` → `npm run project:gen -- --target "<目录>"`，**不用重新构建** |
+| 只改面板文案 / 标题 / 简介 | 改 `publish/project.config.js` → `npm run project:gen -- --target "<目录>"`，**不用重新构建** |
 | 改了代码 / 素材 / 配置 | `npm run build:home:embed` → 再复制进 WE 工程（或 `WE_PROJECT="<目录>" npm run deploy:we` 复制现有 `dist/`） |
 | 只搬运现有 `dist/` | `WE_PROJECT="<目录>" npm run deploy:we`（不重建） |
 

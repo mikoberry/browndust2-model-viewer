@@ -16,10 +16,27 @@ import {
 } from 'wallkit/project'
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-export const DEFAULT_CONFIG = path.join(ROOT, 'project.config.js')
+// Everything that exists only to publish a wallpaper — manifest declaration,
+// default thumbnail, title mappings, config library, burst template — lives in
+// `publish/`. Nothing under `src/` imports any of it and none of it goes to dist.
+export const PUBLISH_DIR = path.join(ROOT, 'publish')
+export const DEFAULT_CONFIG = path.join(PUBLISH_DIR, 'project.config.js')
 
 export const DEFAULT_TARGET =
   'F:/SteamLibrary/steamapps/common/wallpaper_engine/projects/myprojects/BD2-test'
+
+// WE resolves `preview` as a bare filename next to project.json. One list for
+// every caller, so deploy and project:gen cannot disagree about which file wins.
+export const PREVIEW_NAMES = ['preview.gif', 'preview.jpg', 'preview.png']
+
+// `''` means "nothing in the folder yet"; the caller then falls back to the name
+// declared in project.config.js.
+export function detectPreview(dir) {
+  for (const name of PREVIEW_NAMES) {
+    if (existsSync(path.join(dir, name))) return name
+  }
+  return ''
+}
 
 // `--name value` and `--name=value` both work, so the scripts behave the same
 // in bash, cmd.exe and PowerShell. Unknown flags are left to the caller.

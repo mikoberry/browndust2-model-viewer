@@ -47,7 +47,8 @@ npm run build:home:embed # 只构建不部署的自包含产物（等价于 buil
 npm run build:we       # 普通构建（真实素材文件）+ 部署到本机 WE 工程目录（默认；会写仓库外的文件，按需执行）
 npm run build:we:embed # 自包含构建（素材 base64）+ 部署 —— 仅 WE 2.8.797 beta / file:// 需要
 npm run deploy:we      # 只复制现有 dist/，不重新构建（产物形态原样带过去）
-npm run project:gen    # 从 project.config.js 重新生成 WE 工程目录里的 project.json，不用重新构建
+npm run we:new         # 新建一个 WE 工程目录：embed 构建 + 部署到 <myprojects>/<角色>_<皮肤>，标题走 --title
+npm run project:gen    # 从 publish/project.config.js 重新生成 WE 工程目录里的 project.json，不用重新构建
 npm run project:check  # 只报告 project.json 与配置的漂移，不写盘
 npm run project:latest # 找 myprojects 下「最近改动（mtime）」的文件夹，按同一套规则生成/合并它的 project.json
 npm run verify:embed   # 纯 Node 自检 embed 产物（无 module/crossorigin、素材完整）
@@ -70,8 +71,13 @@ index.html                       # 挂载点；内联脚本规范化 /spine-view
 vite.config.js                   # react() + modelLibraryPlugin() + wallkitWE()，base: './'
 public/
   wallpaper.config.json          # 出厂默认配置，原样复制到 dist/ 根；用户「记录」过则以记录为准（`overlay.burst` 除外，见下）
-wallpaper.presets.json           # 人物配置库（仓库根目录、纯手工维护、代码不读、不进 dist）：每个人物一份完整配置，换人物靠手动复制
-project.config.js                # WE 工程清单声明：Workshop 标题 / 简介 / 属性面板自定义文案（html() 区块）；手工维护，不进 dist
+publish/                         # 只用于「发布 Wallpaper Engine 工程」的元数据：src/ 不 import、不进 dist
+  project.config.js              # WE 工程清单声明：Workshop 标题 / 简介 / 属性面板自定义文案（html() 区块）
+  preview.gif                    # 默认缩略图：deploy 只在目标目录没有任何预览图时播种过去
+  wallpaper.presets.json         # 人物配置库：每个人物一份完整配置，换人物靠手动整块复制（代码不读）
+  wallpaper.burst.config.js      # 礼炮按钮（overlay.burst）配置模板，整块复制进 wallpaper.config.json
+  wallpaper.titles.local.json    # 按完整 modelId 索引的 Workshop 标题（本地、gitignore）
+  wallpaper.titles.skill-cutscene.json  # 按 <角色>/<皮肤> 索引的标题表（本地、gitignore）
 scripts/
   scan-model-library.mjs         # 纯 Node 扫描器，产出 manifest（含 PNG/WebP/JPEG 头解析尺寸）
   model-library-plugin.mjs       # virtual:model-library + dev 中间件 + build emitFile
@@ -144,6 +150,10 @@ src/features/<feature>/
   目前 4 个 UI 组件全部是 viewer 专属，所以**没有** `src/components/` 共享目录；真出现共享 UI 时再建。
 - **共享层不带产品语义**：`lib/spine/` 不知道壁纸 / 查看器的存在，只通过 props 被驱动。
 - 新 feature 自己建目录、自带页面与配置，**不要**往 `app/` 里堆业务逻辑。
+- **`publish/` 只被 `scripts/` 读**：清单声明、缩略图、标题表、人物配置库、礼炮模板都放这里。
+  `src/` 一行都不能 import 它，`vite` 也不会把它打进 `dist/`；要新增「发布期才用到的文件」就丢进这个目录，
+  **不要**放仓库根（根目录只留工程级配置：`package.json` / `vite.config.js` / `index.html` / 目录），
+  也**不要**放 `public/`（那是运行时资源，会被复制到站点根、浏览器可直接访问）。
 
 ## 4. 代码规范（Code Standards）
 
@@ -559,6 +569,18 @@ src/features/<feature>/
 ### WE 部署（`npm run build:we` / `build:we:embed`）
 
 - `build:we` = 普通构建 + 部署（默认）；`build:we:embed` = 自包含构建 + 部署（beta WE 黑屏时用）。
+- **发新壁纸（新工程目录）走 `npm run we:new`**（`scripts/new-wallpaper.mjs`）：内部就是
+  `build-home.mjs --embed` + `deploy-weproject.mjs --target <新目录> --title <标题>`，不复制它们的逻辑。
+  默认目录 `<myprojects>/<角色>_<皮肤>`，`--model` / `--name` / `--dir` / `--title` / `--save` / `--list` /
+  `--dry` / `--force`；目录已存在且非空时**拒绝**（防止覆盖已发布工程的 `workshopid`）。
+  **标题按 modelId 从 `publish/wallpaper.titles.local.json` 自动取**（本地文件、已 gitignore，代码不预置任何文案）：
+  优先级 `--title` > mapping；`--save` 把当前标题记进 mapping，`--list` 打印现有条目。
+  该文件的值可以是标题字符串，或 `{ title, dir }`（`dir` 固定工程目录名，相对 `myprojects`）。
+  另有 `publish/wallpaper.titles.skill-cutscene.json`（同样本地）：键是 `<角色>/<皮肤>`，覆盖整个 skill_cutscene
+  素材库（174 套），作为**低优先级**回退参与同一套匹配；`--save` 只写前一个文件。
+  `--model` 与 `public/wallpaper.config.json` 不同时，它**只在构建期间临时改 `modelId` 再原样还原**：
+  构图 / `sequence` / `backdrop` 仍沿用当前配置，这不是"按人物装载预设"，要连构图一起换就把
+  `publish/wallpaper.presets.json` 里那一块整份覆盖进 `public/wallpaper.config.json`。
 - **只构建不部署**：`npm run build:home:embed`（产物只在 `dist/`，不碰任何 WE 目录）。用户想用 WE
   编辑器自己「创建壁纸」导入、再自己管 `project.json` 时走这条，随后用
   `npm run project:latest`（自动取 `myprojects` 下**最近改动过**、也就是你上次在做的那个文件夹 —— 语义是
@@ -573,7 +595,8 @@ src/features/<feature>/
   `F:\SteamLibrary\steamapps\common\wallpaper_engine\projects\myprojects\BD2-test`，可用
   `--target <dir>`（跨 shell，推荐）或 `WE_PROJECT` 环境变量覆盖；
   它会写仓库外的文件，**只在用户明确要求时执行**。
-- 只清 `assets/` / `models/` / `index.html` 三项，其它文件（`preview.gif`、WE 自己生成的快照等）必须保留。
+- 只清 `assets/` / `models/` / `index.html` 三项，其它文件（`preview.gif`、WE 自己生成的快照等）必须保留；
+  缩略图由 deploy 从 `publish/preview.gif` **播种**（目录里没有任何预览图时才复制），见下条。
 - `wallpaper.config.json` **和其他文件一样直接覆盖**（部署目录是 `dist/` 的镜像）。它只是出厂默认值，
   所以覆盖它不会影响已经「记录」过的用户（那份在客户端的 `localStorage` 里）；想把这些值拿回仓库，
   用抽屉的「记录配置」复制出来再整份粘进 `public/wallpaper.config.json`；
@@ -581,10 +604,18 @@ src/features/<feature>/
 - **embed 部署后这个 json 不再被读取**：配置已在构建时注入 `assets/embed-config.js`，调参必须改仓库里的
   `public/wallpaper.config.json` 再 `npm run build:we:embed`。脚本会检测 `assets/embed-assets.js` 是否存在来决定
   打印哪一种提示，不要删掉这个分支（`deploy:we` 复制一份已构建的 dist/ 也是合法用法）。
-- `project.json` 由 `project.config.js` + `wallkit/project` 生成，**唯一生成点在 `scripts/project-manifest.mjs`**
+- `project.json` 由 `publish/project.config.js` + `wallkit/project` 生成，**唯一生成点在 `scripts/project-manifest.mjs`**
   （`deploy-weproject.mjs` 与 `gen-project.mjs` 共用）：`file: index.html`、`type: "Web"`（大写）、
   `general.supportsaudioprocessing: true`（**必须在 `general` 内**）、`schemecolor` 自动补在属性首位。
-  `preview` 只在目标目录里真有图片时才登记；`--title` / `WE_TITLE` 仍可覆盖 config 里的标题。
+  `preview` 一定写进 `project.json`：先在目标目录里找 `preview.gif` / `preview.jpg` / `preview.png`
+  （`detectPreview()`，deploy / project:gen / project:latest 共用），都没有就退回 `publish/project.config.js`
+  的 `preview: 'preview.gif'`。**WE 只认 manifest 里声明过的文件名，不是扫目录**，所以先声明再让用户
+  后拷图片是正确顺序；目录里真放了 `preview.png` 时以实际文件为准，不会被改指回 gif。
+  默认图是 `publish/preview.gif`。`publish/` 是发布期元数据目录（清单声明 / 缩略图 / 标题表 / 配置库），
+  `src/` 不 import 任何一项、也都不进 `dist/`；不要把这些放进 `public/`（那是站点运行时资源，
+  会被原样复制到站点根、浏览器可直接访问）。`deploy` 只在目标目录**没有任何**预览图时
+  才把它复制过去当种子，已有就不覆盖——所以自己的缩略图不会在重新部署时被默认图顶掉。
+  `--title` / `WE_TITLE` 仍可覆盖 config 里的标题。
 - **写回必须走 `mergeProject()`**：`workshopid` / `version` / `snapshotformat` / `snapshotoverlay` 是引擎自有字段，
   无条件保留（丢了 `workshopid` 会把下次发布变成新 Workshop 条目）；配置没声明的属性也保留，只有 `--prune` 才删。
   改面板文案跑 `npm run project:gen` 即可，不必重新构建。`html()` 区块只进 WE 属性面板、不推给页面，

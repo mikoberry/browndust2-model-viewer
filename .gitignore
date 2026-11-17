@@ -190,3 +190,7 @@ dist/
 
 # agent 工作区元数据
 .workbuddy/
+
+# 本地 Workshop 标题映射（npm run we:new 用）：每台机器自己维护，不进 git
+/publish/wallpaper.titles.local.json
+/publish/wallpaper.titles.skill-cutscene.json

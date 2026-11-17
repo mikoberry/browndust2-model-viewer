@@ -7,10 +7,10 @@
 //   npm run project:gen -- --target <dir>      another WE project folder
 //   npm run project:gen -- --config <file>     another config file
 //
-// The editor rewrites project.json itself (preview / version / snapshotformat /
-// workshopid). This script MERGES, never replaces: buildProject() keeps the
-// engine-owned keys, so regenerating a published wallpaper cannot detach its
-// Workshop item. `--check` is the safe gate to run before committing.
+// The engine rewrites project.json itself (version / snapshotformat / workshopid).
+// This script MERGES, never replaces: buildProject() keeps the engine-owned keys,
+// so regenerating a published wallpaper cannot detach its Workshop item.
+// `--check` is the safe gate to run before committing.
 
 import path from 'node:path'
 import { mkdir } from 'node:fs/promises'
@@ -18,6 +18,7 @@ import {
   DEFAULT_CONFIG,
   assertSafeTarget,
   buildProject,
+  detectPreview,
   diffProject,
   loadProjectConfig,
   readProjectFile,
@@ -77,7 +78,12 @@ async function main() {
 
   const config = await loadProjectConfig(options.config || DEFAULT_CONFIG)
   const existing = await readProjectFile(targetFile)
-  const { generated, merged } = buildProject(config, existing, { prune: options.prune })
+  // Same rule as deploy: a preview file that is really in the folder wins over the
+  // default name, so regenerating never re-points a `preview.png` project at a gif.
+  const { generated, merged } = buildProject(config, existing, {
+    prune: options.prune,
+    preview: detectPreview(targetDir) || undefined,
+  })
   const count = Object.keys(merged.general?.properties || {}).length
   const summary = `${count} 个属性（含 schemecolor），入口 ${merged.file}`
 

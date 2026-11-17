@@ -126,7 +126,7 @@ just to have two chips:
 
 ### Saving configs per character (preset library)
 
-`wallpaper.presets.json` (repo root, not shipped in dist) is a hand-maintained **character config library** (code never
+`publish/wallpaper.presets.json` (in `publish/`, not shipped in dist) is a hand-maintained **character config library** (code never
 reads it): frame a character, hit "Record config" in the drawer, paste the full config from the clipboard into that
 file's `presets` under the character's `modelId`. To switch characters, copy the wanted block over
 `wallpaper.config.json` and reload; if you recorded a config before, click "Restore factory defaults" once (clears the
@@ -151,13 +151,13 @@ npm run build:we       -- --target "F:/SteamLibrary/steamapps/common/wallpaper_e
 `WE_PROJECT` / `WE_TITLE` env vars also work, but they are shell-specific (bash `WE_PROJECT=x npm run …`,
 cmd `set "WE_PROJECT=x"` first, PowerShell `$env:WE_PROJECT='x';`).
 
-`project.json` is generated from the repo-root **`project.config.js`** (`wallkit/project`'s `defineProject` enforces the
+`project.json` is generated from **`publish/project.config.js`** (`wallkit/project`'s `defineProject` enforces the
 shape, `mergeProject` preserves the `workshopid` / `preview` / `version` the WE editor wrote). `type: "Web"` and
 `general.supportsaudioprocessing: true` (needed by the spectrum / album art) are filled in automatically; drop a
 `preview.jpg|png|gif` into the deploy directory to get a thumbnail.
 
 To change the Workshop title, description or the custom text in the property panel (avatar, please rate & subscribe,
-home page, credits), edit `project.config.js` and run `npm run project:gen` — **no rebuild needed**;
+home page, credits), edit `publish/project.config.js` and run `npm run project:gen` — **no rebuild needed**;
 `npm run project:check` only reports drift without writing. Panel text uses `html()` blocks: the engine renders them as
 HTML and never forwards them to the page, so the running wallpaper needs no changes; GitHub links are not on the panel
 whitelist, so the home page is a coloured `<a>` you still have to copy into a browser, while the avatar

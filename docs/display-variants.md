@@ -154,7 +154,7 @@ defaultVariant 写回文件用的 `variant`
 | 已部署的三张壁纸（无 `variants`） | 逐字节不变 |
 | 旧用户快照 | 深合并后仍是单套，抽屉不出 chip |
 | 存储键 | 不变（变体写在配置里，不参与命名空间） |
-| `wallpaper.presets.json` | 只加 Ren 的示例，其余人物原样 |
+| `publish/wallpaper.presets.json` | 只加 Ren 的示例，其余人物原样 |
 | 未知 `id` | `resolveVariantId` 回退 `''`，不白屏 |
 | 坏数据 | `normalizeVariants` 丢弃重复/空 id/非对象项，不抛错 |
 

@@ -39,6 +39,7 @@ import {
   DEFAULT_TARGET,
   assertSafeTarget,
   buildProject,
+  detectPreview,
   diffProject,
   loadProjectConfig,
   readArg,
@@ -134,6 +135,7 @@ async function main() {
   const existing = await readProjectFile(file)
   const { generated, merged } = buildProject(config, existing, {
     keepTitle: !options.forceTitle,
+    preview: detectPreview(pick.dir) || undefined,
   })
   const count = Object.keys(merged.general?.properties || {}).length
 

@@ -138,7 +138,7 @@
 所以浏览器里**时钟照常走，频谱是平的、专辑卡不渲染**，这是库的规定行为，不会用假数据兜底。
 
 要在 WE 里真的出数据，需要一份 `project.json`——**`npm run build:we` / `deploy:we` 会自动生成**，
-内容来自仓库根的 `project.config.js`（`wallkit/project` 的 `defineProject` 保证形状，
+内容来自 `publish/project.config.js`（`wallkit/project` 的 `defineProject` 保证形状，
 `mergeProject` 保留引擎写过的 `workshopid` / `preview` / `version`）。只改文案时不必重新构建：
 
 ```bash
@@ -146,7 +146,7 @@ npm run project:gen     # 重新生成 WE 工程目录里的 project.json
 npm run project:check   # 只报告漂移，不写盘
 ```
 
-`project.config.js` 里的 `html()` 区块是**属性面板的说明文案**：头像、求点赞订阅、主页与致谢。
+`publish/project.config.js` 里的 `html()` 区块是**属性面板的说明文案**：头像、求点赞订阅、主页与致谢。
 引擎把它当 HTML 渲染，且**不会把值推给页面**，所以运行时不用 `useWallpaperProperties()`；
 面板链接有域名白名单（Steam / B 站 / YouTube 可点，GitHub 不行），主页用带颜色的 `<a>` 显示、仍要复制到浏览器打开；
 只有 `github.com/mikoberry.png` 这类头像图能显示。

@@ -7,9 +7,9 @@
 //
 // `project.json` is no longer hand-written: `project.config.js` declares the
 // Workshop copy and panel blocks, `wallkit/project` produces the engine shape,
-// and mergeProject() keeps whatever the editor wrote (preview, version,
-// workshopid). Regenerating therefore cannot detach a published Workshop item.
-// Panel copy can also be updated without a build: `npm run project:gen`.
+// and mergeProject() keeps whatever the engine wrote (version, workshopid).
+// Regenerating therefore cannot detach a published Workshop item. Panel copy can
+// also be updated without a build: `npm run project:gen`.
 //
 //   npm run build:we                  # plain build + deploy to the default folder
 //   npm run build:we:embed            # file:// self-contained build + deploy
@@ -23,8 +23,11 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  PREVIEW_NAMES,
+  PUBLISH_DIR,
   assertSafeTarget,
   buildProject,
+  detectPreview,
   loadProjectConfig,
   readArg,
   readProjectFile,
@@ -38,6 +41,13 @@ const DIST = path.join(ROOT, 'dist')
 // Build artifacts owned by Vite / this script. Cleared before every copy so a
 // removed chunk or model never lingers in the deployed folder.
 const MANAGED = ['assets', 'models', 'index.html']
+
+// Default Workshop thumbnail, from `publish/`. That folder is publish-only
+// metadata (manifest declaration, titles, config library) — deliberately not
+// `public/`, which is runtime assets served at the site root, and deliberately
+// not the repo root. Seeded, never forced: a folder that already has a preview
+// image keeps it.
+const DEFAULT_PREVIEW = path.join(PUBLISH_DIR, 'preview.gif')
 
 // Shipped as a runtime setting but deployed like everything else: the folder is a
 // mirror of dist/, so tuning done in the deployed copy is overwritten on the next
@@ -97,7 +107,14 @@ async function main() {
 
   let copied = 0
 
+  // Decided BEFORE the copy: once dist/ files are in place, "does this folder
+  // already have a thumbnail?" can no longer be answered.
+  const hadPreview = detectPreview(target)
+
   for (const entry of await readdir(DIST)) {
+    // Defensive: an older dist/ may still carry a preview.gif copied out of
+    // public/ (the default image used to live there). Never clobber a real one.
+    if (hadPreview && PREVIEW_NAMES.includes(entry)) continue
     await cp(path.join(DIST, entry), path.join(target, entry), {
       recursive: true,
       force: true,
@@ -105,16 +122,22 @@ async function main() {
     copied += 1
   }
 
-  // `preview` is only declared when the file really exists, otherwise the host
-  // shows a broken thumbnail. Omitting it from defineProject() keeps whatever
-  // the editor already wrote in project.json.
-  const previewName = ['preview.gif', 'preview.jpg', 'preview.png'].find((name) =>
-    existsSync(path.join(target, name)),
-  )
+  // Seed the default thumbnail after the copy, so it also survives the
+  // `deploy:we` (existing dist/) path where nothing about it comes from dist/.
+  const seeded = !hadPreview && existsSync(DEFAULT_PREVIEW)
+  if (seeded) await cp(DEFAULT_PREVIEW, path.join(target, path.basename(DEFAULT_PREVIEW)))
+
+  const config = await loadProjectConfig()
+  // A preview image is named in `project.json`, not auto-discovered by the host:
+  // a folder with only the file and no key shows a blank card. So prefer the file
+  // that is really here, then fall back to the name declared in
+  // project.config.js — that way a fresh project is already pointing at
+  // `preview.gif` and dropping the image in later needs no regeneration.
+  const detectedPreview = detectPreview(target)
+  const previewName = detectedPreview || config.preview || ''
 
   const projectFile = path.join(target, 'project.json')
   const existing = await readProjectFile(projectFile)
-  const config = await loadProjectConfig()
   const { merged: project } = buildProject(config, existing, {
     title: cliTitle,
     preview: previewName,
@@ -143,8 +166,12 @@ async function main() {
     console.log('  wallpaper.config.json 已随构建覆盖')
   }
   console.log(`  ${size.files} 个文件 / ${mb(size.total)}`)
-  if (!previewName) {
-    console.log('  提示：放一张 preview.gif / .jpg / .png 到该目录可作缩略图，重新部署会保留')
+  if (seeded) {
+    console.log(`  缩略图：已放入默认的 ${detectedPreview}（来自 publish/）。换成自己的同名文件即可，之后重新部署不会覆盖`)
+  } else if (detectedPreview && detectedPreview !== config.preview) {
+    console.log(`  缩略图：使用目录里已有的 ${detectedPreview}`)
+  } else if (!detectedPreview) {
+    console.log(`  缩略图：project.json 已声明 preview: "${previewName}" —— 放进同名文件即可，不用重新部署`)
   }
   console.log('  在 Wallpaper Engine 里「打开壁纸」→ 该目录，屏幕比例兼容即可直接预览')
 }

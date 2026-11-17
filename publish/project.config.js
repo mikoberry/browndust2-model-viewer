@@ -29,8 +29,15 @@ export default {
     'This wallpaper is designed primarily for 1080p 16:9 screens; other aspect ratios can be tuned in the settings.',
   ],
 
-  // The engine rewrites `contentrating` / `visibility` / `preview` itself, so
-  // they are deliberately left out — mergeProject keeps whatever is on disk.
+  // Thumbnail file name. The default image is `publish/preview.gif`; deploy seeds
+  // it into a project folder that has none. The key is declared even when the
+  // image is missing, because WE only shows a `preview` that the manifest names —
+  // it never scans the folder. deploy/gen prefer whatever file is really there
+  // (png/jpg also work), so this is only the fallback name.
+  preview: 'preview.gif',
+
+  // The engine rewrites `contentrating` / `visibility` itself, so they are
+  // deliberately left out — mergeProject keeps whatever is on disk.
   // Add `tags: ['Anime']` here if the Workshop listing needs them.
 
   audioprocessing: true,
